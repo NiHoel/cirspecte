@@ -1,0 +1,92 @@
+/*!
+ * Original and ressources from: 
+ * Leaflet Fullsreen (https://github.com/Leaflet/Leaflet.fullscreen)
+ * Licensed under ISC (https://github.com/BlackrockDigital/startbootstrap-simple-sidebar/blob/master/LICENSE)
+ */
+
+.leaflet-control-minimap a {
+  background:#fff url(fullscreen.png) no-repeat 0 0;
+  background-size:26px 52px;
+  }
+  .leaflet-touch .leaflet-control-minimap a {
+    background-position: 2px -24px;
+    }
+  .widget-minimap .leaflet-control-minimap a {
+    background-position:2px 2px;
+    }
+  .widget-minimap .leaflet-touch .leaflet-control-minimap a {
+    background-position: 2px 2px;
+    }
+
+
+@media
+  (-webkit-min-device-pixel-ratio:2),
+  (min-resolution:192dpi) {
+    .leaflet-control-minimap a {
+      background-image:url(fullscreen@2x.png);
+    }
+}
+
+.widget-map {
+    background-color: #ccc;
+    bottom: 0;
+    border-radius: 2px;
+    border: 2px solid white;
+    box-shadow: 0px 1px 4px rgba(0, 0, 0, 0.3);
+    opacity: 1;
+    transition: width 0.4s,height 0.4s,opacity 0.6s ease-in,margin-left 0.4s, margin-bottom 0.4s;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    min-width: 300px;
+    min-height: 200px;
+}
+
+.widget-minimap {
+    height: 30%;
+    margin-left: 30px;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    width: 30%;
+    z-index: 7;
+    margin-bottom: 30px;
+    max-height: 50%;
+    max-width: 50%;
+}
+
+/**
+    .widget-minimap:hover {
+        height: 30%;
+        width: 30%;
+    }
+**/
+
+#map {
+    height: 100%;
+}
+
+@media(max-width:50em) {
+    .widget-map {
+        min-width: 100px;
+        min-height: 100px;
+    }
+
+    .widget-minimap {
+        height: 40%;
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+        width: 40%;
+        z-index: 7;
+        margin-bottom: 0px;
+        margin-right: 0px;
+        right: 0;
+        max-height: 60%;
+        max-width: 60%;
+    }
+    /**
+        .widget-minimap:hover {
+            height: 40%;
+            width: 40%;
+        }
+    **/
+}

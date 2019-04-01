@@ -1,0 +1,215 @@
+{
+    "version": 1,
+    "temporalGroups": [
+        {
+            "id": "Bayreuth",
+            "name": "Bayreuth",
+            "type": "tour",
+            "description": "",
+            "autoConnectColocated": true,
+            "colocatedRadius": 3,
+            "multiselect": false
+        }
+    ],
+    "spatialGroups": [
+        {
+            "id": "Februar 2019 Bayreuth",
+            "name": "Februar 2019",
+            "type": "route",
+            "timeslot": "2019-02-15T14:30:00.000Z",
+            "description": "",
+            "superGroup": "Bayreuth",
+            "path": "",
+            "vertices": [
+                {
+                    "id": "2019-02-15_49.930486,11.584503_panorama",
+                    "type": "panorama",
+                    "coordinates": [
+                        49.93048639027379,
+                        11.584502980113031
+                    ],
+                    "path": "49.930487, 11.584503.jpg",
+                    "image": {
+                        "width": 8192,
+                        "height": 1670
+                    },
+                    "data": {
+                        "type": "equirectangular",
+                        "vaov": 73.37204391891892,
+                        "vOffset": 2.769713087886313
+                    },
+                    "outgoingEdges": [
+                        {
+                            "id": "2019-02-15_49.930486,11.584503_panorama to 2019-02-15_49.930532,11.584265_panorama route",
+                            "to": "2019-02-15_49.930532,11.584265_panorama",
+                            "type": "route",
+                            "bidirectional": true
+                        }
+                    ]
+                },
+                {
+                    "id": "2019-02-15_49.930532,11.584265_panorama",
+                    "type": "panorama",
+                    "coordinates": [
+                        49.93053242122335,
+                        11.58426485374707
+                    ],
+                    "path": "49.930532, 11.584265.jpg",
+                    "image": {
+                        "width": 8192,
+                        "height": 1740
+                    },
+                    "data": {
+                        "type": "equirectangular",
+                        "vaov": 76.45059121621621,
+                        "vOffset": -0.6146780300138934
+                    }
+                }
+            ]
+        },
+        {
+            "id": "Herbst Bayreuth",
+            "name": "Herbst",
+            "type": "route",
+            "timeslot": "2018-10-12T14:00:00.000Z",
+            "description": "",
+            "superGroup": "Bayreuth",
+            "path": "",
+            "vertices": [
+                {
+                    "id": "2018-10-12_49.930487,11.584504_panorama",
+                    "type": "panorama",
+                    "timeslot": "2018-10-12T13:59:01.000Z",
+                    "coordinates": [
+                        49.93048703774213,
+                        11.584503818303348
+                    ],
+                    "path": "49.930487, 11.584504.jpg",
+                    "image": {
+                        "width": 8192,
+                        "height": 1674
+                    },
+                    "data": {
+                        "vaov": 73.58108108108108
+                    },
+                    "outgoingEdges": [
+                        {
+                            "id": "2018-10-12_49.930487,11.584504_panorama to 2018-10-12_49.930545,11.584286_panorama route",
+                            "to": "2018-10-12_49.930545,11.584286_panorama",
+                            "type": "route",
+                            "bidirectional": true
+                        }
+                    ]
+                },
+                {
+                    "id": "2018-10-12_49.930545,11.584286_panorama",
+                    "type": "panorama",
+                    "timeslot": "2018-10-12T14:00:21.000Z",
+                    "coordinates": [
+                        49.93054553142425,
+                        11.58426345471086
+                    ],
+                    "path": "49.930546, 11.584263.jpg",
+                    "image": {
+                        "width": 8192,
+                        "height": 1654
+                    },
+                    "data": {
+                        "vaov": 72.69942434210526
+                    }
+                }
+            ]
+        },
+        {
+            "id": "Dezember 2018 Bayreuth",
+            "name": "Dezember 2018",
+            "type": "route",
+            "timeslot": "2018-12-07T13:11:44.000Z",
+            "superGroup": "Bayreuth",
+            "path": "",
+            "vertices": [
+                {
+                    "id": "2018-12-07_49.930548,11.584292_panorama",
+                    "type": "panorama",
+                    "timeslot": "2018-12-07T13:10:42.000Z",
+                    "coordinates": [
+                        49.930548,
+                        11.584292
+                    ],
+                    "path": "49.930548, 11.584292.jpg",
+                    "image": {
+                        "width": 8192,
+                        "height": 1740
+                    },
+                    "data": {
+                        "type": "equirectangular",
+                        "vaov": 76.45059121621621,
+                        "vOffset": -0.45591250568649555
+                    }
+                },
+                {
+                    "id": "2018-12-07_49.930486,11.584503_panorama",
+                    "type": "panorama",
+                    "timeslot": "2018-12-07T13:11:44.000Z",
+                    "coordinates": [
+                        49.93048552698263,
+                        11.584502980113031
+                    ],
+                    "path": "49.930486, 11.584503.jpg",
+                    "image": {
+                        "width": 8192,
+                        "height": 1670
+                    },
+                    "data": {
+                        "type": "equirectangular",
+                        "vaov": 73.37204391891892,
+                        "vOffset": 1.49048172093652
+                    },
+                    "outgoingEdges": [
+                        {
+                            "id": "2018-12-07_49.930486,11.584503_panorama to 2018-12-07_49.930548,11.584292_panorama route",
+                            "to": "2018-12-07_49.930548,11.584292_panorama",
+                            "type": "route",
+                            "bidirectional": true
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "settings": {
+        "map": {
+            "center": [
+                49.93048682191936,
+                11.584502980113031
+            ],
+            "zoom": 20,
+            "minZoom": 16,
+            "maxBounds": {
+                "_southWest": {
+                    "lat": 49.923515673538994,
+                    "lng": 11.56866788864136
+                },
+                "_northEast": {
+                    "lat": 49.934939040293976,
+                    "lng": 11.604974269866945
+                }
+            }
+        },
+        "timeline": {
+            "max": "2019-03-03T00:57:32.736Z",
+            "min": "2018-10-07T08:30:41.625Z",
+            "end": "2019-03-03T00:57:32.736Z",
+            "start": "2018-10-07T08:30:41.625Z",
+            "selections": [
+                "Februar 2019 Bayreuth"
+            ]
+        },
+        "panorama": {
+            "scene": "2019-02-15_49.930486,11.584503_panorama",
+            "yaw": -24.873872457105154,
+            "pitch": 0.5305292253861729,
+            "hfov": 90.9479356951318
+        }
+    }
+}

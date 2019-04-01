@@ -1,0 +1,246 @@
+﻿.not-active {
+    pointer-events: none;
+    cursor: not-allowed;
+    text-decoration: none;
+}
+.not-active a {
+    color: #7c8e9e;
+}
+
+section {
+    position: relative;
+    box-sizing: border-box;
+    width: 100%;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+#content {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow-y: hidden;
+    padding-right: unset;
+    padding-left: unset;
+    margin-right: unset;
+    margin-left: unset;
+}
+
+.centerall {
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+    -webkit-justify-content: center;
+    -moz-justify-content: center;
+    -ms-justify-content: center;
+    -o-justify-content: center;
+    justify-content: center;
+    -webkit-align-items: center;
+    -moz-align-items: center;
+    -ms-align-items: center;
+    -o-align-items: center;
+    align-items: center;
+}
+
+[dropzone], [webkitdropzone] {
+    border: 3px dashed #ccc;
+    border-radius: 5px;
+    height: 4em;
+    width: auto;
+    color: #ccc;
+    -webkit-transition: all 0.2s ease-in-out;
+    -moz-transition: all 0.2s ease-in-out;
+    -ms-transition: all 0.2s ease-in-out;
+    -o-transition: all 0.2s ease-in-out;
+    transition: all 0.2s ease-in-out;
+    margin: 0 auto;
+    position: relative;
+}
+
+.fill {
+    width: 100%;
+    height: 100%;
+    font-size: 1.5em;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.help {
+    float: right;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    color: #000;
+    text-shadow: 0 1px 0 #fff;
+    filter: alpha(opacity=20);
+    opacity: .2;
+    cursor: pointer;
+    background: 0 0;
+    border: 0;
+}
+
+/*************************/
+/*** modified defaults ***/
+/*************************/
+
+.navbar {
+    margin-bottom: 0;
+}
+
+.navbar-nav {
+    margin: unset;
+}
+
+/* prevent navbar from stacking */
+.navbar-collapse.collapse {
+    display: block !important;
+}
+
+.navbar-nav > li, .navbar-nav {
+    float: left !important;
+}
+
+.navbar-nav.navbar-right:last-child {
+    margin-right: -15px !important;
+}
+
+.navbar-right {
+    float: right !important;
+}
+
+.modal-body {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.alert {
+    padding: 5px;
+    margin-bottom: 0;
+}
+
+
+/****************/
+/*** panorama ***/
+/****************/
+
+#panorama {
+    width: auto;
+    height: 500px;
+}
+
+.pnlm-pointer {
+    cursor: pointer;
+}
+
+.preview-panorama {
+    width: 500px;
+    height: 250px;
+    margin-left: 0px;
+    margin-right: 0px;
+}
+
+div.preview-tooltip {
+    visibility: hidden;
+    position: absolute;
+    border-radius: 3px;
+    background-color: #fff;
+    color: #000;
+    text-align: center;
+    max-width: 510px;
+    max-height: 260px;
+    padding: 5px 5px;
+    text-align: center;
+    margin-left: -242px;
+    margin-top: -270px;
+    cursor: default;
+}
+
+
+div.hotspot-container:hover div {
+    visibility: visible;
+}
+
+
+div.hotspot-container:hover div.preview-tooltip:after {
+    content: '';
+    position: absolute;
+    border-width: 10px;
+    border-style: solid;
+    border-color: #fff transparent transparent transparent;
+    bottom: -20px;
+    left: -10px;
+    margin: 0 50%;
+}
+
+.pnlm-hotspot-base.pnlm-navigation{
+    color: whitesmoke;
+    font-size: 4em;
+}
+
+.pnlm-hotspot.pnlm-landmark {
+    background-position: 0 0px;
+    background-color: #41db0c99;
+}
+
+.pnlm-hotspot.pnlm-north {
+    background-position: 0 0px;
+    background-color: #61b4e999;
+}
+
+.pnlm-hotspot.pnlm-edit {
+    /*    background-position: 0 -156px */
+    background-position: 0 0px;
+    background-color: #ffffff99;
+}
+
+
+/****************/
+/*** timeline ***/
+/****************/
+
+.vis-grid {
+    border-color: dimgray;
+}
+
+.vis-labelset .vis-label {
+    color: white;
+}
+
+.vis-time-axis .vis-text {
+    color: white;
+}
+
+.vis-item-content {
+    color: white;
+}
+
+.vis-item.vis-selected, .vis-item.vis-point.vis-selected, .vis-nested-group {
+    border-color: unset;
+    background-color: unset;
+}
+
+.vis-item.vis-point.vis-selected {
+    border-color: unset;
+    background-color: unset;
+}
+
+.vis-item.vis-dot {
+    border-width: 8px;
+    border-radius: 8px;
+}
+ 
+.vis-item.vis-dot.vis-selected {
+    border-color: #235dff;
+    background-color: #2386ff;
+}
+
+.vis-item.vis-selected .vis-dot {
+    box-shadow: 0px 0px 8px 3px #fff785;
+}
+
+.vis-item.vis-selected .vis-item-content {
+    text-shadow: 2px 2px 2px #fff785;
+}

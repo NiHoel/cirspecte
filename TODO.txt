@@ -1,0 +1,38 @@
+abort panorama image loading in loader
+online capabilities of filesystem
+fix Chrome file drop bug
+browser plugins for automatic file loading and absolute paths
+add functionality
+	merge several items to lines
+	get height from Google API
+	display plain image if webgl unavailable -> autotiles on tesselated sphere using CSS
+	display deepzoom images with leaflet:
+		https://github.com/alfarisi/leaflet-deepzoom
+	tour settings
+		startup base layer for map
+	haov optimization
+	update vertex by editing json
+		for data, image and thumbnail
+		path selection using fileAccess window
+	multiselection
+		https://github.com/sandropibia/Leaflet.SelectAreaFeature/
+		map and timeline
+		by ctrl + mouse
+		cut copy move delete
+	right-click menu
+		log element to console
+		show all edges
+		show properties
+		copy vertex (or: ctrl + c)
+		save view (map + timeline)
+		create line
+		delete
+		edit
+		save current view in tour settings
+		check files
+		reset: yaw, pitch, northOffset, vOffset
+		create line
+	
+	file handling
+		path specifier when adding files
+		select file from directory tree	

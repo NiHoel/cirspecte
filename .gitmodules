@@ -1,0 +1,6 @@
+[submodule "pannellum"]
+	path = pannellum
+	url = https://github.com/mpetroff/pannellum.git
+[submodule "geodesy"]
+	path = geodesy
+	url = https://github.com/chrisveness/geodesy.git

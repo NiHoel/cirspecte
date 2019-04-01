@@ -1,0 +1,1164 @@
+﻿<!DOCTYPE HTML>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Nico Höllerich">
+    <title>Cirspecte</title>
+
+    <link rel="stylesheet" href="assets/css/pannellum.css" />
+    <link rel="stylesheet" href="assets/css/leaflet.css" />
+    <link rel="stylesheet" href="assets/css/L.Control.Layers.Tree.css" />
+    <link rel="stylesheet" href="assets/css/Leaflet.control.minimap.css" />
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/vis.min.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/select2.min.css">
+    <link rel="stylesheet" href="assets/css/jstree-default/style.css" />
+    <link rel="stylesheet" href="assets/css/tempusdominus-bootstrap-3.min.css" />
+
+    <link rel="stylesheet" href="assets/css/simple-bars.css" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+
+
+    <script type="text/javascript" src="assets/js/lib/platform.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js" async defer></script>
+
+    <script src="assets/js/lib/localforage.min.js"></script> <!-- for Leaflet.offline -->
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="assets/js/lib/leaflet.js"></script>
+    <script src="assets/js/Leaflet.control.minimap.js"></script>
+    <script src="assets/js/lib/Leaflet.Path.drag.js"></script>
+    <script src="assets/js/lib/Leaflet.offline.js"></script>
+    <script src="assets/js/lib/L.Control.Layers.Tree.js"></script>
+    <script src="assets/js/lib/Leaflet.AccuratePosition.js"></script>
+    <script src="assets/js/lib/Leaflet.GoogleMutant.js"></script>
+    <script src="assets/js/lib/Bing.js"></script>
+
+    <script type="text/javascript" src="pannellum/src/js/libpannellum.js"></script>
+    <script type="text/javascript" src="pannellum/src/js/pannellum.js"></script>
+    <script type="text/javascript" src="pannellum/src/js/RequestAnimationFrame.js"></script>
+
+    <script type="text/javascript" src="assets/js/lib/jquery.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/popper.js"></script>
+    <script type="text/javascript" src="assets/js/lib/moment-with-locales.min.js"></script>
+    <script type="text/javascript">
+        // auto-detect language setting for date formatting
+        moment.locale(window.navigator.userLanguage || window.navigator.language);
+    </script>
+ 
+    <script type="text/javascript" src="assets/js/lib/bootstrap.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/select2.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/tempusdominus-bootstrap-3.min.js"></script>
+    <script type="text/javascript" src='assets/js/lib/knockout-3.4.2.js'></script>
+    <script type="text/javascript" src="assets/js/lib/knockout.mapping-latest.js"></script>
+    <script type="text/javascript" src="assets/js/lib/knockout.binding.dateTimePicker.js"></script>
+
+    <script type="text/javascript" src="assets/js/lib/priority-queue.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/Rx.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/Rx.webworker.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/numeric.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/exif.js"></script>
+    <script type="text/javascript" src="assets/js/lib/clipboard.min.js"></script>
+
+    <script type="text/javascript" src="geodesy/dms.js"></script>
+    <script type="text/javascript" src="geodesy/vector3d.js"></script>
+    <script type="text/javascript" src="geodesy/latlon-ellipsoidal.js"></script>
+    <script type="text/javascript" src="geodesy/latlon-vincenty.js"></script>
+
+    <script type="text/javascript" src="assets/js/lib/vis.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/jstree.min.js"></script>
+
+    <script type="text/javascript" src="assets/js/config.js"></script>
+    <script type="text/javascript" src="assets/js/model.js"></script>
+    <script type="text/javascript" src="assets/js/configurator.js"></script>
+    <script type="text/javascript" src="assets/js/logger.js"></script>
+    <script type="text/javascript" src="assets/js/map.js"></script>
+    <script type="text/javascript" src="assets/js/panorama.js"></script>
+    <script type="text/javascript" src="assets/js/timeline.js"></script>
+    <script type="text/javascript" src="assets/js/filesystem.js"></script>
+    <script type="text/javascript" src="assets/js/util.js"></script>
+
+    <script type="text/javascript" src="assets/js/groupEditor.js"></script>
+    <script type="text/javascript" src="assets/js/panoramaEditor.js"></script>
+    <script type="text/javascript" src="assets/js/navigation.js"></script>
+
+    <script type="text/javascript" src="assets/js/common.js"></script>
+    <script type="text/javascript" src="assets/js/edit.js"></script>
+    <script type="text/javascript" src="assets/js/commandHistory.js"></script>
+
+
+</head>
+<body>
+
+
+
+    <!-- Sidebar -->
+    <div id="sidebar-wrapper">
+        <a href="#" id="sidebar-collapser" class="btn" title="Close the sidebar"
+           onclick="$('#sidebar-wrapper').addClass('collapsed');$('#sidebar-expander').show()">
+            <span class="glyphicon glyphicon-chevron-left"></span>
+        </a>
+
+        <ul class="nav nav-tabs">
+            <li class="active"><a data-toggle="tab" href="#group-editor" title="Show group editor">Groups</a></li>
+            <li><a data-toggle="tab" href="#panorama-editor" data-bind="css:{'not-active': currentVertex() == null}" title="Show panorama editor (a panorama must be loaded)">Panorama</a></li>
+        </ul>
+
+        <div class="tab-content">
+            <div id="group-editor" class="tab-pane fade in active">
+
+                <ul class="sidebar-nav">
+                    <li>
+                        <div class="form" id="temporal-group-selector">
+                            <label for="temporalGroupSelector" title="Aggregates spatial groups where each spatial group refers to a different point in time. Forms a tour through time by connecting several classical tours each shot at a different point in time.">Temporal Group</label><br />
+
+                            <!-- .js-example-responsive must be initialized in javascript -->
+                            <select type="select" class="form-control" id="temporalGroupSelector" data-live-search="true" data-show-subtext="true" name="temporalGroups"
+                                    data-bind="options: temporalGroups, optionsCaption: 'Select a temporal group ...', optionsText: g => {return g.name;}, value: current.temporalGroup"></select>
+                        </div>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: () => {beginCreate(temporalGroup);}">
+                            <span class="glyphicon glyphicon-plus"></span>
+                        </button>
+                        <span>
+                            Create Group
+                        </span>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: deleteCurrentTemporalGroup, enable: $root.current.temporalGroup">
+                            <span class="glyphicon glyphicon-trash"></span>
+                        </button>
+                        <span>
+                            Delete Group
+                        </span>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: () => {addFiles($root.current.temporalGroup());}, enable: $root.current.temporalGroup">
+                            <span class="glyphicon glyphicon-import"></span>
+                        </button>
+                        <span>
+                            Add Panoramas
+                        </span>
+                    </li>
+                    <li>
+                        <div class="form" id="spatial-group-selector">
+                            <label for="spatialGroupSelector" title="A spatial group aggregates several panoramas shot approximately at the same time. Forms a &quot;classical&quot; panorama tour.">Spatial Group</label><br />
+
+                            <!-- .js-example-responsive must be initialized in javascript -->
+                            <select type="select" class="form-control" id="spatialGroupSelector" data-live-search="true" data-show-subtext="true" name="spatialGroups"
+                                    data-bind="options: spatialGroups, optionsCaption: 'Select a spatial group ...', optionsText: g => {return g.superGroup.name + ': ' + g.name;}, value: current.spatialGroup, disable: $root.disabled"></select>
+
+
+                        </div>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: () => {beginCreate(spatialGroup);}">
+                            <span class="glyphicon glyphicon-plus"></span>
+                        </button>
+                        <span>
+                            Create Group
+                        </span>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: deleteCurrentSpatialGroup, enable: $root.current.spatialGroup">
+                            <span class="glyphicon glyphicon-trash"></span>
+                        </button>
+                        <span>
+                            Delete Group
+                        </span>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: () => {addFiles($root.current.spatialGroup());}, enable: $root.current.spatialGroup">
+                            <span class="glyphicon glyphicon-import"></span>
+                        </button>
+                        <span>
+                            Add Panoramas
+                        </span>
+                    </li>
+                    <li data-bind="visible: $root.gpsCoordinates">
+                        <button class="btn btn-default" data-bind="click: $root.createPlaceholder, enable: $root.current.spatialGroup">
+                            <span class="glyphicon glyphicon-map-marker"></span>
+                        </button>
+                        <span title="Create a placeholder at your current location.">
+                            Add GPS Location
+                        </span>
+                    </li>
+                    <li>
+                        <button id="template-application" class="btn btn-default" data-bind="enable: $root.current.spatialGroup" data-toggle="modal" data-target="#template-application-dialog">
+                            <span class="glyphicon glyphicon-transfer"></span>
+                        </button>
+                        <span title="Advanced feature to create a template from an existing group, fuse groups and more">
+                            Copy Vertices
+                        </span>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: reload, enable: scannable">
+                            <span class="glyphicon glyphicon-refresh"></span>
+                        </button>
+                        <span title="Makes newly created files available in the browser tab (on the import file dialog).">
+                            Rescan Directory
+                        </span>
+                    </li>
+                    <li>
+                        <div class="form-group">
+                            <label for="editing-mode-combobox" title="Select what happens when clicking on a point on the map. When drawing a polyline the endpoint of one line is automatically the start for the next line.">Editing Mode</label>
+                            <select type="select" class="form-control" id="editingModeSelector" data-live-search="true" data-show-subtext="true" name="editingModes"
+                                    data-bind="options: editingModes, value: editingMode"></select>
+                        </div>
+                    </li>
+
+
+                </ul>
+
+            </div>
+            <!-- /#group-editor -->
+            <!-- #panorama-editor -->
+            <div id="panorama-editor" class="tab-pane fade">
+                <ul class="sidebar-nav">
+                    <li>
+                        <div>
+                            <label for="coord-text" style="margin-right: 20px;" title="The longitude and latitude of the vertex (as displayed on the map)">Coordinates:</label><br />
+                            <span id="coord-text" style="width: 16em" type="text">
+                                0.0, 0.0
+                            </span>
+                        </div>
+                        <div>
+                            <label for="file-text" style="margin-right: 20px;" title="The image file name">File:</label><br />
+                            <span id="file-text" style="width: 16em" type="text">
+                                *.jpg
+                            </span>
+                        </div>
+                        <div>
+                            <label for="image-display-resolution-text" style="margin-right: 20px;">Displayed Resolution:</label><br />
+                            <span id="image-display-resolution-text" style="width: 16em" type="text">
+                                0 x 0 Pixel
+                            </span>
+                        </div>
+                        <div>
+                            <label for="northOffset-text" style="margin-right: 20px;" title="The offset between geographical north and the horizontal center of the image (change it by dragging the blue hotspot)">North Offset:</label>
+                            <span id="northOffset-text" style="width: 8em" type="text">
+                                0°
+                            </span>
+                        </div>
+                        <div>
+                            <label for="vOffset-text" style="margin-right: 20px;" title="The offset between the horizon and the vertical center of the image (change it by checking &quot;Edit Vertical Offset&quot; and dragging the blue hotspot)">Vertical Offset:</label>
+                            <span id="vOffset-text" style="width: 8em" type="text">
+                                0°
+                            </span>
+                        </div>
+                        <div>
+                            <label for="optimize-error-text" style="margin-right: 20px;" title="Average offset (in degrees) between landmark positions marked on the image and the position where they are (given coordinates and north offset of the panorama).">Error:</label>
+                            <span id="optimize-error-text" style="width: 8em" type="text">
+                                -
+                            </span>
+                        </div>
+                    </li>
+                    <li>
+                        <button class="btn btn-primary" id="optimize-button" type="button"
+                                title="
+1. click on the map to create landmark points
+2. drag the green hotspots onto the landmarks on the image
+3. click &quot;Optimize&quot; to change coordinates and north offset of the panorama such that the landmarks fit">
+                            Optimize
+                        </button>
+                    </li>
+                    <li>
+                        <div class="checkbox">
+                            <label for="panorama-edit-voffset-checkbox">
+                                <input type="checkbox" value="panorama-edit-voffset" id="panorama-edit-voffset-checkbox" data-bind="checked:vOffsetEditable">Edit Vertical Offset
+                            </label>
+                        </div>
+                    </li>
+                </ul>
+
+            </div>
+            <!-- /#panorama-editor -->
+        </div>
+        <!-- /.tab-content -->
+    </div>
+    <!-- /#sidebar-wrapper -->
+
+    <div id="right-pane-wrapper">
+        <div id="right-pane">
+            <div id="topbar-wrapper" class="fixed">
+                <div id="topbar">
+
+                    <div id="topbar-nav">
+                        <ul class="nav nav-pills">
+                            <li title="Show sidebar" id="sidebar-expander" style="display:none;"><a href="#" class="btn topbar-nav-item" onclick="$('#sidebar-wrapper').removeClass('collapsed'); $('#sidebar-expander').hide()"><span class="glyphicon glyphicon-chevron-right"></span></a></li>
+                            <li title="Save tour"><a href="#" id="export" class="btn topbar-nav-item"><span class="glyphicon glyphicon-save-file"></span></a></li>
+                            <li title="Undo (Ctrl + Z)" id="undo-button" data-bind="css: { 'not-active': undoStackCount() == 0 }, click: undo"><a href="#" class="btn topbar-nav-item"><span class="glyphicon glyphicon-share-alt" style="transform:matrix(-0.9397,0.342,0.342,0.9397,0,0)"></span></a></li>
+                            <li title="Redo (Ctrl + Y)" id="redo-button" data-bind="css: { 'not-active': redoStackCount() == 0 }, click: redo"><a href="#" class="btn topbar-nav-item"><span class="glyphicon glyphicon-share-alt" style="transform:rotate(20deg)"></span></a></li>
+                            <li title="Open Settings"><a href="#" class="btn topbar-nav-item" data-toggle="modal" data-target="#settings-dialog"><span class="glyphicon glyphicon-cog"></span></a></li>
+                            <li title="Open Help"><a href="#" class="btn topbar-nav-item" data-toggle="modal" data-target="#help-dialog"><span class="glyphicon glyphicon-question-sign"></span></a></li>
+                            <li title="Open Errors">
+                                <a href="#" class="btn topbar-nav-item" data-toggle="modal" data-target="#logs-dialog">
+                                    <span class="glyphicon glyphicon-alert">                                  </span>
+                                    <span id="log-count" class="badge" data-bind="visible: hasLogs, text: logCount"></span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div id="navigation-header">
+                        <div class="left">
+                            <span class="glyphicon glyphicon-chevron-left" style="display: none"></span>
+                            <span class="text" style="display: none"></span>
+                        </div>
+                        <div class="center">
+                            <span class="text" style="display: none"></span>
+                        </div>
+                        <div class="right">
+                            <span class="text" style="display: none"></span>
+                            <span class="glyphicon glyphicon-chevron-right" style="display: none"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Pane -->
+            <div id="center-pane-wrapper">
+                <div class="container-fluid" id="content">
+                    <div id="panorama"></div>
+                    <div class="widget-map">
+                        <label id="widget-minimap-caption" style="display: none;">Satellit</label>
+                        <div id="map"></div>
+                    </div>
+
+                </div>
+            </div>
+            <!-- /#center-pane-wrapper -->
+
+            <div id="bottombar-wrapper" class="collapsed">
+                <div title="Open Timeline" href="#" id="bottombar-expander" onclick="$('#bottombar-wrapper').removeClass('collapsed'); $('#bottombar-expander').hide()"><span class="glyphicon glyphicon-menu-up fill"></span></div>
+                <div id="bottombar">
+                    <a title="Close Timeline" href="#" id="bottombar-collapser" onclick="$('#bottombar-wrapper').addClass('collapsed'); $('#bottombar-expander').show()"><span class="glyphicon glyphicon-menu-down"></span></a>
+                    <div id="timeline"></div>
+                </div>
+            </div>
+        </div>
+        <!-- /#right-pane -->
+    </div>
+    <!-- /#right-pane-wrapper -->
+    <!-- #spatial-group-editor -->
+    <div id="spatial-group-editor" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h3 id="addDialogLabel">Spatial Group Editor</h3>
+                </div>
+                <div class="modal-body" style="overflow-y: unset">
+                    <!-- style required for datetime widget to be properly displayed -->
+
+                    <form class="form-horizontal" style="width: 100%" data-bind="with: $root.editable.spatialGroup">
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="name">Name</label>
+                            <input class="form-control" data-bind="value: name" type="text" id="name" placeholder="Group name">
+                        </div>
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="name" title="[Optional]">Description</label>
+                            <input class="form-control" data-bind="value: description" type="text" id="description" placeholder="Group description">
+                        </div>
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="path" title="[Optional] Specify the folder containing the images. Use slashes (/) to separate folders. Each vertex in the group will store the path to the image relative to the folder specified here. Note: You cannot specify an absolute path here. The specified path is always relative to the folder you imported in the beginning.">Path</label>
+                            <input class="form-control" data-bind="value: path" type="text" id="path" placeholder="Folder containing images">
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="timeslot" title="The time the panoramas were shot. This determines the position on the timeline.">Timeslot</label>
+                            <div class="controls">
+                                <div class='input-group date' id='timeslot' data-bind="dateTimePicker: timeslot" data-target-input="nearest">
+                                    <input type='text' class="form-control datetimepicker-input" data-target="#timeslot" />
+                                    <span class="input-group-addon" data-target="#timeslot" data-toggle="datetimepicker">
+                                        <span class="glyphicon glyphicon-calendar"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="superGroup" title="A temporal group that aggregates several spatial groups">Super group</label>
+                            <select class="form-control" id="superGroup" data-live-search="true" data-show-subtext="true" name="superGroup" placeholder="Select a super group ..."
+                                    data-bind="options: $root.temporalGroups, optionsCaption: 'Select a super group ...', optionsText: g => {return g.name;}, value: superGroup"></select>
+
+                        </div>
+
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: createSpatialGroup" class="btn btn-primary" data-dismiss="modal">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#spatial-group-editor -->
+    <!-- #temporal-group-editor -->
+    <div id="temporal-group-editor" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h3 id="addDialogLabel">Temporal Group Editor</h3>
+                </div>
+                <div class="modal-body">
+
+                    <form class="form-horizontal" data-bind="with: editable.temporalGroup">
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="name">Name</label>
+                            <input class="form-control" data-bind="value: name" type="text" id="name" placeholder="Group name">
+                        </div>
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="name" title="[Optional]">Description</label>
+                            <input class="form-control" data-bind="value: description" type="text" id="description" placeholder="Group description">
+                        </div>
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="superGroup" title="[Optional] The new group will be a child of the selected one.">Super group</label>
+                            <select class="form-control" id="superGroup" data-live-search="true" data-show-subtext="true" name="superGroup" placeholder="Select a super group ..."
+                                    data-bind="options: $root.temporalGroups, optionsCaption: 'Select a super group ...', optionsText: g => {return g.name;}, value: superGroup"></select>
+                        </div>
+                        <div class="control-group" style="width: 100%">
+                            <div class="controls">
+                                <label for="autoConnectColocate" title="Enables tolerance regarding the position of panoramas. If two panorams are not more than radius apart they are treated as shot at the same location. Then switching between them by using the timeline is possible.">Auto-connect colocated vertices among spatial groups</label>
+                                <div class="form-inline">
+                                    <input data-bind="checked: autoConnectColocated" type="checkbox" id="autoConnectColocated" />
+                                    <label for="colocatedRadius">Radius</label>
+                                    <input type='number' class="form-control" id="colocatedRadius" data-bind="value: colocatedRadius, enable: autoConnectColocated" />
+                                    <label for="colocatedRadius">meter(s)</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="control-group" style="width: 100%">
+                            <label for="multiselect" title="If unchecked, selecting a spatial group leads to deselecting all other spatial groups that are direct children of the same temporal group.">Multiple spatial groups can be displayed at the same time</label>
+                            <input data-bind="checked: multiselect" type="checkbox" id="multiselect" />
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: createTemporalGroup" class="btn btn-primary" data-dismiss="modal">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#temporal-group-editor -->
+    <!-- #template-application-dialog -->
+    <div id="template-application-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h3 id="addDialogLabel">Apply Group Template</h3>
+                </div>
+                <div class="modal-body">
+                    <div class="form-horizontal">
+                        <div class="form-group">
+                            <label class="control-label col-sm-8" for="vertex-template-settings">Edit options for copying vertices:</label>
+                            <div class="col-sm-4">
+                                <button id="vertex-template-settings" class="btn btn-default" data-toggle="modal" data-target="#vertex-template-settings-dialog">
+                                    <span class="glyphicon glyphicon-pencil"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label col-sm-8" for="spatial-group-template">Select the <mark>source</mark> of the copy process:</label>
+                            <div class="col-sm-4">
+                                <select type="select" class="form-control" id="spatialGroupTemplate" data-live-search="true" data-show-subtext="true" name="spatialGroups"
+                                        data-bind="options: spatialGroups, optionsCaption: 'Select a spatial group ...', optionsText: g => {return g.superGroup.name + ': ' + g.name;}, value: spatialGroupTemplate"></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: applyTemplate, enable: spatialGroupTemplate" class="btn btn-primary" data-dismiss="modal">Apply Template</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#template-application-dialog -->
+    <!-- #file-access-dialog -->
+    <div id="file-access-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div id="file-access-dialog-header" class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <ul class="nav nav-tabs">
+                        <li class="active"><a data-toggle="tab" href="#file-access-disk-tab">Disk</a></li>
+                        <li><a data-toggle="tab" href="#file-access-browser-tab" data-bind="css:{'not-active': !hasEntries()}">Browser</a></li>
+                    </ul>
+
+
+                </div>
+                <div class="modal-body">
+                    <div class="tab-content">
+                        <div id="file-access-disk-tab" class="tab-pane fade in active">
+                            <div data-bind="if: name" class="form">
+                                <label for="file-access-name">
+                                    Please provide the following file:
+                                </label>
+                                <span data-bind="text: path"></span>
+                                <div class="input-group">
+                                    <input id="file-access-name" class="form-control" data-bind="value: name" readonly="readonly" type="text">
+                                    <span class="input-group-btn">
+                                        <button class="btn clipboard" type="button" data-clipboard-target="#file-access-name">
+                                            <img src="assets/images/clippy.svg" alt="Copy to clipboard" width="13" style="margin-top: -3px; position: relative; top:3px;">
+                                        </button>
+                                    </span>
+                                </div>
+                            </div>
+                            <div data-bind="ifnot: name">
+                                Choose the files to add.
+                            </div>
+                            <p>Note: If you select a folder or more files, all (sub-)files can be accessed by the browser and you won't be asked again if access is needed to display them.</p>
+                            <p>Note: "File upload" is the only possibility that a website can access a file on the local disk and thus show its contents. We won't transfer any file to any server.</p>
+
+                            <div data-bind="visible: allowsDrop">
+                                <section id="droparea">
+                                    <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:application/json" class="centerall">
+                                        Drop folder or files
+                                    </div>
+                                </section>
+                            </div>
+
+                            <div data-bind="visible: allowsDirectorySelect">
+                                <label class="btn btn-primary" for="directory-selector" data-bind="visible: allowsDirectorySelect">
+                                    <input id="directory-selector" type="file" style="display: none;" multiple directory webkitdirectory="">
+                                    Select root directory
+                                </label>
+                                <p>Choose a directory containing the file.</p>
+                            </div>
+
+                            <div data-bind="visible: allowsMultiFileSelect">
+                                <label class="btn btn-primary" for="files-selector">
+                                    <input id="files-selector" type="file" multiple style="display: none;">
+                                    Select files
+                                </label>
+                                <p>Choose multiple files within the directory of the target file.</p>
+                            </div>
+
+                            <div>
+                                <label class="btn btn-primary" for="file-selector">
+                                    <input id="file-selector" type="file" style="display: none;">
+                                    Select file
+                                </label>
+                                <p>Choose a single file. Updates the referenced file name.</p>
+                            </div>
+                        </div>
+
+                        <!-- /#file-access-disk-tab -->
+
+                        <div id="file-access-browser-tab" class="tab-pane fade">
+                            <div id="file-access-browser-tab-jstree"></div>
+                            <button data-bind="click: confirmSelection, enable: hasSelections" class="btn btn-primary" data-dismiss="modal">Confirm</button>
+
+                        </div>
+                        <!-- /#file-access-browser-tab -->
+                    </div>
+                    <!-- /.tab-content -->
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- /#file-access-dialog -->
+    <!-- #settings-dialog -->
+    <div id="settings-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h4>Settings</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-horizontal">
+                        <div>
+                            <div>
+                                <button id="import-tour" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
+                                    <span class="glyphicon glyphicon-import"></span>
+                                </button>
+                                <label class="control-label" for="import-tour">Import additional tour files</label>
+                            </div>
+                            <div>
+                                <button id="vertex-template-settings" class="btn btn-default" data-toggle="modal" data-target="#vertex-template-settings-dialog">
+                                    <span class="glyphicon glyphicon-pencil"></span>
+                                </button>
+                                <label class="control-label" for="vertex-template-settings">Edit options for copying vertices</label>
+                            </div>
+                            <div class="checkbox">
+                                <label class="control-label" for="hide-map-checkbox">
+                                    <input type="checkbox" data-bind="checked: hideMap" id="hide-map-checkbox">
+                                    Hide the map
+                                </label>
+
+                            </div>
+                            <div class="checkbox">
+                                <label class="control-label" for="fullscreen-checkbox">
+                                    <input type="checkbox" data-bind="checked: fullscreen" id="fullscreen-checkbox">
+                                    Fullscreen
+                                </label>
+                            </div>
+                            <div class="checkbox">
+                                <label title="Applies the copy vertex options with currently shown panorama as source and new panorama as destination. Triggered by &quot;Add Panoramas&quot;" class="control-label" for="copy-scene-attributes-checkbox">
+                                    <input type="checkbox" data-bind="checked: copySceneAttributes" id="copy-scene-attributes-checkbox">
+                                    Copy attributes of current panorama when importing files
+                                </label>
+                            </div>
+                            <div class="checkbox">
+                                <label class="control-label" for="create-placeholders-checkbox">
+                                    <input type="checkbox" data-bind="checked: createPlaceholders" id="create-placeholders-checkbox">
+                                    Create placeholders when clicking on the map
+                                </label>
+                            </div>
+                            <div class="checkbox">
+                                <label title="Landmark vertices are saved to tour.json. Moreover they are not deleted, when switching the panorama." class="control-label" for="persist-landmarks-checkbox">
+                                    <input type="checkbox" data-bind="checked: persistLandmarks" id="persist-landmarks-checkbox">
+                                    Persist landmarks
+                                </label>
+                            </div>
+                            <div class="checkbox">
+                                <label title="If a new panorama is added, display it." class="control-label" for="auto-display-panorama-checkbox">
+                                    <input type="checkbox" data-bind="checked: autoDisplayPanorama" id="auto-display-panorama-checkbox">
+                                    Automatically load panorama when adding a file
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="container-fluid">
+                            Pan and zoom and then click to save the following values.
+                            <div class="row">
+                                <div class="col-md-6" data-bind="with: map">
+                                    <h4 class="text-center">Map</h4>
+                                    <table class="table table-responsiv table-responsive-sm table-sm">
+                                        <tbody>
+                                            <tr>
+                                                <th scope="row">Initial center</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-center-map-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-center-map-settings-button" data-bind="enable: center">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Initial zoom level</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-zoom-map-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-zoom-map-settings-button" data-bind="enable: zoom">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Farthest zoom level</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-minZoom-map-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-minZoom-map-settings-button" data-bind="enable: minZoom">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Closest zoom level</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-maxZoom-map-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-maxZoom-map-settings-button" data-bind="enable: maxZoom">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Outer bounds of view</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-maxBounds-map-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-maxBounds-map-settings-button" data-bind="enable: maxBounds">Unset</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="col-md-6" data-bind="with: timeline">
+                                    <h4 class="text-center">Timeline</h4>
+                                    <table class="table">
+                                        <tbody>
+                                            <tr>
+                                                <th scope="row">Initial start date</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-start-timeline-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-start-timeline-settings-button" data-bind="enable: start">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Initial end date</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-end-timeline-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-end-timeline-settings-button" data-bind="enable: end">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Minimum start date</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-min-timeline-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-min-timeline-settings-button" data-bind="enable: min">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Maximum end date</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-max-timeline-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-max-timeline-settings-button" data-bind="enable: max">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Selected items</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-selections-timeline-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-selections-timeline-settings-button" data-bind="enable: selections">Unset</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="col-md-6" data-bind="with: panorama">
+                                    <h4 class="text-center">Panorama</h4>
+                                    <table class="table">
+                                        <tbody>
+                                            <tr>
+                                                <th scope="row">Panorama initially displayed</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-scene-panorama-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-scene-panorama-settings-button" data-bind="enable: scene">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Initial yaw</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-yaw-panorama-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-yaw-panorama-settings-button" data-bind="enable: yaw">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Initial pitch</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-pitch-panorama-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-pitch-panorama-settings-button" data-bind="enable: pitch">Unset</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Initial horizontal field of view</th>
+                                                <td>
+                                                    <button class="btn btn-primary" id="set-hfov-panorama-settings-button">Set</button>
+                                                    <button class="btn btn-primary" id="unset-hfov-panorama-settings-button" data-bind="enable: hfov">Unset</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#settings-dialog -->
+    <!-- #logs-dialog -->
+    <div id="logs-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <h4>Logs</h4>
+                </div>
+                <div class="modal-body">
+                    <div data-bind="foreach: logs">
+                        <div class="alert alert-danger" data-bind="text: $parent.errorToString($data)">
+                            <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: clear, visible: hasLogs" class="btn btn-primary" data-dismiss="modal">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#logs-dialog -->
+    <!-- #vertex-template-settings-dialog -->
+    <div id="vertex-template-settings-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h4>Vertex Copy Options</h4>
+                </div>
+
+
+                <div class="modal-body">
+                    <span>The selected types filter the objects to be copied and the selected attributes what to copy when applying a template</span>
+                    <div class="container-fluid">
+                        <label>Copy options: </label>
+                        <label title="Update vertices that already exist in the destination group." class="form-check-inline no_indent"><input id="vtemp-settings-update" data-bind="checked: update" type="checkbox"> update</label>
+                        <label title="Create vertices that do not exist in the destination group." class="form-check-inline no_indent"><input id="vtemp-settings-create" data-bind="checked: create" type="checkbox"> create</label>
+                        <label title="Consider vertices to be identical although they are not precisely at the same location. The connection radius determines the threshold." class="form-check-inline no_indent"><input id="vtemp-settings-approximate" data-bind="checked: colocated" type="checkbox"> update colocated vertices</label>
+                        <label title="Delete those vertices that were the source for an update or create operation. All other vertices in the source group are unaffected." class="form-check-inline no_indent"><input id="vtemp-settings-delete" data-bind="checked: deleteOriginal" type="checkbox"> delete originals</label>
+                    </div>
+                    <div class="container-fluid" data-bind="with: settings">
+                        <label>Vertex: </label>
+                        <select id="vtemp-v-type" class="js-select" data-bind="options: $root.vtypes,selectedOptions: types" data-placeholder="Filter by type ..." multiple="multiple"></select>
+                        <label class="form-check-inline no_indent"><input id="vtemp-v-path" data-bind="checked: coordinates" type="checkbox"> coordinates</label>
+                        <label title="Copies all image related attributes (e.g. path, resolution)" class="form-check-inline no_indent"><input id="vtemp-v-path" data-bind="checked: path" type="checkbox"> image attributes</label>
+                        <div class="form-check-inline" data-bind="with: outgoingEdges">
+                            <label>Edge: </label>
+                            <select id="vtemp-e-type" class="js-select" data-bind="options: $root.etypes, selectedOptions: types" data-placeholder="Filter by type ..." multiple="multiple"></select>
+                            <label title="Pitch of the hotspot that leads to the end panorama." class="form-check-inline no_indent"><input id="etemp-d-pitch" data-bind="checked: data.pitch" type="checkbox"> data.pitch</label>
+                            <label title="Yaw of the hotspot that leads to the end panorama." class="form-check-inline no_indent"><input id="etemp-d-yaw" data-bind="checked: data.yaw" type="checkbox"> data.yaw</label>
+                        </div>
+                        <div class="form-check-inline" data-bind="with: data">
+                            <label>Vertex.data: </label>
+                            <label title="The offset between geographical north and the horizontal center of the image" class="form-check-inline no_indent"><input id="vtemp-d-northOffset" data-bind="checked: northOffset" type="checkbox"> northOffset</label>
+                            <label title="The offset between the horizon and the vertical center of the image" class="form-check-inline no_indent"><input id="vtemp-d-vOffset" data-bind="checked: vOffset" type="checkbox"> vOffset</label>
+                            <label title="Vertical angle of view" class="form-check-inline no_indent"><input id="vtemp-d-vaov" data-bind="checked: vaov" type="checkbox"> vaov</label>
+                            <label title="Type of the panorama" class="form-check-inline no_indent"><input id="vtemp-d-type" data-bind="checked: type" type="checkbox"> type</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#vertex-template-settings-dialog -->
+    <!-- #help-dialog -->
+    <div id="help-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <h3>Content</h3>
+                    <ol>
+                        <li><a href="#help-dialog-import">Importing Files</a></li>
+                        <li><a href="#help-dialog-navigation">Navigation Elements</a></li>
+                        <li><a href="#help-dialog-workflow">Creating and modifying tours</a></li>
+                        <li><a href="#help-dialog-temporal-groups">Temporal Groups</a></li>
+                        <li><a href="#help-dialog-spatial-groups">Spatial Groups</a></li>
+                        <li><a href="#help-dialog-settings">Settings Dialog</a></li>
+                        <li><a href="#help-dialog-templates">Copy Vertices</a></li>
+                        <li><a href="#help-dialog-filesystem">Hints regarding the filesystem</a></li>
+                    </ol>
+
+                    <!-- Importing Files -->
+                    <h3 id="help-dialog-import">Importing Files</h3>
+                    <p>The first thing to do is importing the directory containing all the image files and the description file (tour.json). The latter one must be a direct child of the chosen directory. Depending on the browser and platform capabilities one can drop a folder, select one via the file chooser window or select a some files. For more information read the <a href="#help-dialog-filesystem">section "Hints regarding the filesystem"</a>.</p>
+                    <p>On <strong>mobile</strong> devices: Click on <kbd>Choose files ...</kbd> and choose <kbd>Documents</kbd>. Next, the file explorer should open. Navigate to the folder containing the panoramas and choose all files (Press on an arbitrary file for 2 seconds &rarr; top right <kbd><span class="glyphicon glyphicon-option-vertical"></span></kbd> &rarr; <kbd>Choose all</kbd> &rarr; <kbd>Open</kbd>)</p>
+
+                    <!-- Navigation Elements -->
+                    <h3 id="help-dialog-navigation">Navigation Elements</h3>
+                    <table class="table">
+                        <tbody>
+                            <tr class="row">
+                                <td>
+                                    <ul class="nav nav-pills" style="background-color:black; padding:5px">
+                                        <li><a class="btn topbar-nav-item" style="padding: 5px;"><span class="glyphicon glyphicon-save-file"></span></a></li>
+                                        <li><a class="btn topbar-nav-item" style="padding: 5px;"><span class="glyphicon glyphicon-share-alt" style="transform:matrix(-0.9397,0.342,0.342,0.9397,0,0)"></span></a></li>
+                                        <li><a class="btn topbar-nav-item" style="padding: 5px;"><span class="glyphicon glyphicon-share-alt" style="transform:rotate(20deg)"></span></a></li>
+                                        <li><a class="btn topbar-nav-item" style="padding: 5px;"><span class="glyphicon glyphicon-cog"></span></a></li>
+                                        <li><a class="btn topbar-nav-item" style="padding: 5px;"><span class="glyphicon glyphicon-question-sign"></span></a></li>
+                                        <li style="">
+                                            <a class="btn topbar-nav-item" style="padding: 5px;">
+                                                <span class="glyphicon glyphicon-alert">                                  </span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top left of the screen.
+                                    </p><p>
+                                        Effect: Save the tour, undo the current action, redo the last undone action, open the popup dialog for settings, help or errors.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="nav nav-pills" style="background-color:black; padding:5px">
+                                        <a class="btn"><span class="glyphicon glyphicon-chevron-left"></span></a>
+                                        <a class="btn topbar-nav-item"><span class="glyphicon glyphicon-chevron-right"></span></a>
+                                    </div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top left of the screen.
+                                    </p><p>
+                                        Effect: Hide or show the sidebar.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="left" style="background-color:black; color:white">
+                                        <span class="glyphicon glyphicon-chevron-left" style=""></span>
+                                        <span class="text" style="">2017</span>
+                                    </div>
+                                    <div class="right" style="background-color:black; color:white">
+                                        <span class="text" style="">2019</span>
+                                        <span class="glyphicon glyphicon-chevron-right" style=""></span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top left and top right of the screen.
+                                    </p><p>
+                                        Effect: Switch between panorams that were shot at the same spot earlier or later in time.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="float-center" style="left: calc(50% - 15px);
+width: 30px;
+height: 30px;
+color: white;
+background-color: black;
+display: block;
+bottom: 0;"><span class="glyphicon glyphicon-menu-up fill"></span></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Center bottom of the screen.
+                                    </p><p>
+                                        Effect: Shows the timeline.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="float-center" style="left: calc(50% - 15px);
+width: 30px;
+height: 30px;
+color: white;
+background-color: black;
+display: block;
+bottom: 0;"><span class="glyphicon glyphicon-menu-down fill"></span></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top right on the timeline.
+                                    </p><p>
+                                        Effect: Collapses the timeline.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="leaflet-control-minimap leaflet-bar leaflet-control">
+                                        <a class="leaflet-control-minimap-button leaflet-bar-part" style="outline: currentcolor none medium;"></a>
+                                        <a class="leaflet-control-minimap-button leaflet-bar-part" href="#" title="Shrink to minimap" style="outline: currentcolor none medium;background-position: 0px -25px;"></a>
+                                    </div>
+
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top left on the map.
+                                    </p><p>
+                                        Effect: Maximizes / minimizes the map and panorama view.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <svg height="30" width="30">
+                                        <path stroke="red" stroke-opacity="1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="#f03" fill-opacity="0.5" fill-rule="evenodd" style="box-sizing:border-box;
+display: inline;
+float: none;
+line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
+                                    </svg>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Map.
+                                    </p><p>
+                                        Effect: Shows the panorama at that location.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <span class="glyphicon glyphicon-menu-up" style="font-size: 4em;color: whitesmoke; background-color:black;"></span>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Panorama view.
+                                    </p><p>
+                                        Effect: Shows the next panoram in the pointed direction.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="vis-item vis-point vis-readonly" style="background-color:black"><div class="vis-item-content" style="margin-left: 32px;">2018</div><div class="vis-item vis-dot vis-readonly" style="top: 7px; left: 8px;"></div></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Timeline.
+                                    </p><p>
+                                        Effect: Switches to that moment in time (affects currently shown panorama and points on the map).
+                                    </p>
+                                </td>
+
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="savetiles leaflet-bar leaflet-control"><a class="savetiles"><i class="glyphicon glyphicon-download-alt" title="Save tiles"></i></a><a class="rmtiles"><i class="glyphicon glyphicon-trash" aria-hidden="true" title="Remove tiles"></i></a></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top left on the map.
+                                    </p><p>
+                                        Effect: Store (or delete) the current map view in the browser storage. The map can be viewed offline afterwards (even after restarting the browser or system).
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <tr class="row">
+                                <td>
+                                    <div class="leaflet-control-layers leaflet-control" aria-haspopup="true"><a class="leaflet-control-layers-toggle leaflet-layerstree-named-toggle" href="#" title="Layers">Satellite</a></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top right on the map.
+                                    </p><p>
+                                        Effect: Shows the control for the map layers. "GPS" turns GPS tracking on and shows your current position as a white circle on the map (center + uncertainty radius). "Connections" shows lines between points on the map (you can navigate between those panoramas).
+                                    </p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Creating and modifying tours -->
+                    <h3 id="help-dialog-workflow">Creating and modifying tours</h3>
+                    <h4>Start a new project</h4>
+                    <ol>
+                        <li>Reload this site.</li>
+                        <li>On the pop-up: Drop the root folder on the droparea or choose it via the topmost button.</li>
+                        <li>On the left sidebar: Click "Create group" under the "Temporal Group" section.</li>
+                        <li>On the pop-up: Enter a name and click "create" (keep the default value in the other fields).</li>
+                        <li>Zoom the map to the location of the tour (use mouse wheel and grabbing functionality)</li>
+                        <li>Open the settings dialog (cogwheel left on the topbar).</li>
+                        <li>On the pop-up: Click "Set" next to "Initial center" and "Initial zoom level"</li>
+                        <li>Close the pop-up.</li>
+                        <li>On the topbar: Click the download icon to save the tour as a file. You must save the file to the root folder selected in step 2. Do this regularly (by overwriting the file)!</li>
+                    </ol>
+                    <h4>Add a panorama</h4>
+                    <ol>
+                        <li>On the left sidebar: Click "Add Panoramas" under the "Temporal Group" section.</li>
+                        <li>On the pop-up: Click the "Browser" tab.</li>
+                        <li>On the directory tree: Use the triangle on the left hand side of a folder to expand it.</li>
+                        <li>On the directory tree: Click on the image file</li>
+                        <li>On the pop-up: Click "select"</li>
+                        <li>A red point appears on the map and the panorama is displayed (may take a few seconds).</li>
+                    </ol>
+                    <h4>Specify coordinates and north of a panorama</h4>
+                    <p>On the left sidebar: Click the "Panorama" tab.</p>
+                    <p>The manual way:</p>
+                    <ul>
+                        <li>On the map: Drag the blue marker to the correct position where the panorama was shot.</li>
+                        <li>On the panorama: Drag the blue hotspot such that it points north.</li>
+                    </ul>
+                    <p>Automatically derive those values:</p>
+                    <ol>
+                        <li>On the map: Click on one landmark that you can also see on the panorama (i.e. top of the roof, tree).</li>
+                        <li>On the panorama: Drag the green hotspot onto the landmark (only the positioning along the horizontal axis matters).</li>
+                        <li>Do the procedure for 4 more landmarks (the more precise you can position them on the map and on the panorama, the better).</li>
+                        <li>On the left sidebar: Click "optimize".</li>
+                    </ol>
+                    <h4>Connect individual panoramas</h4>
+                    <ol>
+                        <li>On the left sidebar: Click the "Groups" tab.</li>
+                        <li>On the left sidebar: Select a spatial group from the dropdown.</li>
+                        <li>On the left sidebar: Select "Draw Line" as "Editing mode" from the dropdown (select "Load Panorama" to get the default behavior when clicking on points on the map).</li>
+                        <li>On the map: Click two red points. A blue line will appear.</li>
+                    </ol>
+                    <h4>Modify the tour</h4>
+                    <ul>
+                        <li>On the topbar: The arrow pointing to the left is an undo button.</li>
+                        <li>On the left sidebar: Select a spatial group to add and remove connections between panoramas.</li>
+                        <li>On the map: Delete lines by clicking on them (only works for blue and green ones).</li>
+                        <li>On the left sidebar: Select "Delete point" and click on a point on the map to delete it (and the associated panorama; the actual image file will be unaffected). Immediately select "Load Panorama" afterwards to prevent deleting other points by mistake.</li>
+                    </ul>
+
+                    <!-- Temporal Groups -->
+                    <h4 id="help-dialog-temporal-groups">Temporal Groups</h4>
+                    <p>A temporal groups consists of several spatial groups. The temporal groups makes the navigation in time possible. If two panoramas are taken at the same location but at different times, they end up in different spatial groups. The temporal group searches all containing spatial groups and forms a connection between those two panoramas. The result is one can switch between them using the topbar navigation.</p>
+                    <p>A temporal group only requires a name. All the other values are optional. The description will be used as a tooltip. The super group exist that one can build a hierarchy of tours. The connections for navigating in time cannot be created manually. Instead the temporal group automatically takes care of it. One can disable it by unchecking the &quot;auto-connect&quot; option when creating a group. The radius determines up to which distance two panoramas are considered to be at the same location.</p>
+                    <p>&quot;Add Panoramas&quot; will automatically create a spatial group derived from timestamp of the specified image. Create a spatial group manually to exploit all customization options.</p>
+                    <p>There is no possibility to directly modify groups. The workaround is to create a new one and copy the spatial groups, see <a href="#help-dialog-spatial-groups">Spatial Groups</a>.</p>
+
+                    <!-- Spatial Groups -->
+                    <h4 id="help-dialog-spatial-groups">Spatial Groups</h4>
+                    <p>A spatial group consists of several panoramas. All of them are shot roughly at the same time. The purpose is to have a common timeslot and name that can be displayed on the timeline.</p>
+                    <p>A spatial group requires a name, a timeslot and a super group. Path and description are optional. The description will be used as a tooltip. The path is used to specify a parent folder so that the path saved for the vertices only contains the filename.</p>
+                    <p>There is no possibility to directly modify groups. The workaround is to create a new one and copy the vertices. To do so, do the following:</p>
+                    <ol>
+                        <li>On the sidebar: Click &quot;Create Group&quot; under the Spatial Group section.</li>
+                        <li>On &quot;Spatial Group Editor&quot;: Enter the modified values and click &quot;create&quot;.</li>
+                        <li>On the sidebar: The new group should now be selected in the dropdown.</li>
+                        <li>On the sidebar: Click &quot;Copy Vertices&quot;</li>
+                        <li>On &quot;Apply Group Template&quot;: Select the old group as the destination.</li>
+                        <li>On &quot;Apply Group Template&quot;: Click &quot;Edit options for copying vertices&quot;.</li>
+                        <li>On &quot;Vertex Copy Options&quot;: Ensure that all options are checked and all types selected. The functionality is explained in the <a href="#help-dialog-templates">Copy Vertices</a> section.</li>
+                        <li>Close the &quot;Vertex Copy Options&quot; pop-up</li>
+                        <li>On &quot;Apply Group Template&quot;: Click &quot;Apply Template&quot;.</li>
+                    </ol>
+
+                    <!-- Settings Dialog -->
+                    <h4 id="help-dialog-settings">Settings Dialog</h4>
+                    <p>The settings are subdivided into three sections. The two buttons at the top form the upper section. They open separate pop-up dialogs. The "Import additional tour files" button allows to load tour.json files from outside the source folder. All the groups, vertices and edges specified in the file will be merged into the current tour. Elements that already exist remain untouched (they do not get updated). This is useful when you want to merge tours from several working directories into one. Keep in mind that you manually have to copy the image files to the correct location. Another use case is reusing landmarks.</p>
+                    <p>The checkboxes form the middle section. They only affect the view and shall ease the workflow. Those settings will be reset to default when you reload the page.</p>
+                    <p>The tables at the bottom form the last section. These options are a subset of the options in the configuration file but they are stored in the tour.json file. They are read and applied when you load a tour file. The current pan and zoom values of the map / panorama view / timeline determine the values when clicking "Set". "Unset" is clickable when there is a value specified. To overwrite the value click "Set" again.</p>
+
+                    <!-- Copy Vertices -->
+                    <h4 id="help-dialog-templates">Copy Vertices</h4>
+                    <p>This section describes the internal procedure for copying vertices. See the end of the <a href="#help-dialog-spatial-groups">Spatial Groups</a> section on how to apply it.</p>
+                    <p>We iterate over all the vertices of the source group. We check whether there is a corresponding vertex in the destination group. If "update colocated" is checked all vertices within the connection radius are considered "corresponding". The closest one is chosen. If unchecked, the coordinates must be identical.</p>
+                    <p>A new vertex is created if "create" is checked, there is no corresponding vertex and the type of the vertex is one of the selected types.</p>
+                    <p>An existing vertex is updated, if "update is checked, there is a corresponding vertex and the type of the vertex is one of the selected types.</p>
+                    <p>Only the selected values (via the checkboxes "coordinates", "image attributes", vertex.data."northOffset", vertex.data."vOffset", vertex.data."vaov", and vertex.data."type") are used for creation or update.</p>
+                    <p>Afterwards, the edges are handled. The procedure is merely the same. Searching for corresponding vertices is also performed, for start and end of the edge. Based on start and end the corresponding edge is determined.</p>
+                    <p>The type of the vertex / edge cannot be copied since it is derived (for instance a vertex of type "panorama" becomes "placeholder" when the image attributes are not copied).</p>
+
+                    <!-- Hints regarding the filesystem -->
+                    <h3 id="help-dialog-filesystem">Hints regarding the filesystem</h3>
+                    <ul>
+                        <li>In the beginning, select one single folder.</li>
+                        <li>Save the tour.json file into the above selected folder. Do not change the name. This download option is the only way to write something on your computer's filesystem.</li>
+                        <li>Save regularly. All unsaved data is lost when the browser closes or freezes.</li>
+                        <li>When choosing the image for an panorama, use the "Browser" and not the "Disk" tab.</li>
+                        <li>When specifying paths, you cannot use absolute paths or navigate upwards.</li>
+                        <li>There is no write access to the filesystem. Whatever you do in the browser window, it will never modify your computer's filesystem.</li>
+                    </ul>
+                    <p>Background: The browser offers a sandboxed filesystem. Files and folders only become available when the user issues some upload action. Then, the browser can read but not write those files. Moreover, the path of the files is truncat. Folders are the only exception since they can be scanned recursively. This can be used to get access to a subtree of the filesystem.</p>
+                    <p>When importing additional files, there is no way to tell (unless loading and comparing all of them) whether they are identical or different to already imported ones. Anyway, the new files are placed at the top most position of the local directory tree. If you import tour.json files from different parts of the computer's filesystem, you will only see one tour.json file under root since the latter import will override the first one. The second import will overwrite the first one since it thinks this is the same file.</p>
+                    <p>Conclusion: When editing tours spanning several folders, check that all the paths in tour.json are correct and the file itself is placed in the correct destination.</p>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#help-dialog -->
+    <!-- #save-tiles-dialog -->
+    <div id="save-tiles-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <h4>Saving tiles</h4>
+                </div>
+                <div class="modal-body">
+                    Progress: <span id="save-tiles-progress"></span>/<span id="save-tiles-total"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#save-tiles-dialog -->
+</body>
+</html>

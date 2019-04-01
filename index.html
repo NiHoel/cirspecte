@@ -1,0 +1,471 @@
+﻿<!DOCTYPE HTML>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Nico Höllerich">
+    <title>Cirspecte</title>
+
+    <link rel="stylesheet" href="assets/css/pannellum.css" />
+    <link rel="stylesheet" href="assets/css/leaflet.css" />
+    <link rel="stylesheet" href="assets/css/L.Control.Layers.Tree.css" />
+    <link rel="stylesheet" href="assets/css/Leaflet.control.minimap.css" />
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/vis.min.css" type="text/css" />
+
+    <link rel="stylesheet" href="assets/css/simple-bars.css" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+
+    <script type="text/javascript" src="assets/js/lib/platform.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js" async defer></script>
+
+    <script src="assets/js/lib/localforage.min.js"></script> <!-- for Leaflet.offline -->
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="assets/js/lib/leaflet.js"></script>
+    <script src="assets/js/Leaflet.control.minimap.js"></script>
+    <script src="assets/js/lib/Leaflet.Path.drag.js"></script>
+    <script src="assets/js/lib/Leaflet.offline.js"></script>
+    <script src="assets/js/lib/L.Control.Layers.Tree.js"></script>
+    <script src="assets/js/lib/Leaflet.AccuratePosition.js"></script>
+    <script src="assets/js/lib/Leaflet.GoogleMutant.js"></script>
+    <script src="assets/js/lib/Bing.js"></script>
+
+    <script type="text/javascript" src="pannellum/src/js/libpannellum.js"></script>
+    <script type="text/javascript" src="pannellum/src/js/pannellum.js"></script>
+    <script type="text/javascript" src="pannellum/src/js/RequestAnimationFrame.js"></script>
+
+    <script type="text/javascript" src="assets/js/lib/jquery.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/popper.js"></script>
+    <script type="text/javascript" src="assets/js/lib/moment-with-locales.min.js"></script>
+    <script type="text/javascript">
+        // auto-detect language setting for date formatting
+        moment.locale(window.navigator.userLanguage || window.navigator.language);
+    </script>
+
+    <script type="text/javascript" src="assets/js/lib/bootstrap.min.js"></script>
+    <script type="text/javascript" src='assets/js/lib/knockout-3.4.2.js'></script>
+    <script type="text/javascript" src="assets/js/lib/knockout.mapping-latest.js"></script>
+    <script type="text/javascript" src="assets/js/lib/knockout.binding.dateTimePicker.js"></script>
+
+    <script type="text/javascript" src="assets/js/lib/priority-queue.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/Rx.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/Rx.webworker.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/exif.js"></script>
+    <script type="text/javascript" src="assets/js/lib/vis.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/jstree.js"></script>
+
+    <script type="text/javascript" src="geodesy/dms.js"></script>
+    <script type="text/javascript" src="geodesy/vector3d.js"></script>
+    <script type="text/javascript" src="geodesy/latlon-ellipsoidal.js"></script>
+    <script type="text/javascript" src="geodesy/latlon-vincenty.js"></script>
+
+    <script type="text/javascript" src="assets/js/lib/clipboard.min.js"></script>
+
+    <script type="text/javascript" src="assets/js/config.js"></script>
+    <script type="text/javascript" src="assets/js/model.js"></script>
+    <script type="text/javascript" src="assets/js/configurator.js"></script>
+    <script type="text/javascript" src="assets/js/logger.js"></script>
+    <script type="text/javascript" src="assets/js/map.js"></script>
+    <script type="text/javascript" src="assets/js/panorama.js"></script>
+    <script type="text/javascript" src="assets/js/timeline.js"></script>
+    <script type="text/javascript" src="assets/js/navigation.js"></script>
+    <script type="text/javascript" src="assets/js/filesystem.js"></script>
+    <script type="text/javascript" src="assets/js/util.js"></script>
+    <script type="text/javascript" src="assets/js/common.js"></script>
+    <script type="text/javascript" src="assets/js/index.js"></script>
+
+
+</head>
+<body>
+    <!--
+        <nav class="navbar navbar-inverse" id="navigation-bar">
+            <div class="container-fluid">
+                <ul class="nav navbar-nav" id="navigation-items">
+                    <li id="nav-home" class="active"><a href="#"><span class="glyphicon glyphicon-home"></span></a></li>
+                    <li id="nav-map-download"><a href="#">Download map</a></li>
+                </ul>
+            </div>
+
+        </nav>
+    -->
+
+    <div id="right-pane-wrapper">
+        <div id="right-pane">
+            <div id="topbar-wrapper" class="fixed">
+                <div id="topbar">
+
+                    <div id="topbar-nav">
+                        <ul class="nav navbar-nav">
+                            <li title="Open Settings"><a href="#" class="btn topbar-nav-item" data-toggle="modal" data-target="#settings-dialog"><span class="glyphicon glyphicon-cog"></span></a></li>
+                            <li title="Open Help"><a href="#" class="btn topbar-nav-item" data-toggle="modal" data-target="#help-dialog"><span class="glyphicon glyphicon-question-sign"></span></a></li>
+                            <li title="Open Errors">
+                                <a href="#" class="btn topbar-nav-item" data-toggle="modal" data-target="#logs-dialog">
+                                    <span class="glyphicon glyphicon-alert">                                  </span>
+                                    <span id="log-count" class="badge" data-bind="visible: hasLogs, text: logCount"></span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div id="navigation-header">
+                        <div class="left">
+                            <span class="glyphicon glyphicon-chevron-left" style="display: none"></span>
+                            <span class="text" style="display: none"></span>
+                        </div>
+                        <div class="center">
+                            <span class="text" style="display: none"></span>
+                        </div>
+                        <div class="right">
+                            <span class="text" style="display: none"></span>
+                            <span class="glyphicon glyphicon-chevron-right" style="display: none"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Pane -->
+            <div id="center-pane-wrapper">
+                <div class="container-fluid" id="content">
+                    <div id="panorama"></div>
+                    <div class="widget-map">
+                        <label id="widget-minimap-caption" style="display: none;">Satellit</label>
+                        <div id="map"></div>
+                    </div>
+
+                </div>
+            </div>
+            <!-- /#center-pane-wrapper -->
+
+            <div id="bottombar-wrapper" class="collapsed">
+                <div title="Open Timeline" href="#" id="bottombar-expander" onclick="$('#bottombar-wrapper').removeClass('collapsed'); $('#bottombar-expander').hide()"><span class="glyphicon glyphicon-menu-up fill"></span></div>
+                <div id="bottombar">
+                    <a title="Close Timeline" href="#" id="bottombar-collapser" onclick="$('#bottombar-wrapper').addClass('collapsed'); $('#bottombar-expander').show()"><span class="glyphicon glyphicon-menu-down"></span></a>
+                    <div id="timeline"></div>
+                </div>
+            </div>
+        </div>
+        <!-- /#right-pane -->
+    </div>
+    <!-- /#right-pane-wrapper -->
+
+    <!-- #file-access-dialog -->
+    <div id="file-access-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+		    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h4>File Access</h4>
+                </div>
+                <div class="modal-body" id="file-access-disk-tab">
+                    <div data-bind="if: name" class="form">
+                        <label for="file-access-name">
+                            Please provide the following file:
+                        </label>
+                        <span data-bind="text: path"></span>
+                        <div class="input-group">
+                            <input id="file-access-name" class="form-control" data-bind="value: name" readonly="readonly" type="text">
+                            <span class="input-group-btn">
+                                <button class="btn clipboard" type="button" data-clipboard-target="#file-access-name">
+                                    <img src="assets/images/clippy.svg" alt="Copy to clipboard" width="13" style="margin-top: -3px; position: relative; top:3px;">
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div data-bind="visible: allowsDrop">
+                        <br />
+                        <section id="droparea">
+                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:application/json" class="centerall">
+                                Drop root folder or files
+                            </div>
+                        </section>
+                    </div>
+
+                    <div data-bind="visible: allowsDirectorySelect">
+                        <br/>
+
+                        <label class="btn btn-primary" for="directory-selector" data-bind="visible: allowsDirectorySelect">
+                            <input id="directory-selector" style="display: none;" multiple="" directory="" webkitdirectory="" type="file">
+                            Select root directory
+                        </label>
+                        <strong>Or</strong> choose a directory containing the file.
+                    </div>
+
+                    <div data-bind="visible: allowsMultiFileSelect && !allowsDirectorySelect">
+                        <br />
+                        <label class="btn btn-primary" for="files-selector">
+                            <input id="files-selector" type="file" multiple style="display: none;">
+                            Select files
+                        </label>
+                        <strong>Or</strong> choose all files within the directory of the target file.
+                    </div>
+
+                    <div data-bind="visible: !allowsMultiFileSelect">
+                        <br />
+                        <label class="btn btn-primary" for="file-selector">
+                            <input id="file-selector" type="file" style="display: none;">
+                            Select file
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- /#file-access-dialog -->
+    <!-- #settings-dialog -->
+    <div id="settings-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+		    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h4>Settings</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-horizontal">
+                        <div>
+                            <button id="import-tour" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
+                                <span class="glyphicon glyphicon-import"></span>
+                            </button>
+                            <label class="control-label" for="import-tour">Import additional tour files</label>
+                        </div>
+                        <div class="checkbox">
+                            <label class="control-label" for="hide-map-checkbox">
+                                <input type="checkbox" data-bind="checked: hideMap" id="hide-map-checkbox">
+                                Hide the map
+                            </label>
+                        </div>
+                        <div class="checkbox">
+                            <label class="control-label" for="fullscreen-checkbox">
+                                <input type="checkbox" data-bind="checked: fullscreen" id="fullscreen-checkbox">
+                                Fullscreen
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#settings-dialog -->
+    <!-- #help-dialog -->
+    <div id="help-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <h4>Help</h4>
+                </div>
+                <div class="modal-body">
+                    <h4>Importing Files</h4>
+                    <p>The first thing to do is importing the directory containing all the image files and the description file (tour.json). The latter one must be a direct child of the chosen directory. Depending on the browser and platform capabilities one can drop a folder, select one via the file chooser window or select a some files.</p>
+                    <p>On <strong>mobile</strong> devices: Click on <kbd>Choose files ...</kbd> and choose <kbd>Documents</kbd>. Next, the file explorer should open. Navigate to the folder containing the panoramas and choose all files (Press on an arbitrary file for 2 seconds &rarr; top right <kbd><span class="glyphicon glyphicon-option-vertical"></span></kbd> &rarr; <kbd>Choose all</kbd> &rarr; <kbd>Open</kbd>)</p>
+                    <h4>Navigation Elements</h4>
+                    <table class="table">
+                        <tbody>
+                            <tr class="row">
+                                <td>
+                                    <ul class="nav nav-pills" style="background-color:black; padding:5px">
+
+                                        <li><a class="btn topbar-nav-item" style="padding: 5px;"><span class="glyphicon glyphicon-cog"></span></a></li>
+                                        <li><a class="btn topbar-nav-item" style="padding: 5px;"><span class="glyphicon glyphicon-question-sign"></span></a></li>
+                                        <li style="">
+                                            <a class="btn topbar-nav-item" style="padding: 5px;">
+                                                <span class="glyphicon glyphicon-alert">                                  </span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top left of the screen.
+                                    </p><p>
+                                        Effect: Opens the popup dialog for settings, help or errors.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="left" style="background-color:black; color:white">
+                                        <span class="glyphicon glyphicon-chevron-left" style=""></span>
+                                        <span class="text" style="">2017</span>
+                                    </div>
+                                    <div class="right" style="background-color:black; color:white">
+                                        <span class="text" style="">2019</span>
+                                        <span class="glyphicon glyphicon-chevron-right" style=""></span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top left and top right of the screen.
+                                    </p><p>
+                                        Effect: Switch between panorams that were shot at the same spot earlier or later in time.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="float-center" style="left: calc(50% - 15px);
+width: 30px;
+height: 30px;
+color: white;
+background-color: black;
+display: block;
+bottom: 0;"><span class="glyphicon glyphicon-menu-up fill"></span></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Center bottom of the screen.
+                                    </p><p>
+                                        Effect: Shows the timeline.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="float-center" style="left: calc(50% - 15px);
+width: 30px;
+height: 30px;
+color: white;
+background-color: black;
+display: block;
+bottom: 0;"><span class="glyphicon glyphicon-menu-down fill"></span></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top right on the timeline.
+                                    </p><p>
+                                        Effect: Collapses the timeline.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="leaflet-control-minimap leaflet-bar leaflet-control">
+                                        <a class="leaflet-control-minimap-button leaflet-bar-part" style="outline: currentcolor none medium;"></a>
+                                        <a class="leaflet-control-minimap-button leaflet-bar-part" href="#" title="Shrink to minimap" style="outline: currentcolor none medium;background-position: 0px -25px;"></a>
+                                    </div>
+
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top left on the map.
+                                    </p><p>
+                                        Effect: Maximizes / minimizes the map and panorama view.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <svg height="30" width="30">
+                                        <path stroke="red" stroke-opacity="1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="#f03" fill-opacity="0.5" fill-rule="evenodd" style="box-sizing:border-box;
+display: inline;
+float: none;
+line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
+                                    </svg>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Map.
+                                    </p><p>
+                                        Effect: Shows the panorama at that location.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <span class="glyphicon glyphicon-menu-up" style="font-size: 4em;color: whitesmoke; background-color:black;"></span>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Panorama view.
+                                    </p><p>
+                                        Effect: Shows the next panoram in the pointed direction.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="vis-item vis-point vis-readonly" style="background-color:black"><div class="vis-item-content" style="margin-left: 32px;">2018</div><div class="vis-item vis-dot vis-readonly" style="top: 7px; left: 8px;"></div></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Timeline.
+                                    </p><p>
+                                        Effect: Switches to that moment in time (affects currently shown panorama and points on the map).
+                                    </p>
+                                </td>
+
+                            </tr>
+                            <tr class="row">
+                                <td>
+                                    <div class="savetiles leaflet-bar leaflet-control"><a class="savetiles"><i class="glyphicon glyphicon-download-alt" title="Save tiles"></i></a><a class="rmtiles"><i class="glyphicon glyphicon-trash" aria-hidden="true" title="Remove tiles"></i></a></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top left on the map.
+                                    </p><p>
+                                        Effect: Store (or delete) the current map view in the browser storage. The map can be viewed offline afterwards (even after restarting the browser or system).
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <tr class="row">
+                                <td>
+                                    <div class="leaflet-control-layers leaflet-control" aria-haspopup="true"><a class="leaflet-control-layers-toggle leaflet-layerstree-named-toggle" href="#" title="Layers">Satellite</a></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Location: Top right on the map.
+                                    </p><p>
+                                        Effect: Shows the control for the map layers. "GPS" turns GPS tracking on and shows your current position as a white circle on the map (center + uncertainty radius). "Connections" shows lines between points on the map (you can navigate between those panoramas).
+                                    </p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#help-dialog -->
+    <!-- #logs-dialog -->
+    <div id="logs-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <h4>Logs</h4>
+                </div>
+                <div class="modal-body">
+                    <div data-bind="foreach: logs">
+                        <div class="alert alert-danger" data-bind="text: $parent.errorToString($data)">
+                            <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: clear, visible: hasLogs" class="btn btn-primary" data-dismiss="modal">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#logs-dialog -->
+    <!-- #save-tiles-dialog -->
+    <div id="save-tiles-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <h4>Saving tiles</h4>
+                </div>
+                <div class="modal-body">
+                    Progress: <span id="save-tiles-progress"></span>/<span id="save-tiles-total"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#save-tiles-dialog -->
+</body>
+</html>

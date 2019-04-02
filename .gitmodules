@@ -1,6 +1,7 @@
 [submodule "pannellum"]
 	path = pannellum
-	url = https://github.com/mpetroff/pannellum.git
+	url = https://github.com/NiHoel/pannellum.git
+	branch = cirspecte-adoptions
 [submodule "geodesy"]
 	path = geodesy
 	url = https://github.com/chrisveness/geodesy.git

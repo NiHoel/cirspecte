@@ -1,3 +1,0 @@
-general programming
-- modules only emit updates if these are user triggered, not as a direct consequence of an update method call
-- on deletion only known references pointing to the deleted element are deleted (model objects do not delete references from scenes, lines, points since they are considered unknown)

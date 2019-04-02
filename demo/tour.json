@@ -13,8 +13,8 @@
     ],
     "spatialGroups": [
         {
-            "id": "Februar 2019 Bayreuth",
-            "name": "Februar 2019",
+            "id": "February 2019 Bayreuth",
+            "name": "February 2019",
             "type": "route",
             "timeslot": "2019-02-15T14:30:00.000Z",
             "description": "",
@@ -68,8 +68,8 @@
             ]
         },
         {
-            "id": "Herbst Bayreuth",
-            "name": "Herbst",
+            "id": "October 2018 Bayreuth",
+            "name": "October 2018",
             "type": "route",
             "timeslot": "2018-10-12T14:00:00.000Z",
             "description": "",
@@ -121,8 +121,8 @@
             ]
         },
         {
-            "id": "Dezember 2018 Bayreuth",
-            "name": "Dezember 2018",
+            "id": "December 2018 Bayreuth",
+            "name": "December 2018",
             "type": "route",
             "timeslot": "2018-12-07T13:11:44.000Z",
             "superGroup": "Bayreuth",

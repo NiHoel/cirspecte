@@ -1,5 +1,5 @@
 [submodule "pannellum"]
-	path = pannellum
+	path = assets/js/lib/pannellum
 	url = https://github.com/mpetroff/pannellum.git
 [submodule "geodesy"]
 	path = assets/js/lib/geodesy

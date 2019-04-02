@@ -1,6 +1,8 @@
 # Cirspecte
 Circumspectus in tempore - A panorama through time.
 
+https://github.com/NiHoel/cirspecte
+
 ## About
 Cirspecte is a browser based, free, and open source tool for creating and viewing panorama tours. Built using HTML5, CSS3, JavaScript, and WebGL, it is plug-in free.
 
@@ -21,15 +23,15 @@ Cirspecte is a browser based, free, and open source tool for creating and viewin
 * Fancy features added to a panorama
 
 ## Example
-1. Download and unzip filesystem
+1. Download and unzip bundle-v0.1.zip under the releases tab
 2. Open index.html with Firefox or Chrome
 3. Drop the "demo" folder on the droparea OR select it via "Select root directory"
 
 ## How to use
-Use external programs to stitch panorams, see (https://havecamerawilltravel.com/photographer/panorama-stitching-best-apps/) for an overview
-Open edit.html with Firefox or Chrome 
-Configure the browser to ask for the download location (https://www.lifewire.com/change-the-file-download-location-4046428)
-Follow the instructions in the help dialog (accessible via the '?' button on the top left of the website)
+* Use external programs to stitch panorams, see (https://havecamerawilltravel.com/photographer/panorama-stitching-best-apps/) for an overview
+* Open edit.html with Firefox or Chrome 
+* Configure the browser to ask for the download location (https://www.lifewire.com/change-the-file-download-location-4046428)
+* Follow the instructions in the help dialog (accessible via the '?' button on the top left of the website)
 
 
 ## Browser Compatibility

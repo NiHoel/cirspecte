@@ -771,8 +771,9 @@
                 </div>
                 <div class="modal-body">
                     <div data-bind="foreach: logs">
-                        <div class="alert alert-danger" data-bind="text: $parent.errorToString($data)">
-                            <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                        <div class="alert" data-bind="css:{'alert-danger' : ($data instanceof error), 'alert-warning' : ($data instanceof warning)}">
+                            <span data-bind="text: $parent.errorToString($data)"></span>
+                            <a href="#" class="close" data-dismiss="alert" aria-label="close" data-bind="click: () => {$parent.logs.remove($data)}">&times;</a>
                         </div>
                     </div>
                 </div>

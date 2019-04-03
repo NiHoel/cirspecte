@@ -3,5 +3,5 @@
 	url = https://github.com/NiHoel/pannellum.git
 	branch = cirspecte-adoptions
 [submodule "geodesy"]
-	path = geodesy
+	path = assets/js/lib/geodesy
 	url = https://github.com/chrisveness/geodesy.git

@@ -1,5 +1,5 @@
 [submodule "pannellum"]
-	path = pannellum
+	path = assets/js/lib/pannellum
 	url = https://github.com/NiHoel/pannellum.git
 	branch = cirspecte-adoptions
 [submodule "geodesy"]

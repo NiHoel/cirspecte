@@ -442,20 +442,28 @@ class groupEditor extends observable {
                         }
                     });
 
+                    setTimeout(() => {
+                        this.current.spatialGroup(g);
+                        this.modules.timeline.toggleSelection(g.item, true);
+                    }, 0);
+
                     this.current.spatialGroup(g);
                     this.modules.timeline.toggleSelection(g.item, true);
                 }
 
                 jsonVertex.path = f.getPath(g.images.directory);
                 jsonVertex.spatialGroup = g;
+                var v;
 
                 if (this.settings.copySceneAttributes() && this.modules.panorama.getScene()) {
-                    this.createVertexFromTemplate(this.modules.panorama.getVertex(), jsonVertex);
+                    v = this.createVertexFromTemplate(this.modules.panorama.getVertex(), jsonVertex);
                     if (this.settings.getTemplateOptions().deleteOriginal)
                         this.modules.model.deleteVertex(this.modules.panorama.getVertex());
                 } else {
-                    this.modules.model.createVertex(jsonVertex);
+                    v = this.modules.model.createVertex(jsonVertex);
                 }
+
+                return v;
             });
         }
 
@@ -466,6 +474,7 @@ class groupEditor extends observable {
      * @private
      * @param {vertex} template
      * @param {JSON} defaultConfig
+     * @returns {vertex}
      */
     createVertexFromTemplate(template, defaultConfig = {}) {
         var mask = this.settings.getTemplateMask();
@@ -475,6 +484,8 @@ class groupEditor extends observable {
         defaultConfig = this.assign(defaultConfig, template, mask);
         var v = this.modules.model.createVertex(defaultConfig);
         this.createEdgesFromTemplate(template, v);
+
+        return v;
     }
 
     /**
@@ -534,8 +545,8 @@ class groupEditor extends observable {
         })
             .mergeMap(entry => this.createVertex(g, entry))
             .defaultIfEmpty(null)
-            .last()
-            .filter(v => v instanceof vertex)
+            .first() // filesys might not complete
+            .filter(v => v instanceof vertex && this.settings.autoDisplayPanorama())
             .mergeMap(v => this.modules.panorama.loadScene(v))
             .subscribe();
     }

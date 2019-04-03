@@ -898,6 +898,12 @@ class panoramaViewer extends observable {
         let tileResolution = s.multiRes.tileResolution;
         let maxLevel = s.multiRes.maxLevel;
 
+        if (width * height > 200000000) {
+            // Otherwise Firefox shows a black image
+            this.modules.logger.log(new warning(this.ERROR.IMAGE_TOO_BIG, "Resolution should be less than 200,000,000 megapixel."));
+            console.warn(this.ERROR.IMAGE_TOO_BIG, s);
+        }
+
         if (!this.loaderCanvas) {
             this.loaderCanvas = document.createElement('canvas');
             this.loaderContext = this.loaderCanvas.getContext('2d');
@@ -1011,5 +1017,6 @@ panoramaViewer.prototype.NORTHHOTSPOT = 'north hotspot';
 panoramaViewer.prototype.DELETE = 'delete';
 
 panoramaViewer.prototype.ERROR.NO_IMAGE = 'no image associated to vertex'
+panoramaViewer.prototype.ERROR.IMAGE_TOO_BIG = 'image resolution too high'
 panoramaViewer.prototype.ERROR.UNSUPPORTED_VERTEX_TYPE = 'unsupported vertex type'
 panoramaViewer.prototype.ERROR.MISSING_PARAMETERS = 'missing parameters'

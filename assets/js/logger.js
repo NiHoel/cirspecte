@@ -22,10 +22,10 @@ class logger extends observable {
 
     /**
      * 
-     * @param {string} message
+     * @param {string | error | warning} message
      */
     log(message) {
-        if (message instanceof error)
+        if (message instanceof error || message instanceof warning)
             this.logs.push(message);
         else if (typeof message !== 'object')
             this.logs.push(new error(null, message));

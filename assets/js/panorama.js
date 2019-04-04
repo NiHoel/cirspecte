@@ -900,7 +900,7 @@ class panoramaViewer extends observable {
 
         if (width * height > 200000000) {
             // Otherwise Firefox shows a black image
-            this.modules.logger.log(new warning(this.ERROR.IMAGE_TOO_BIG, "Resolution should be less than 200,000,000 megapixel."));
+            this.modules.logger.log(new warning(this.ERROR.IMAGE_TOO_BIG, "Resolution should be less than 200 megapixel."));
             console.warn(this.ERROR.IMAGE_TOO_BIG, s);
         }
 

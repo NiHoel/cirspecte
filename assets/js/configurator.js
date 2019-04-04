@@ -49,6 +49,8 @@ class configurator {
         this.copySceneAttributes = ko.observable(false);
         this.createPlaceholders = ko.observable(false);
         this.autoDisplayPanorama = ko.observable(false);
+        this.autoSaveSelectedItems = ko.observable(false);
+        this.showGroupOnEditorSelection = ko.observable(false);
 
         ko.mapping.fromJS(config, {}, this);
 

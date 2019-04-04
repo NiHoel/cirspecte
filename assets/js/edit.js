@@ -100,13 +100,16 @@ $(document).ready(function () {
             .do(() => modules.hist.commit())
             .do(l => modules.model.deleteEdge(l.edge)),
 
-        Rx.Observable.fromEvent(window, 'keypress')
-            .filter(ev => ev.key === 'z' && ev.ctrlKey)
+        editors.groupEdit.observe(editors.groupEdit.SPATIALGROUP, editors.groupEdit.SELECT)
+            .do(sg => modules.timeline.toggleSelection(sg.item)),
+
+        Rx.Observable.fromEvent(window, 'keydown')
+            .filter(ev => ev.keyCode === 90 && ev.ctrlKey)
             .filter(() => modules.hist.undoStackCount() > 0)
             .do(() => modules.hist.undo()),
 
-        Rx.Observable.fromEvent(window, 'keypress')
-            .filter(ev => ev.key === 'y' && ev.ctrlKey)
+        Rx.Observable.fromEvent(window, 'keydown')
+            .filter(ev => ev.keyCode === 89 && ev.ctrlKey)
             .filter(() => modules.hist.redoStackCount() > 0)
             .do(() => modules.hist.redo()),
 
@@ -121,6 +124,8 @@ $(document).ready(function () {
             .do(() => {
                 var json = modules.model.toJSON({ persistLandmarks: settings.persistLandmarks() });
                 json.settings = settings.toJSON();
+                if (settings.autoSaveSelectedItems())
+                    json.settings.timeline = modules.timeline.getSelectionsIds(); 
                 modules.alg.saveJSON(json);
             }),
 

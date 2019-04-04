@@ -162,13 +162,12 @@ class timelineViewer extends observable {
             //}
             //this.refreshItems();
             this.toggleSelection(this.getItem(i));
-            this.emit(this.items.get(i.id), this.CLICK);
+            this.emit(this.getItem(i), this.CLICK);
         }));
 
         this.timeline.on('click', prop => {
             if(prop.group){
-                var tg = this.groups.get(prop.group.id);
-                this.emit(tg, this.CLICK);
+                this.emit(this.getGroup(prop.group), this.CLICK);
             }
             this.timeline.setSelection(Array.from(this.selections.keys()));
         })
@@ -221,6 +220,7 @@ class timelineViewer extends observable {
     /**
      * 
      * @param {string} g
+     * @returns {group}
      */
     getGroup(g) {
         return this.groups.get(g);
@@ -229,6 +229,7 @@ class timelineViewer extends observable {
     /**
  * 
  * @param {string} i
+ * @returns {item}
  */
     getItem(i) {
         return this.items.get(i);

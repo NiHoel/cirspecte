@@ -195,7 +195,7 @@ var config = {
             "mouseZoom": true,
             "showControls": true,
             "draggable": true,
-            "author": "Nico Höllerich",
+ //           "author": "", // displayed on all panoramas without a dedicate author parameter
             "compass": false
         },
         previewOptions: {
@@ -240,6 +240,8 @@ var config = {
         copySceneAttributes : false,
         createPlaceholders : false,
         autoDisplayPanorama : true,
+        autoSaveSelectedItems : true,
+        showGroupOnEditorSelection : true
     },
     tour: {
         /*

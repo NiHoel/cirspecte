@@ -883,7 +883,7 @@ class panoramaViewer extends observable {
 
         if (s.thumb.file && s.thumb.file != s.base.file) {
             s.thumb.imgObs = new Rx.ReplaySubject(1, null /* unlimited time buffer */,
-                Rx.Scheduler.immediate);
+                Rx.Scheduler.queue);
             s.thumb.file.readAsImage()
                 .catch(this.emit)
                 .subscribe(img => s.thumb.imgObs.next(img));
@@ -916,7 +916,7 @@ class panoramaViewer extends observable {
             }
             let f = Math.pow(2, node.level - maxLevel);
             var conf;
-            if (width * f <= s.thumb.width && s.thumb.imgObs)
+            if (s.thumb.imgObs && (node.level == 1 || width * f <= s.thumb.width))
                 conf = s.thumb;
             else {
                 if (!s.base.img && !s.base.imgObs)

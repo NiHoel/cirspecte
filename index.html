@@ -254,7 +254,7 @@
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
                     <h4>Help</h4>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: calc(100vh - 70px);  overflow-y: auto;">
                     <h4>Importing Files</h4>
                     <p>The first thing to do is importing the directory containing all the image files and the description file (tour.json). The latter one must be a direct child of the chosen directory. Depending on the browser and platform capabilities one can drop a folder, select one via the file chooser window or select a some files.</p>
                     <p>On <strong>mobile</strong> devices: Click on <kbd>Choose files ...</kbd> and choose <kbd>Documents</kbd>. Next, the file explorer should open. Navigate to the folder containing the panoramas and choose all files (Press on an arbitrary file for 2 seconds &rarr; top right <kbd><span class="glyphicon glyphicon-option-vertical"></span></kbd> &rarr; <kbd>Choose all</kbd> &rarr; <kbd>Open</kbd>)</p>
@@ -436,7 +436,7 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
                     <h4>Logs</h4>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: calc(100vh - 200px);  overflow-y: auto;">
                     <div data-bind="foreach: logs">
                         <div class="alert" data-bind="css:{'alert-danger' : ($data instanceof error), 'alert-warning' : ($data instanceof warning)}">
                             <span data-bind="text: $parent.errorToString($data)"></span>

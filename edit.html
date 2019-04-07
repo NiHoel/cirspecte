@@ -782,7 +782,7 @@
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
                     <h4>Logs</h4>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: calc(100vh - 200px);  overflow-y: auto;">
                     <div data-bind="foreach: logs">
                         <div class="alert" data-bind="css:{'alert-danger' : ($data instanceof error), 'alert-warning' : ($data instanceof warning)}">
                             <span data-bind="text: $parent.errorToString($data)"></span>
@@ -845,7 +845,7 @@
     <div id="help-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: calc(100vh - 70px);  overflow-y: auto;">
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
                     <h3>Content</h3>
                     <ol>

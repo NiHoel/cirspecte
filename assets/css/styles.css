@@ -111,11 +111,6 @@ section {
     float: right !important;
 }
 
-.modal-body {
-    max-height: calc(100vh - 200px);
-    overflow-y: auto;
-}
-
 .alert {
     padding: 5px;
     margin-bottom: 0;

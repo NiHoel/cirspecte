@@ -717,9 +717,9 @@ class diskAccessor extends observable {
         if (document.querySelector('#file-selector'))
             this.fileObservable = this.fileObservable
                 .merge(Rx.Observable.fromEvent(document.querySelector('#file-selector'), 'change'))
-                .do(() => this.singleFile = true);
+                .do(() => this.forcedFile = true);
 		
-	if (document.querySelector('#files-selector'))
+	    if (document.querySelector('#files-selector'))
             this.fileObservable = this.fileObservable
                 .merge(Rx.Observable.fromEvent(document.querySelector('#files-selector'), 'change'));
 
@@ -744,6 +744,13 @@ class diskAccessor extends observable {
     }
 
     /**
+     * @returns {Boolean} - Pass that file even if it does not match the criteria
+     * */
+    isForcedFile() {
+        return this.forcedFile;
+    }
+
+    /**
      * 
      * @param {JSON} options
      * @param {string} [options.name]
@@ -763,6 +770,7 @@ class diskAccessor extends observable {
 
 
         this.singleFile = !options.multi;
+        delete this.forcedFile;
 
 
         return this.targetSubject.mergeMap(ev => options.parent.populate(ev, { root: this.root, allUnused: (this.name() == null || this.name().length == 0) }))
@@ -772,8 +780,7 @@ class diskAccessor extends observable {
                 else
                     return Rx.Observable.of(entry);
             })
-            .filter(f => f instanceof file)
-            .filter(f => this.singleFile || options.name == null || options.name == f.name);
+            .filter(f => f instanceof file);
     }
 }
 
@@ -921,6 +928,12 @@ class fileTree {
         ko.applyBindings(this, $('#file-access-browser-tab')[0]);
     }
 
+    /**
+ * @returns {Boolean} - Pass that file even if it does not match the criteria
+ * */
+    isForcedFile() {
+        return this.forcedFile;
+    }
 
     /**
      * 
@@ -933,6 +946,8 @@ class fileTree {
      * @returns {Rx.observable<file>}
      */
     request(options) {
+        delete this.forcedFile;
+
         this.nodes.forEach(n => {
             if (!this.nodeIdToEntry.get(n.id) || !this.nodeIdToEntry.get(n.id).isAncestor(options.parent)) {
                 this.tree.disable_node(n);
@@ -965,10 +980,15 @@ class fileTree {
      * */
     confirmSelection() {
         if (this.targetSubject) {
+            var count = 0;
             this.tree.get_selected(true).forEach(n => {
-                if (this.nodeIdToEntry.get(n.id))
+                if (this.nodeIdToEntry.get(n.id)) {
                     this.targetSubject.next(this.nodeIdToEntry.get(n.id));
+                    count++;
+                }
             });
+            if (count == 1)
+                this.forcedFile = true;
             this.targetSubject.complete();
             delete this.targetSubject;
         }
@@ -1081,6 +1101,9 @@ class entryAccessor {
 
         this.dialog.modal("show");
         return this.targetSubject.filter(e => {
+            // user wants to open that file algthough it does not match the criteria
+            if (this.accessors.map(acc => acc.isForcedFile()).reduce((l, r) => l || r))
+                return true;
 
             if (!this.matchesFilter(opt.filter, e))
                 return false;
@@ -1292,16 +1315,16 @@ class filesystem extends directory {
                             this.link(v, f);
                             return f;
                         })
-                        .last();
+                        .first();
                 })
                 .do(f => this.link(v, f));
         }
 
         var thumbConfig = v.getThumbConfig();
         if (!thumbConfig.file) {
-            var root = thumbConfig.directory || this;
-            var path = filesystem.concatPaths(v.path, thumbConfig.path, thumbConfig.prefix);
-            obs = obs.mergeMap(() => root.searchFile(path)
+            var thumbRoot = thumbConfig.directory || this; // do not use the same variable names as above
+            var thumbPath = filesystem.concatPaths(v.path, thumbConfig.path, thumbConfig.prefix);
+            obs = obs.mergeMap(() => thumbRoot.searchFile(thumbPath)
                 .do(f => v.thumbnail.file = f)
                 .catch((err, caught) => Rx.Observable.of(v))
             );
@@ -1333,10 +1356,7 @@ class filesystem extends directory {
      * @returns {Rx.observable<file>}
      */
     request(options) {
-	if(options.parent && options.name)
-		try{
-			return Rx.Observable.of(options.parent.getFile(options.name));
-		} catch (e) {}
+
 	
         return this.acc.request(options);
     }

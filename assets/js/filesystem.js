@@ -718,12 +718,16 @@ class diskAccessor extends observable {
             this.fileObservable = this.fileObservable
                 .merge(Rx.Observable.fromEvent(document.querySelector('#file-selector'), 'change'))
                 .do(() => this.singleFile = true);
+		
+	if (document.querySelector('#files-selector'))
+            this.fileObservable = this.fileObservable
+                .merge(Rx.Observable.fromEvent(document.querySelector('#files-selector'), 'change'));
 
         if (document.querySelector('#directory-selector'))
             this.fileObservable = this.fileObservable
                 .merge(Rx.Observable.fromEvent(document.querySelector('#directory-selector'), 'change'));
 
-        if (document.querySelector('#file-selector'))
+        if (document.querySelector('#droparea'))
             this.fileObservable = this.fileObservable
                 .merge(Rx.Observable.fromEvent(document.getElementById('droparea'), 'drop'));
 
@@ -1329,6 +1333,11 @@ class filesystem extends directory {
      * @returns {Rx.observable<file>}
      */
     request(options) {
+	if(options.parent && options.name)
+		try{
+			return Rx.Observable.of(options.parent.getFile(options.name));
+		} catch (e) {}
+	
         return this.acc.request(options);
     }
 }

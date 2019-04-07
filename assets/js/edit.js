@@ -125,7 +125,7 @@ $(document).ready(function () {
                 var json = modules.model.toJSON({ persistLandmarks: settings.persistLandmarks() });
                 json.settings = settings.toJSON();
                 if (settings.autoSaveSelectedItems())
-                    json.settings.timeline = modules.timeline.getSelectionsIds(); 
+                    json.settings.timeline.selections = modules.timeline.getSelectionsIds(); 
                 modules.alg.saveJSON(json);
             }),
 

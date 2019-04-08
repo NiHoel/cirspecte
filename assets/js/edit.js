@@ -13,9 +13,9 @@ $(document).ready(function () {
         model: new graph(),
         logger: new logger(),
         filesys: new filesystem(),
-        map: new mapViewer("map", config.map, settings),
         timeline: new timelineViewer("timeline", config.timeline, settings)
     };
+    modules.map = new mapViewer("map", config.map, settings, modules),
     modules.panorama = new panoramaViewer("panorama", modules, config.panorama);
     modules.alg = new algorithms(modules);
     modules.nav = new navigationViewer(modules);
@@ -125,7 +125,8 @@ $(document).ready(function () {
                 var json = modules.model.toJSON({ persistLandmarks: settings.persistLandmarks() });
                 json.settings = settings.toJSON();
                 if (settings.autoSaveSelectedItems())
-                    json.settings.timeline.selections = modules.timeline.getSelectionsIds(); 
+                    json.settings.timeline.selections = modules.timeline.getSelectionsIds();
+                json.map = modules.map.toJSON();
                 modules.alg.saveJSON(json);
             }),
 

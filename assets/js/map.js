@@ -209,6 +209,81 @@ class layerGroup {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    Class: background
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Background for a spatialGroup on the map.
+ * */
+class background {
+    /**
+     *
+     * @param {JSON} config
+     */
+    constructor(config) {
+        $.extend(this, config);
+        this.layer = new L.featureGroup();
+        this.shownSpatialGroups = [];
+    }
+
+    /**
+ * @returns {object} with attributes directory, path, prefix, file, width, height
+ * */
+    getImageConfig() {
+        return {
+            directory: this.image.directory,
+            path: this.image.path,
+            file: this.image.file,
+            height: this.img ? this.img.height : this.image.height,
+            width: this.img ? this.img.width : this.image.width,
+            img: this.image.file ? this.image.file.img : undefined
+        };
+    }
+
+    getThumbConfig() {
+        return null;
+    }
+
+    /**
+     * @returns {Boolean}
+     * */
+    hasShownSpatialGroups() {
+        return this.shownSpatialGroups.length;
+    }
+
+    /**
+     * 
+     * @param {spatialGroup} sg
+     */
+    addSpatialGroup(sg) {
+        if (this.shownSpatialGroups.indexOf(sg) != -1)
+            this.shownSpatialGroups.push(sg);
+    }
+
+    /**
+ * 
+ * @param {spatialGroup} sg
+ */
+    removeSpatialGroup(sg) {
+        let idx = this.shownSpatialGroups.indexOf(sg);
+        if (idx != -1)
+            this.shownSpatialGroups.splice(idx, 1);
+    }
+
+    /**
+ * 
+ * @param {string} type
+ * @param {EventListener | Function} listener
+* @param {boolean} [useCapture]
+ */
+    addEventListener(type, listener, useCapture) {
+        this.layer.addEventListener(type, (e) => { e.target = this; listener(e); }, useCapture);
+    }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -230,12 +305,14 @@ class mapViewer extends observable {
     *
     * @param {string} domElement
     * @param {configurator} settings
+    * @param {filesystem} modules.filesys
     *
     **/
-    constructor(domElement, config, settings) {
+    constructor(domElement, config, settings, modules) {
         super();
         this.config = config;
         this.settings = settings;
+        this.modules = modules;
         this.map = new L.Map(domElement, config.options);
 
         let parent = this.map.getContainer().parentElement;
@@ -245,12 +322,14 @@ class mapViewer extends observable {
 
         //layer to map element lookup
         this.layers = new Map();
+        this.backgrounds = new Map();
         this.locationLayer = new L.featureGroup();
         this.lineGroup = new L.featureGroup();
         this.lineGroup.setZIndex(10);
         this.lineGroup.addEventListener('add', event => {
             this.lineGroup.bringToBack();
         });
+        this.backgroundGroup = null; // will be created when adding the first background
 
         // initialize tile grid with offline capabilities
         var tileLayers = config.tileLayers.map(
@@ -484,13 +563,40 @@ class mapViewer extends observable {
     }
 
     /**
+     * 
+     * @param {string} label
+     * @returns {background}
+     */
+    getBackground(label) {
+        var background = this.backgrounds.get(label);
+        if (background == null)
+            throw new error(this.ERROR.NO_SUCH_BACKGROUND, null, label);
+
+        return background;
+    }
+
+    /**
  * Derives the container from the corresponding model elements
  * 
  * @private
- * @param {controlGroup | spatialGroup | point} mapelem
-* @returns {controlGroup | spatialGroup}
+ * @param {controlGroup | spatialGroup | point | background} mapelem
+* @returns {controlGroup | layerGroup}
  */
     deriveParent(mapelem) {
+        if (mapelem instanceof background) {
+            if (!this.backgroundGroup && this.config.strings.backgrounds) {
+                this.backgroundGroup = new L.featureGroup();
+                this.backgroundGroup.addTo(this.map);
+                this.overlayTree.push({
+                    label: this.config.strings.backgrounds,
+                    layer: this.backgroundGroup
+                });
+                this.updateLayerTree();
+            }
+            return { layer: this.backgroundGroup };
+        }
+
+
         var elem = mapelem.vertex || mapelem.spatialGroup || mapelem.temporalGroup;
         if (elem == null)
             throw new error(this.ERROR.INVALID_MODEL_OBJECT, null, mapelem);
@@ -507,7 +613,7 @@ class mapViewer extends observable {
     /**
  *
  * @private
- * @param {controlGroup | spatialGroup | point} elem
+ * @param {controlGroup | spatialGroup | point | background} elem
  */
     addToDerivedParent(elem) {
         elem.parent = this.deriveParent(elem);
@@ -700,6 +806,37 @@ class mapViewer extends observable {
     }
 
     /**
+     * 
+     * @param {JSON} config
+     */
+    createBackground(config) {
+        var b = this.backgrounds.get(config.label);
+        if (b != null)
+            return b;
+
+        b = new background(config);
+
+        this.modules.filesys.prepareFileAccess(b)
+            .mergeMap(() => b.image.file.readAsDataURL())
+            .do(url => {
+                b.imageLayer = L.imageOverlay.rotated(url, b.corners[0], b.corners[1], b.corners[2], b)
+                    .addTo(b.layer);
+            })
+            .catch((err, caught) => {
+                console.log(err);
+                this.modules.logger.log(err);
+                return caught;
+            }).subscribe();
+
+        this.backgrounds.set(b.label, b);
+        this.layers.set(b.layer, b);
+        this.emit(b, this.CREATE);
+
+        return b;
+
+    }
+
+    /**
      *
      * @param {spatialGroup} g
      * @returns {layerGroup}
@@ -730,6 +867,22 @@ class mapViewer extends observable {
         //        this.emit( g.layerGroup, this.HIDE);
 
         return g.layerGroup;
+    }
+
+    /**
+ * 
+ * @param {background} b
+ */
+    showBackground(b) {
+        this.addToDerivedParent(b);
+    }
+
+/**
+ * 
+ * @param {background} b
+ */
+    hideBackground(b) {
+        this.removeFromParent(b);
     }
 
     /**
@@ -784,7 +937,7 @@ class mapViewer extends observable {
 
     /**
      * 
-     * @param {vertex | edge} elem
+     * @param {vertex | edge | background} elem
      */
     setEditable(elem) {
         if (elem instanceof vertex) { // show point if not visible
@@ -798,12 +951,25 @@ class mapViewer extends observable {
             && elem.type !== edge.prototype.LANDMARK && elem.line.type !== line.prototype.EDIT) {
             this.deleteLine(elem);
             return this.createLine(elem, { type: line.prototype.EDIT });
+        } else if (elem instanceof background) {
+            if (!elem.markers) {
+                elem.markers = elem.corners.map(c => new L.Marker(c, this.config.background.marker));
+                elem.markers.forEach((m, i) => {
+                    m.addEventListener('drag', (event) => {
+                        elem.corners[i] = latLngToCoords(event.latlng);
+                        elem.imageLayer.reposition(...elem.corners)
+                    });
+                })
+            }
+            elem.markers.forEach(m => m.addTo(elem.layer));
+            elem.editable = true;
+            this.showBackground(elem);
         }
     }
 
     /**
      * 
-     * @param {edge | vertex} e
+     * @param {edge | vertex | background} e
      */
     unsetEditable(elem) {
         if (elem instanceof vertex && elem.point) {
@@ -814,6 +980,9 @@ class mapViewer extends observable {
         } else if (elem instanceof edge && elem.line && elem.line.edge === elem && elem.type !== edge.prototype.LANDMARK) {
             this.deleteLine(elem);
             return this.createLine(elem);
+        } else if (e instanceof background) {
+            e.markers.forEach(m => b.layer.removeLayer(m));
+            b.editable = false;
         }
     }
 
@@ -943,6 +1112,19 @@ class mapViewer extends observable {
     updateLayerTree() {
         this.layerControl.setOverlayTree(this.overlayTree).collapseTree(true).expandSelected(true);
     }
+
+    toJSON() {
+    return {
+        backgrounds: Array.from(this.backgrounds.values()).map(b => {
+            return {
+                corners: b.corners,
+                opacity: b.opacity,
+                label: b.label,
+                image: algorithms.extractAtomicProperties(b.image)
+            }
+        })
+    }
+    }
 }
 
 mapViewer.prototype.CLICK = 'click';
@@ -955,6 +1137,7 @@ mapViewer.prototype.GPS = 'gps';
 mapViewer.prototype.COORDINATES = 'coordinates';
 mapViewer.prototype.ERROR.INVALID_MODEL_OBJECT = 'invalid model object';
 mapViewer.prototype.ERROR.UNDEFINED_NAMESPACE = 'undefined namespace';
+mapViewer.prototype.ERROR.NO_SUCH_BACKGROUND = 'no such background';
 
 // utility functions
 

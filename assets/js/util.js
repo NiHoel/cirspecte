@@ -24,20 +24,24 @@ class algorithms {
  * Calls loadGraph(...) to create all the modal elements
  * View related settings will not be read
  * 
- * Required modules: modal, filesystem
+ * Required modules: modal, filesystem, map
  * 
  * @param {JSON} tour - Plain javascript object
-* @param {directory} rootFolder - Folder containing the file which content was passed as the first argument
+* @param {directory} rootDirectory - Folder containing the file which content was passed as the first argument
  * @returns {Rx.Observable<boolean>} - Tour modal was created without errors
  */
-    readTour(tour, rootFolder) {
+    readTour(tour, rootDirectory) {
         var successful = true;
+        for (let jsonBackground of ((tour.map || {}).backgrounds || [])) {
+            var json = $.extend(true, { image: { directory: rootDirectory } }, jsonBackground);
+            modules.map.createBackground(json);
+        }
 
         //process temporal groups before others so that parent tour files can modify their hierarchy
         for (let jsonTemporalGroup of (tour.temporalGroups || [])) {
             try {
                 var tg = this.modules.model.createTemporalGroup(Object.assign({}, jsonTemporalGroup, {
-                    directory: rootFolder,
+                    directory: rootDirectory,
                     subGroups: []
                 }));
             } catch (err) {
@@ -49,14 +53,14 @@ class algorithms {
         var other = Rx.Observable.of(successful);
         if (tour.tours != null) {
             other = Rx.Observable.from(tour.tours)
-                .mergeMap(path => rootFolder.searchFile(path))
+                .mergeMap(path => rootDirectory.searchFile(path))
                 .mergeMap(f =>
                     f.readAsJSON()
                         .mergeMap(t => this.readTour(t, f.parent))
                 );
         }
 
-        return other.map(successful => successful && this.loadGraph(tour, rootFolder));
+        return other.map(successful => successful && this.loadGraph(tour, rootDirectory));
     }
 
     /**
@@ -101,6 +105,8 @@ class algorithms {
                 })); //copy vertex properties ignoring vertices, parsing date and storing directory
 
                 sg.directory = rootDirectory;
+                if (sg.background)
+                    sg.background = this.modules.map.getBackground(sg.background)
                 var ver = jsonSpatialGroup.vertices || [];
                 ver.forEach(v => v.spatialGroup = sg);
                 vertices = vertices.concat(ver);

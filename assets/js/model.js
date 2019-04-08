@@ -521,6 +521,7 @@ class spatialGroup {
             path: this.path,
             images: algorithms.extractAtomicProperties(this.images),
             thumbnails: algorithms.extractAtomicProperties(this.thumbnails),
+            background: this.background ? this.background.label : undefined,
             vertices: vertices
         };
     }

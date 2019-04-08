@@ -1190,12 +1190,15 @@ class filesystem extends directory {
 
     /**
      * 
-     * @param {vertex} v
+     * @param {vertex | background} v
      * @param {file} f
      */
     link(v, f) {
         if (v.image.file === f) {
-            f.vertex = v;
+            if (v instanceof background)
+                v.background = f;
+            else
+                f.vertex = v;
             return;
         }
 
@@ -1207,7 +1210,11 @@ class filesystem extends directory {
         let imgConf = v.getImageConfig();
         v.path = f.getPath(imgConf.directory);
         delete v.image.path;
-        f.vertex = v;
+
+        if (v instanceof background)
+            v.background = f;
+        else
+            f.vertex = v;
 
         this.emit(v, this.LINK);
     }
@@ -1286,7 +1293,7 @@ class filesystem extends directory {
      * @returns {Rx.observable<vertex>}
      */
     prepareFileAccess(v) {
-        if (v.path == null)
+        if (v.path == null && v.image.path == null)
             throw new error(this.ERROR.INVALID_PATH, '""');
 
         var obs = Rx.Observable.of(v);
@@ -1321,7 +1328,7 @@ class filesystem extends directory {
         }
 
         var thumbConfig = v.getThumbConfig();
-        if (!thumbConfig.file) {
+        if (thumbConfig && !thumbConfig.file) {
             var thumbRoot = thumbConfig.directory || this; // do not use the same variable names as above
             var thumbPath = filesystem.concatPaths(v.path, thumbConfig.path, thumbConfig.prefix);
             obs = obs.mergeMap(() => thumbRoot.searchFile(thumbPath)

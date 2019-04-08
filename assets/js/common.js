@@ -212,7 +212,16 @@ function createCommonRoutines(modules, settings) {
             .do(s => modules.nav.setVertex(s.vertex))
             .do(s => modules.timeline.toggleSelection(s.vertex.spatialGroup.item, true)),
 
+        modules.map.observe(layerGroup, modules.map.SHOW)
+            .map(l => l.spatialGroup)
+            .filter(sg => sg.background)
+            .do(sg => modules.map.showBackground(sg.background)),
 
+        modules.map.observe(layerGroup, modules.map.HIDE)
+            .map(l => l.spatialGroup)
+            .filter(sg => sg.background)
+            .filter(sg => sg.background.hasShownSpatialGroups())
+            .do(sg => modules.map.hideBackground(sg.background)),
 
         modules.panorama.observe(hotspot, modules.panorama.CLICK)
             .inhibitBy(modules.panorama.afterUpdate(hotspot, hotspot.prototype.POSITION))

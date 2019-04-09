@@ -531,6 +531,7 @@ spatialGroup.prototype.ROUTE = 'route'; // vertex is part of a tour
 spatialGroup.prototype.LANDMARK = 'landmark';
 
 spatialGroup.prototype.TIMESLOT = 'timeslot';
+spatialGroup.prototype.BACKGROUND = 'background';
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -1128,6 +1129,19 @@ class graph extends observable {
             this.startUpdate(v, v.TIMESLOT);
             v.timeslot = timeslot;
             this.endUpdate(v, v.TIMESLOT);
+        }
+    }
+
+    /**
+     * 
+     * @param {spatialGroup} sg
+     * @param {background} b
+     */
+    updateBackground(sg, b) {
+        if (b != sg.background) {
+            this.startUpdate(sg, sg.BACKGROUND);
+            sg.background = b;
+            this.endUpdate(sg, sg.BACKGROUND);
         }
     }
 

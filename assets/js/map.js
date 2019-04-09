@@ -259,7 +259,7 @@ class background {
      * @param {spatialGroup} sg
      */
     addSpatialGroup(sg) {
-        if (this.shownSpatialGroups.indexOf(sg) != -1)
+        if (this.shownSpatialGroups.indexOf(sg) == -1)
             this.shownSpatialGroups.push(sg);
     }
 
@@ -273,6 +273,31 @@ class background {
             this.shownSpatialGroups.splice(idx, 1);
     }
 
+
+    /**
+     * 
+     * @param {[[Number]]} corners
+     */
+    setCorners(corners) {
+        this.corners = corners;
+        if (this.markers) {
+            this.imageLayer.reposition(...this.corners);
+            this.markers.forEach((m, i) => {
+                m.setLatLng(this.corners[i]);
+            });
+        }        
+    }
+
+    /**
+     * 
+     * @param {Number} value
+     */
+    setOpacity(value) {
+        this.opacity = value;
+        if (this.imageLayer)
+            this.imageLayer.setOpacity(value);
+    }
+
     /**
  * 
  * @param {string} type
@@ -282,7 +307,19 @@ class background {
     addEventListener(type, listener, useCapture) {
         this.layer.addEventListener(type, (e) => { e.target = this; listener(e); }, useCapture);
     }
+
+    toJSON() {
+        return {
+            corners: this.corners,
+            opacity: this.opacity,
+            label: this.label,
+            image: algorithms.extractAtomicProperties(this.image)
+        };
+    }
 }
+
+background.prototype.CORNERS = "corners";
+background.prototype.OPACITY = "opacity";
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -725,6 +762,7 @@ class mapViewer extends observable {
 
         if (this.config.point[type].draggable) {
             p.addEventListener('dragstart', (event) => {
+                this.modules.hist.commit();
                 /** @type {point}*/
                 let p = event.target;
                 self.startUpdate(p, p.COORDINATES);
@@ -814,7 +852,7 @@ class mapViewer extends observable {
         if (b != null)
             return b;
 
-        b = new background(config);
+        b = new background($.extend({}, this.config.background.image, config));
 
         this.modules.filesys.prepareFileAccess(b)
             .mergeMap(() => b.image.file.readAsDataURL())
@@ -877,10 +915,10 @@ class mapViewer extends observable {
         this.addToDerivedParent(b);
     }
 
-/**
- * 
- * @param {background} b
- */
+    /**
+     * 
+     * @param {background} b
+     */
     hideBackground(b) {
         this.removeFromParent(b);
     }
@@ -937,6 +975,32 @@ class mapViewer extends observable {
 
     /**
      * 
+     * @param {background} b
+     * @param {[[Number]]} corners
+     */
+    updateCorners(b, corners) {
+        if (!recursiveCompare(b.corners, corners)) {
+            this.startUpdate(b, b.CORNERS);
+            b.setCorners(corners);
+            this.endUpdate(b, b.CORNERS);
+        }
+    }
+
+    /**
+     * 
+     * @param {background} b
+     * @param {Number} value
+     */
+    updateOpacity(b, value) {
+        if (value != b.opacity) {
+            this.startUpdate(b, b.OPACITY);
+            b.setOpacity(value);
+            this.endUpdate(b, b.OPACITY);
+        }
+    }
+
+    /**
+     * 
      * @param {vertex | edge | background} elem
      */
     setEditable(elem) {
@@ -955,11 +1019,21 @@ class mapViewer extends observable {
             if (!elem.markers) {
                 elem.markers = elem.corners.map(c => new L.Marker(c, this.config.background.marker));
                 elem.markers.forEach((m, i) => {
-                    m.addEventListener('drag', (event) => {
-                        elem.corners[i] = latLngToCoords(event.latlng);
-                        elem.imageLayer.reposition(...elem.corners)
+                    m.addEventListener('dragstart', () => {
+                        this.modules.hist.commit();
+                        this.startUpdate(elem, elem.CORNERS);
                     });
-                })
+                    m.addEventListener('drag', (event) => {
+
+                        var corners = $.extend(true, [], elem.corners);
+                        corners[i] = latLngToCoords(event.latlng);
+                        elem.setCorners(corners);
+                        this.emit(elem, this.DRAG);
+                    });
+                    m.addEventListener('dragend', () => {
+                        this.endUpdate(elem, elem.CORNERS);
+                    });
+                });
             }
             elem.markers.forEach(m => m.addTo(elem.layer));
             elem.editable = true;
@@ -980,9 +1054,11 @@ class mapViewer extends observable {
         } else if (elem instanceof edge && elem.line && elem.line.edge === elem && elem.type !== edge.prototype.LANDMARK) {
             this.deleteLine(elem);
             return this.createLine(elem);
-        } else if (e instanceof background) {
-            e.markers.forEach(m => b.layer.removeLayer(m));
-            b.editable = false;
+        } else if (elem instanceof background) {
+            elem.markers.forEach(m => elem.layer.removeLayer(m));
+            if (!elem.hasShownSpatialGroups())
+                this.hideBackground(elem);
+            elem.editable = false;
         }
     }
 
@@ -1084,6 +1160,20 @@ class mapViewer extends observable {
 
     /**
      * 
+     * @param {background} b
+     */
+    deleteBackground(b) {
+        this.removeFromParent(b);
+        b.layer.remove();
+        this.layers.delete(b.layer);
+        this.backgrounds.delete(b.label);
+        delete b.layer;
+
+        this.emit(b, this.DELETE);
+    }
+
+    /**
+     * 
      * @param {[number]} coords
      * @param {number} zoom
      */
@@ -1114,16 +1204,9 @@ class mapViewer extends observable {
     }
 
     toJSON() {
-    return {
-        backgrounds: Array.from(this.backgrounds.values()).map(b => {
-            return {
-                corners: b.corners,
-                opacity: b.opacity,
-                label: b.label,
-                image: algorithms.extractAtomicProperties(b.image)
-            }
-        })
-    }
+        return {
+            backgrounds: Array.from(this.backgrounds.values()).map(b => b.toJSON())
+        };
     }
 }
 

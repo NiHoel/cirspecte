@@ -247,6 +247,49 @@ class commandHistory extends observable {
                 )
             });
 
+        model.beforeUpdate(spatialGroup, spatialGroup.prototype.BACKGROUND)
+            .subscribe(sg => {
+                let label = sg.background ? sg.background.label : null;
+                let id = sg.id;
+                this.add(
+                    () => model.updateBackground(model.getSpatialGroup(id), label ? map.getBackground(label) : null)
+                )
+            });
+
+        map.observe(background, map.CREATE, null)
+            .subscribe(b => {
+                let label = b.label;
+                this.add(
+                    () => map.deleteBackground(map.getBackground(label))
+                );
+            });
+
+        map.observe(background, map.DELETE, null)
+            .subscribe(b => {
+                let json = b.toJSON();
+                json.image.directory = b.image.directory;
+                this.add(
+                    () => map.createBackground(json)
+                );
+            });
+
+        map.beforeUpdate(background, background.prototype.CORNERS)
+            .subscribe(b => {
+                let label = b.label;
+                let corners = $.extend(true, [], b.corners);
+                this.add(
+                    () => map.updateCorners(map.getBackground(label), corners)
+                )
+            });
+
+        map.afterUpdate(background, background.prototype.OPACITY)
+            .subscribe(b => {
+                let label = b.label;
+                let opacity = b.opacity;
+                this.add(
+                    () => map.updateCorners(map.getBackground(label), opacity)
+                )
+            });
 
         filesys.observe(vertex, filesystem.prototype.LINK, null)
             .subscribe(v => this.add(

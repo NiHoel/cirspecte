@@ -23,6 +23,7 @@ $(document).ready(function () {
 
     editors = {
         groupEdit: new groupEditor(settings, modules),
+        mapEdit: new mapEditor(settings, modules),
         panoramaEdit: new panoramaEditor(settings, modules)
     };
 
@@ -63,7 +64,6 @@ $(document).ready(function () {
 
         // point -[coordinates]-> vertex
         modules.map.afterUpdate(point, point.prototype.COORDINATES)
-            .do(() => modules.hist.commit())
             .do(p => modules.model.updateCoordinates(p.vertex, p.getCoordinates())),
 
         modules.model.afterUpdate(vertex, vertex.prototype.DATA)

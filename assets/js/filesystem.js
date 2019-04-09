@@ -1208,8 +1208,13 @@ class filesystem extends directory {
 
         v.image.file = f;
         let imgConf = v.getImageConfig();
-        v.path = f.getPath(imgConf.directory);
-        delete v.image.path;
+        let path = f.getPath(imgConf.directory);
+        if (v instanceof background) {
+            v.image.path = path;
+        } else {
+            v.path = path;
+            delete v.image.path;
+        }
 
         if (v instanceof background)
             v.background = f;

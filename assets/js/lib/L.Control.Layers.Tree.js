@@ -1,5 +1,5 @@
 /*
- * L.Control.Layers.Tree.js (https://github.com/shramov/leaflet-plugins/blob/master/layer/tile/Bing.js)
+ * L.Control.Layers.Tree.js (https://github.com/jjimenezshaw/Leaflet.Control.Layers.Tree)
  * Licensed under BSD 3-Clause (https://github.com/jjimenezshaw/Leaflet.Control.Layers.Tree/blob/master/LICENSE)
  * 
  * Control like L.Control.Layers, but showing layers in a tree.

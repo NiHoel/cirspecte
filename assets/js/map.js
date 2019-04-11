@@ -613,6 +613,13 @@ class mapViewer extends observable {
     }
 
     /**
+     * @returns {[background]}
+     * */
+    getBackgrounds() {
+        return Array.from(this.backgrounds.values());
+    }
+
+    /**
  * Derives the container from the corresponding model elements
  * 
  * @private

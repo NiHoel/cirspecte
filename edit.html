@@ -308,6 +308,13 @@
                         </span>
                     </li>
                     <li>
+                        <div class="form" id="background-selector">
+                            <label for="opacity-slider">Opacity</label><br />
+
+                            <input id="opacity-slider" type="text" class="slider form-control" data-bind="sliderValue: {value: opacity, min:0, max: 1, step: 0.01}" />
+                        </div>
+                    </li>
+                    <li>
                         <div class="checkbox" title="If checked, dragging the marker will only affect the associated corner&#13;&#10;If unchecked the markers have the following behavior:&#13;&#10;top left: translate image&#13;&#10;top right: rotate and scale width&#13;&#10;bottom left: rotate and scale height">
                             <label for="map-background-edit-skew-checkbox">
                                 <input type="checkbox" value="map-background-edit-skew" id="map-background-edit-skew-checkbox" data-bind="checked:skewEditable, enable: $root.currentBackground">Edit skew
@@ -421,6 +428,13 @@
                                     </span>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="background" title="[Optional] The image displayed on the map behind the points and edges forming this spatial group">Background</label>
+                            <select class="form-control" id="background" data-live-search="true" data-show-subtext="true" name="background" placeholder="Select a background ..."
+                                    data-bind="options: $root.backgrounds, optionsCaption: 'Select a background ...', optionsText: g => {return g.label;}, value: background"></select>
+
                         </div>
 
                         <div class="control-group" style="width: 100%">

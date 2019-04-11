@@ -39,6 +39,8 @@ class mapEditor extends observable {
             Rx.Observable.fromEvent($('.nav-tabs a'), 'show.bs.tab')
                 .filter(ev => ev.target === $('.nav-tabs a[href="#map-editor"]')[0])
                 .do(() => this.shown = true)
+                .do(() => this.modules.map.toggleMinimap(false))
+                .do(() => this.opacity(this.currentBackground()))
                 .do(() => this.modules.map.setEditable(this.currentBackground()))
             ,
 
@@ -132,6 +134,7 @@ class mapEditor extends observable {
             if (this.prevBackground && this.backgrounds().indexOf(this.prevBackground) != -1)
                 this.modules.map.unsetEditable(this.prevBackground);
 
+            this.opacity(b.opacity);
             if (this.isShown())
                 this.modules.map.setEditable(this.currentBackground());
 

@@ -203,7 +203,7 @@ class algorithms {
 
                 }
 
-                let angles = hotspots.map(hs => normalize(hs.yaw - panoramaViewer.getAzimuth(coordinates, hs.edge.to)));
+                let angles = hotspots.map(hs => normalize(hs.yaw - algorithms.getAzimuth(coordinates, hs.edge.to)));
                 var northOffset = mean(angles);
                 var sum = angles.map(a => sqr(normalize(a - northOffset))).reduce((a, b) => a + b);
                 //           console.log([coordinates, angles, sum]);
@@ -220,7 +220,7 @@ class algorithms {
                 observer.error(result.message);
             else {
                 result.solution = {
-                    northOffset: mean(hotspots.map(hs => hs.yaw - panoramaViewer.getAzimuth(result.solution, hs.edge.to))),
+                    northOffset: mean(hotspots.map(hs => hs.yaw - algorithms.getAzimuth(result.solution, hs.edge.to))),
                     coordinates: result.solution
                 };
             }
@@ -247,7 +247,7 @@ class algorithms {
             minDist = sg.superGroup.getColocatedRadius() || 0;
 
         sg.forEach(other => {
-            let distance = panoramaViewer.getDistance(coordinates, other);
+            let distance = algorithms.getDistance(coordinates, other);
             if (distance <= minDist) { //for minDist == 0
                 minDist = distance;
                 vMin = other;
@@ -413,6 +413,62 @@ class algorithms {
                 }
             })
         );
+    }
+
+    /**
+* 
+* 
+* @param {vertex | [number]} from
+* @param {vertex | [number]} to
+   * @returns {number} - angle in ° between to, from, geographical north
+*/
+    static getAzimuth(from, to) {
+        if (from instanceof vertex)
+            from = from.coordinates;
+        if (to instanceof vertex)
+            to = to.coordinates;
+
+        from = new LatLon(from[0], from[1]);
+        to = new LatLon(to[0], to[1]);
+
+        var bearing = from.initialBearingTo(to);
+        if (bearing > 180)
+            bearing -= 360;
+
+        return bearing;
+    }
+
+    /**
+* 
+* @param {vertex | [number]} from
+* @param {vertex | [number]} to
+   * @returns {number} - in meters
+*/
+    static getDistance(from, to) {
+        if (from instanceof vertex)
+            from = from.coordinates;
+        if (to instanceof vertex)
+            to = to.coordinates;
+
+        from = new LatLon(from[0], from[1]);
+        to = new LatLon(to[0], to[1]);
+
+        return from.distanceTo(to);
+    }
+
+    /**
+     * 
+     * @param {vertex | [number]} from
+     * @param {number} distance - in meters
+     * @param {number} bearing - angle from north measured in °
+    * @returns {[number]}
+     */
+    static getCoords(from, distance, bearing) {
+        if (from instanceof vertex)
+            from = from.coordinates;
+
+        var dest = (new LatLon(from[0], from[1])).destinationPoint(distance, bearing);
+        return [dest.lat, dest.lon];
     }
 
 }

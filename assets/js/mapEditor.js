@@ -19,7 +19,7 @@ class mapEditor extends observable {
         this.prevBackground = null;
         this.backgrounds = ko.observableArray();
         this.opacity = ko.observable(0.5);
-        this.corners = ko.observable();
+        this.corners; // store corners of selected background when dragging
         this.skewEditable = ko.observable(false);
 
         this.shown = false;
@@ -73,10 +73,58 @@ class mapEditor extends observable {
 
             modules.map.beforeUpdate(background, background.prototype.CORNERS)
                 .do(b => {
-                    if (!this.skewEditable()) {
-                        // TODO
-                    }
+                    this.corners = $.extend(true, [], b.corners);
+                }),
 
+            modules.map.observe(background, modules.map.DRAG)
+                .do(b => {
+                    if (!this.skewEditable()) {
+                        var dragged = b.corners.map((c, i) => !recursiveCompare(c, this.corners[i]));
+                        var corners = $.extend(true, [], b.corners);
+
+                        // translate image when dragging marker in top left corner
+                        if (dragged[0]) {
+                            corners[1][0] += b.corners[0][0] - this.corners[0][0];
+                            corners[1][1] += b.corners[0][1] - this.corners[0][1];
+                            corners[2][0] += b.corners[0][0] - this.corners[0][0];
+                            corners[2][1] += b.corners[0][1] - this.corners[0][1];
+                        }
+
+                        // scale width and rotate image when dragging marker in top right corner
+                        else if (dragged[1]) {
+                            //compute angle(b.corners[1], this.corners[0], this.corners[1])
+                            /*(
+                             (this.corners[0][0] - b.corners[1][0]) * (this.corners[1][0] - this.corners[0][0])
+                             + (this.corners[0][1] - b.corners[1][1]) * (this.corners[1][1] - this.corners[0][1])
+                         ) / (Math.sqrt(
+                             Math.pow(this.corners[0][0] - b.corners[1][0], 2)
+                             + Math.pow(this.corners[0][1] - b.corners[1][1], 2)
+                         ) * Math.sqrt(
+                             Math.pow(this.corners[1][0] - this.corners[0][0], 2)
+                             + Math.pow(this.corners[1][1] - this.corners[0][1], 2)
+                         ));*/
+                            var height = algorithms.getDistance(this.corners[0], b.corners[2]);
+                            var bearingHeight = algorithms.getAzimuth(this.corners[0], b.corners[1])
+                                + algorithms.getAzimuth(this.corners[0], this.corners[2])
+                                - algorithms.getAzimuth(this.corners[0], this.corners[1]);
+                            corners[2] = algorithms.getCoords(this.corners[0], height, bearingHeight);
+                        }
+
+                        // scale height and rotate image when dragging marker in top right corner
+                        else if (dragged[2]) {
+                            var width = algorithms.getDistance(this.corners[0], b.corners[1]);
+                            var bearingWidth = algorithms.getAzimuth(this.corners[0], b.corners[2])
+                                + algorithms.getAzimuth(this.corners[0], this.corners[1])
+                                - algorithms.getAzimuth(this.corners[0], this.corners[2]);
+                            corners[1] = algorithms.getCoords(this.corners[0], width, bearingWidth);
+                        }
+
+                        // discard invalid results
+                        if (corners.flat().map(Number.isFinite).reduce((a, b) => a && b, true))
+                            this.corners = corners;
+
+                        this.modules.map.updateCorners(b, this.corners);
+                    }
                 }),
         ];
 
@@ -139,5 +187,16 @@ class mapEditor extends observable {
                 modules.logger.log(err);
                 return caught;
             }).subscribe();
+    }
+
+    deleteCurrentBackground() {
+        this.modules.hist.commit();
+
+        this.modules.model.spatialGroups.forEach(sg => {
+            if (sg.background === this.currentBackground())
+                this.modules.model.updateBackgrond(sg, null);
+        });
+
+        this.modules.map.deleteBackground(this.currentBackground());
     }
 }

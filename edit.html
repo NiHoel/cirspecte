@@ -80,6 +80,7 @@
     <script type="text/javascript" src="assets/js/util.js"></script>
 
     <script type="text/javascript" src="assets/js/groupEditor.js"></script>
+    <script type="text/javascript" src="assets/js/mapEditor.js"></script>
     <script type="text/javascript" src="assets/js/panoramaEditor.js"></script>
     <script type="text/javascript" src="assets/js/navigation.js"></script>
 
@@ -102,6 +103,7 @@
 
         <ul class="nav nav-tabs">
             <li class="active"><a data-toggle="tab" href="#group-editor" title="Show group editor">Groups</a></li>
+            <li><a data-toggle="tab" href="#map-editor" title="Edit base layers and backgrounds on the map">Map</a></li>
             <li><a data-toggle="tab" href="#panorama-editor" data-bind="css:{'not-active': currentVertex() == null}" title="Show panorama editor (a panorama must be loaded)">Panorama</a></li>
         </ul>
 
@@ -275,6 +277,43 @@
 
             </div>
             <!-- /#panorama-editor -->
+            <!-- #map-editor -->
+            <div id="map-editor" class="tab-pane fade">
+                <ul class="sidebar-nav">
+                    <li>
+                        <div class="form" id="background-selector">
+                            <label for="backgroundSelector" title="Adds a background image for spatial groups.">Background</label><br />
+
+                            <select type="select" class="form-control" id="backgroundSelector" data-live-search="true" data-show-subtext="true" name="backgrounds"
+                                    data-bind="options: backgrounds, optionsCaption: 'Select a background ...', optionsText: b => {return b.label;}, value: currentBackground"></select>
+                        </div>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: () => {createBackground();}">
+                            <span class="glyphicon glyphicon-plus"></span>
+                        </button>
+                        <span>
+                            Create Background
+                        </span>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: deleteCurrentBackground, enable: $root.currentBackground">
+                            <span class="glyphicon glyphicon-trash"></span>
+                        </button>
+                        <span>
+                            Delete Background
+                        </span>
+                    </li>
+                    <li>
+                        <div class="checkbox" title="If checked, dragging the marker will only affect the associated corner&#13;&#10;If unchecked the markers have the following behavior:&#13;&#10;top left: translate image&#13;&#10;top right: rotate and scale width&#13;&#10;bottom left: rotate and scale height">
+                            <label for="map-background-edit-skew-checkbox">
+                                <input type="checkbox" value="map-background-edit-skew" id="map-background-edit-skew-checkbox" data-bind="checked:skewEditable, enable: $root.currentBackground">Edit skew
+                            </label>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <!-- /#map-editor -->
         </div>
         <!-- /.tab-content -->
     </div>

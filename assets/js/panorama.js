@@ -117,7 +117,7 @@ class hotspot {
 
         if (this.yaw == null)
             if (e.data.yaw == null)
-                this.yaw = panoramaViewer.getAzimuth(e.from, e.to) + this.northOffset;
+                this.yaw = algorithms.getAzimuth(e.from, e.to) + this.northOffset;
             else
                 this.yaw = e.data.yaw + this.northOffset;
         this.text = this.text || e.id;
@@ -297,7 +297,7 @@ class panoramaViewer extends observable {
         hotSpotDiv.appendChild(preview);
 
         var tooltipViewer = new panoramaViewer(previewPanorama, this.modules, this.config.previewOptions);
-        let azimuth = panoramaViewer.getAzimuth(args.edge.from, args.edge.to);
+        let azimuth = algorithms.getAzimuth(args.edge.from, args.edge.to);
         tooltipViewer.loadScene(args.edge.to, { yaw: azimuth, hfov: 70 }).subscribe();
     }
 
@@ -345,7 +345,7 @@ class panoramaViewer extends observable {
         if (this.scene == null || edge.hotspot == null)
             return;
 
-        var yaw = edge.data.yaw != null ? edge.data.yaw : panoramaViewer.getAzimuth(edge.from, edge.to);
+        var yaw = edge.data.yaw != null ? edge.data.yaw : algorithms.getAzimuth(edge.from, edge.to);
         yaw += this.getNorthOffset();
         if (yaw < -180)
             yaw += 360;
@@ -555,7 +555,7 @@ class panoramaViewer extends observable {
         if (pitch instanceof hotspot)
             this.viewer.lookAt(pitch.pitch, pitch.yaw);
         else if (pitch instanceof edge)
-            this.viewer.lookAt(0, panoramaViewer.getAzimuth(pitch.from, pitch.to) + this.getNorthOffset())
+            this.viewer.lookAt(0, algorithms.getAzimuth(pitch.from, pitch.to) + this.getNorthOffset())
         else
             this.viewer.lookAt(pitch, yaw);
     }
@@ -617,61 +617,7 @@ class panoramaViewer extends observable {
         });
     }
 
-    /**
- * 
- * 
- * @param {vertex | [number]} from
- * @param {vertex | [number]} to
-    * @returns {number} - angle in ° between to, from, geographical north
- */
-    static getAzimuth(from, to) {
-        if (from instanceof vertex)
-            from = from.coordinates;
-        if (to instanceof vertex)
-            to = to.coordinates;
-
-        from = new LatLon(from[0], from[1]);
-        to = new LatLon(to[0], to[1]);
-
-        var bearing = from.initialBearingTo(to);
-        if (bearing > 180)
-            bearing -= 360;
-
-        return bearing;
-    }
-
-    /**
-* 
-* @param {vertex | [number]} from
-* @param {vertex | [number]} to
-   * @returns {number} - in meters
-*/
-    static getDistance(from, to) {
-        if (from instanceof vertex)
-            from = from.coordinates;
-        if (to instanceof vertex)
-            to = to.coordinates;
-
-        from = new LatLon(from[0], from[1]);
-        to = new LatLon(to[0], to[1]);
-
-        return from.distanceTo(to);
-    }
-
-    /**
-     * 
-     * @param {vertex | [number]} from
-     * @param {number} distance - in meters
-     * @param {number} bearing - angle from north measured in °
-    * @returns {[number]}
-     */
-    static getCoords(from, distance, bearing) {
-        if (from instanceof vertex)
-            from = from.coordinates;
-
-        var dest = (new LatLon(from[0], from[1])).destinationPoint(distance, bearing);
-        return [dest.lat, dest.lon];
-    }
+   
 
     /**
      * Center view in the direction the hotspot points to.
@@ -685,7 +631,7 @@ class panoramaViewer extends observable {
             throw new error(panoramaViewer.ERROR.UNSUPPORTED_VERTEX_TYPE, e.to.type, e);
 
         if (this.scene && e.from === this.scene.vertex && e.type !== edge.prototype.TEMPORAL) {
-            return this.loadScene(e.to, { yaw: panoramaViewer.getAzimuth(e.from, e.to), pitch: 0 });
+            return this.loadScene(e.to, { yaw: algorithms.getAzimuth(e.from, e.to), pitch: 0 });
         } else {
             return this.loadScene(e.to);
         }

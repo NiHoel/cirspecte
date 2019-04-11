@@ -980,9 +980,11 @@ class mapViewer extends observable {
      */
     updateCorners(b, corners) {
         if (!recursiveCompare(b.corners, corners)) {
-            this.startUpdate(b, b.CORNERS);
+            if(!b.dragging)
+                this.startUpdate(b, b.CORNERS);
             b.setCorners(corners);
-            this.endUpdate(b, b.CORNERS);
+            if(!b.dragging)
+                this.endUpdate(b, b.CORNERS);
         }
     }
 
@@ -1021,6 +1023,7 @@ class mapViewer extends observable {
                 elem.markers.forEach((m, i) => {
                     m.addEventListener('dragstart', () => {
                         this.modules.hist.commit();
+                        elem.dragging = true;
                         this.startUpdate(elem, elem.CORNERS);
                     });
                     m.addEventListener('drag', (event) => {
@@ -1032,6 +1035,7 @@ class mapViewer extends observable {
                     });
                     m.addEventListener('dragend', () => {
                         this.endUpdate(elem, elem.CORNERS);
+                        delete elem.dragging;
                     });
                 });
             }

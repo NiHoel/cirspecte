@@ -257,7 +257,7 @@ class groupEditor extends observable {
                     type = edge.prototype.ROUTE;
                 else {
                     var radius = this.prev.vertex.spatialGroup.superGroup.getColocatedRadius();
-                    var dist = panoramaViewer.getDistance(this.prev.vertex, v);
+                    var dist = algorithms.getDistance(this.prev.vertex, v);
                     if (dist < radius)
                         type = edge.prototype.TEMPORAL;
                     else

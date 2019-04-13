@@ -146,7 +146,7 @@ class navigationViewer extends observable {
         if (!this.currentVertex
             || v.spatialGroup.superGroup !== this.currentVertex.spatialGroup.superGroup
             || !v.spatialGroup.superGroup.autoConnectColocated
-            || panoramaViewer.getDistance(this.currentVertex, v) > this.currentVertex.spatialGroup.superGroup.colocatedRadius)
+            || algorithms.getDistance(this.currentVertex, v) > this.currentVertex.spatialGroup.superGroup.colocatedRadius)
             return;
 
         let centerTime = this.currentVertex.getTimeslot();

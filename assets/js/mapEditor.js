@@ -133,8 +133,10 @@ class mapEditor extends observable {
         this.currentBackground.subscribe(b => {
             if (this.prevBackground && this.backgrounds().indexOf(this.prevBackground) != -1)
                 this.modules.map.unsetEditable(this.prevBackground);
-
-            this.opacity(b.opacity);
+	
+            if(b)
+		this.opacity(b.opacity);
+	
             if (this.isShown())
                 this.modules.map.setEditable(this.currentBackground());
 
@@ -173,7 +175,7 @@ class mapEditor extends observable {
                 var b = modules.map.createBackground({
                     image: {
                         file: f,
-                        path: f.getPath()
+                        path: f.getPath(this.modules.filesys.getRoot())
                     },
                     label: f.name,
                     corners: [ // cover 1/4 of the map around the center

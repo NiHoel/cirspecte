@@ -101,6 +101,7 @@ $(document).ready(function () {
             .do(l => modules.model.deleteEdge(l.edge)),
 
         editors.groupEdit.observe(editors.groupEdit.SPATIALGROUP, editors.groupEdit.SELECT)
+	    .filter(sg => sg)
             .do(sg => modules.timeline.toggleSelection(sg.item)),
 
         Rx.Observable.fromEvent(window, 'keydown')

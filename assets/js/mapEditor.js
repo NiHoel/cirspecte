@@ -40,7 +40,7 @@ class mapEditor extends observable {
                 .filter(ev => ev.target === $('.nav-tabs a[href="#map-editor"]')[0])
                 .do(() => this.shown = true)
                 .do(() => this.modules.map.toggleMinimap(false))
-                .do(() => this.opacity(this.currentBackground()))
+                .do(() => this.opacity(this.currentBackground() ? this.currentBackground().opacity : 0.5))
                 .do(() => this.modules.map.setEditable(this.currentBackground()))
             ,
 

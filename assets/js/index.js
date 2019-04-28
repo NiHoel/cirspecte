@@ -25,9 +25,9 @@
             model: new graph(config.model),
             logger: new logger(),
             filesys: new filesystem(),
-            map: new mapViewer("map", config.map, settings),
             timeline: new timelineViewer("timeline", config.timeline, settings)
         };
+        modules.map = new mapViewer("map", config.map, settings, modules),
         modules.panorama = new panoramaViewer("panorama", modules, config.panorama);
         modules.alg = new algorithms(modules);
         modules.nav = new navigationViewer(modules);

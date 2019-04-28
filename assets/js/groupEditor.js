@@ -38,7 +38,7 @@ class groupEditor extends observable {
                 name: '', description: '', type: 'tour', superGroup: '', autoConnectColocated: true, colocatedRadius: 3, multiselect: false
             },
             spatialGroup: {
-                name: '', description: '', type: 'route', superGroup: '', path: '', timeslot: ko.observable(moment())
+                name: '', description: '', type: 'route', background: null, superGroup: '', path: '', timeslot: ko.observable(moment())
             }
         };
 
@@ -51,6 +51,7 @@ class groupEditor extends observable {
 
         this.spatialGroups = ko.observableArray();
         this.temporalGroups = ko.observableArray();
+        this.backgrounds = ko.observableArray();
         this.shown = true;
         this.gpsCoordinates = ko.observable();
 
@@ -257,7 +258,7 @@ class groupEditor extends observable {
                     type = edge.prototype.ROUTE;
                 else {
                     var radius = this.prev.vertex.spatialGroup.superGroup.getColocatedRadius();
-                    var dist = panoramaViewer.getDistance(this.prev.vertex, v);
+                    var dist = algorithms.getDistance(this.prev.vertex, v);
                     if (dist < radius)
                         type = edge.prototype.TEMPORAL;
                     else
@@ -333,7 +334,7 @@ class groupEditor extends observable {
             setTimeout(() => {
                 this.current.spatialGroup(sg);
                 this.modules.timeline.toggleSelection(sg.item, true);
-            }, 0);
+            }, 100);
         } catch (err) {
             console.log(err)
             this.modules.logger.log(err);
@@ -347,7 +348,7 @@ class groupEditor extends observable {
         this.modules.hist.commit();
         try {
             var tg = this.modules.model.createTemporalGroup(this.editable.temporalGroup());
-            setTimeout(() => { this.current.temporalGroup(tg); }, 0);
+            setTimeout(() => { this.current.temporalGroup(tg); }, 100);
 
         } catch (err) {
             console.log(err)
@@ -557,6 +558,7 @@ class groupEditor extends observable {
      * @param {spatialGroup | temporalGroup} clazz
      */
     beginCreate(clazz) {
+        this.backgrounds(this.modules.map.getBackgrounds());
         if (clazz === spatialGroup) {
             this.editable.spatialGroup(Object.assign({}, this.default.spatialGroup));
             $('#spatial-group-editor').modal();

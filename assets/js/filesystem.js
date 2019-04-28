@@ -547,7 +547,17 @@ class file {
                     return () => { fileReader.abort(); };
                 })
             })
-            .map(JSON.parse);
+            .map(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    e.fileName = this.name;
+                    e.file = this;
+                    var message = e.message.replace("JSON.parse: ", "");
+                    message = message.replace("of the JSON data", `in "${this.getPath()}"`);
+                    throw new error(this.ERROR.JSON_PARSE_EXCEPTION, message, e);
+                }
+            });
     }
 
     /**
@@ -644,6 +654,9 @@ file.prototype.JPG = "image/jpeg";
 file.prototype.PNG = "image/png";
 file.prototype.TXT = "text/plain";
 file.prototype.JSON = "application/json";
+
+file.prototype.ERROR = {};
+file.prototype.ERROR.JSON_PARSE_EXCEPTION = "Syntax Error in JSON";
 
 
 /**************************************************************************************************
@@ -1190,12 +1203,15 @@ class filesystem extends directory {
 
     /**
      * 
-     * @param {vertex} v
+     * @param {vertex | background} v
      * @param {file} f
      */
     link(v, f) {
         if (v.image.file === f) {
-            f.vertex = v;
+            if (v instanceof background)
+                v.background = f;
+            else
+                f.vertex = v;
             return;
         }
 
@@ -1205,9 +1221,18 @@ class filesystem extends directory {
 
         v.image.file = f;
         let imgConf = v.getImageConfig();
-        v.path = f.getPath(imgConf.directory);
-        delete v.image.path;
-        f.vertex = v;
+        let path = f.getPath(imgConf.directory);
+        if (v instanceof background) {
+            v.image.path = path;
+        } else {
+            v.path = path;
+            delete v.image.path;
+        }
+
+        if (v instanceof background)
+            v.background = f;
+        else
+            f.vertex = v;
 
         this.emit(v, this.LINK);
     }
@@ -1286,7 +1311,7 @@ class filesystem extends directory {
      * @returns {Rx.observable<vertex>}
      */
     prepareFileAccess(v) {
-        if (v.path == null)
+        if (v.path == null && v.image.path == null)
             throw new error(this.ERROR.INVALID_PATH, '""');
 
         var obs = Rx.Observable.of(v);
@@ -1321,7 +1346,7 @@ class filesystem extends directory {
         }
 
         var thumbConfig = v.getThumbConfig();
-        if (!thumbConfig.file) {
+        if (thumbConfig && !thumbConfig.file) {
             var thumbRoot = thumbConfig.directory || this; // do not use the same variable names as above
             var thumbPath = filesystem.concatPaths(v.path, thumbConfig.path, thumbConfig.prefix);
             obs = obs.mergeMap(() => thumbRoot.searchFile(thumbPath)

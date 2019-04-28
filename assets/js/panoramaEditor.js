@@ -36,6 +36,7 @@ class panoramaEditor extends observable {
             Rx.Observable.fromEvent($('.nav-tabs a'), 'show.bs.tab')
                 .filter(ev => ev.target === $('.nav-tabs a[href="#panorama-editor"]')[0])
                 .do(() => this.shown = true)
+                .do(() => this.modules.map.toggleMinimap(true))
                 .mergeMap(() => modules.panorama.toggleEditable(true))
                 .do(() => this.setEditable())
             ,

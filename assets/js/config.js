@@ -4,7 +4,8 @@ var config = {
             location: "GPS",
             connections: "Connections",
             savedAllTiles: "Saved all tiles",
-            removedAllTiles: "Removed all tiles"
+            removedAllTiles: "Removed all tiles",
+            backgrounds: "Backgrounds"
         },
         "options": {
             minimapControl: true,
@@ -161,6 +162,18 @@ var config = {
                 fillOpacity: 0.5,
                 radius: 1
             },
+        },
+        "background": {
+            "image": {
+                opacity: 0.5
+            },
+            "marker": {
+                color: 'blue',
+                fillColor: '#3030f0',
+                fillOpacity: 0.5,
+                radius: 2,
+                draggable: true
+            }
         }
     },
     "timeline": {

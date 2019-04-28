@@ -24,20 +24,24 @@ class algorithms {
  * Calls loadGraph(...) to create all the modal elements
  * View related settings will not be read
  * 
- * Required modules: modal, filesystem
+ * Required modules: modal, filesystem, map
  * 
  * @param {JSON} tour - Plain javascript object
-* @param {directory} rootFolder - Folder containing the file which content was passed as the first argument
+* @param {directory} rootDirectory - Folder containing the file which content was passed as the first argument
  * @returns {Rx.Observable<boolean>} - Tour modal was created without errors
  */
-    readTour(tour, rootFolder) {
+    readTour(tour, rootDirectory) {
         var successful = true;
+        for (let jsonBackground of ((tour.map || {}).backgrounds || [])) {
+            var json = $.extend(true, { image: { directory: rootDirectory } }, jsonBackground);
+            modules.map.createBackground(json);
+        }
 
         //process temporal groups before others so that parent tour files can modify their hierarchy
         for (let jsonTemporalGroup of (tour.temporalGroups || [])) {
             try {
                 var tg = this.modules.model.createTemporalGroup(Object.assign({}, jsonTemporalGroup, {
-                    directory: rootFolder,
+                    directory: rootDirectory,
                     subGroups: []
                 }));
             } catch (err) {
@@ -49,14 +53,14 @@ class algorithms {
         var other = Rx.Observable.of(successful);
         if (tour.tours != null) {
             other = Rx.Observable.from(tour.tours)
-                .mergeMap(path => rootFolder.searchFile(path))
+                .mergeMap(path => rootDirectory.searchFile(path))
                 .mergeMap(f =>
                     f.readAsJSON()
                         .mergeMap(t => this.readTour(t, f.parent))
                 );
         }
 
-        return other.map(successful => successful && this.loadGraph(tour, rootFolder));
+        return other.map(successful => successful && this.loadGraph(tour, rootDirectory));
     }
 
     /**
@@ -101,6 +105,8 @@ class algorithms {
                 })); //copy vertex properties ignoring vertices, parsing date and storing directory
 
                 sg.directory = rootDirectory;
+                if (sg.background)
+                    sg.background = this.modules.map.getBackground(sg.background)
                 var ver = jsonSpatialGroup.vertices || [];
                 ver.forEach(v => v.spatialGroup = sg);
                 vertices = vertices.concat(ver);
@@ -197,7 +203,7 @@ class algorithms {
 
                 }
 
-                let angles = hotspots.map(hs => normalize(hs.yaw - panoramaViewer.getAzimuth(coordinates, hs.edge.to)));
+                let angles = hotspots.map(hs => normalize(hs.yaw - algorithms.getAzimuth(coordinates, hs.edge.to)));
                 var northOffset = mean(angles);
                 var sum = angles.map(a => sqr(normalize(a - northOffset))).reduce((a, b) => a + b);
                 //           console.log([coordinates, angles, sum]);
@@ -214,11 +220,70 @@ class algorithms {
                 observer.error(result.message);
             else {
                 result.solution = {
-                    northOffset: mean(hotspots.map(hs => hs.yaw - panoramaViewer.getAzimuth(result.solution, hs.edge.to))),
+                    northOffset: mean(hotspots.map(hs => hs.yaw - algorithms.getAzimuth(result.solution, hs.edge.to))),
                     coordinates: result.solution
                 };
             }
 
+
+            observer.next(result);
+            observer.complete();
+
+        });
+    }
+
+    /**
+  * Given: yaw of the landmark with respect to different panoramas (computed from all landmark edges ending in v)
+  * Search space: Coordinates of v
+  * Uses coordinates to compute azimuth for each landmark hotspot
+  * Objective function: Minimize difference between yaw and azimuth.
+  * Performs gradient decent (with estimated gradients) to find the optimal solution
+  * 
+  * Required modules: panorama
+  * 
+   * @param {vertex} v
+   * @returns {Rx.Observable<JSON>} - {solution: {northOffset, coordinates}, f} where f is the standard deviation taken over all hotspots
+   */
+    static optimizeLandmark(v) {
+        return Rx.Observable.create(observer => {
+            let edges = v.outgoingEdges.map(e => e.opposite).filter(e => e.from.type === vertex.prototype.PANORAMA);
+
+            let sqr = function (x) { return x * x; };
+            let mean = function (angles) {
+                var sin = 0, cos = 0;
+                for (let a of angles) {
+                    sin += Math.sin(a / 180 * Math.PI);
+                    cos += Math.cos(a / 180 * Math.PI);
+                }
+
+                return Math.atan2(sin, cos) / Math.PI * 180;
+            };
+            let normalize = function (angle) {
+                return angle > 180 ? angle - 360 : (angle < -180 ? angle + 360 : angle);
+            };
+
+            let objective = function (coordinates) {
+                var [lat, lon] = coordinates;
+                if (lat > 90.0 || lat < -90.0 || lon > 180.0 || lon < -180.0) {
+                    //                       console.log([lat, lon]);
+                    return Number.POSITIVE_INFINITY;
+
+                }
+
+                let angles = edges.map(e => normalize(e.data.yaw - algorithms.getAzimuth(e.from, coordinates)));
+                let sum = angles.map(a => sqr(a)).reduce((a, b) => a + b);
+
+                if (!Number.isFinite(sum)) {
+                    return Number.POSITIVE_INFINITY;
+                }
+                return Math.sqrt(sum / angles.length);
+            };
+
+            let start = v.coordinates;
+            let result = numeric.uncmin(objective, start, 1e-7);
+            // console.log(result);
+            if (!result.solution)
+                observer.error(result.message);
 
             observer.next(result);
             observer.complete();
@@ -241,7 +306,7 @@ class algorithms {
             minDist = sg.superGroup.getColocatedRadius() || 0;
 
         sg.forEach(other => {
-            let distance = panoramaViewer.getDistance(coordinates, other);
+            let distance = algorithms.getDistance(coordinates, other);
             if (distance <= minDist) { //for minDist == 0
                 minDist = distance;
                 vMin = other;
@@ -407,6 +472,62 @@ class algorithms {
                 }
             })
         );
+    }
+
+    /**
+* 
+* 
+* @param {vertex | [number]} from
+* @param {vertex | [number]} to
+   * @returns {number} - angle in ° between to, from, geographical north
+*/
+    static getAzimuth(from, to) {
+        if (from instanceof vertex)
+            from = from.coordinates;
+        if (to instanceof vertex)
+            to = to.coordinates;
+
+        from = new LatLon(from[0], from[1]);
+        to = new LatLon(to[0], to[1]);
+
+        var bearing = from.initialBearingTo(to);
+        if (bearing > 180)
+            bearing -= 360;
+
+        return bearing;
+    }
+
+    /**
+* 
+* @param {vertex | [number]} from
+* @param {vertex | [number]} to
+   * @returns {number} - in meters
+*/
+    static getDistance(from, to) {
+        if (from instanceof vertex)
+            from = from.coordinates;
+        if (to instanceof vertex)
+            to = to.coordinates;
+
+        from = new LatLon(from[0], from[1]);
+        to = new LatLon(to[0], to[1]);
+
+        return from.distanceTo(to);
+    }
+
+    /**
+     * 
+     * @param {vertex | [number]} from
+     * @param {number} distance - in meters
+     * @param {number} bearing - angle from north measured in °
+    * @returns {[number]}
+     */
+    static getCoords(from, distance, bearing) {
+        if (from instanceof vertex)
+            from = from.coordinates;
+
+        var dest = (new LatLon(from[0], from[1])).destinationPoint(distance, bearing);
+        return [dest.lat, dest.lon];
     }
 
 }

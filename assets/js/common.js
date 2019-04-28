@@ -168,7 +168,11 @@ function createCommonRoutines(modules, settings) {
 
         // spatialGroup -> layer (multi)
         modules.model.observe(spatialGroup, modules.model.CREATE)
-            .do(g => modules.map.createLayerGroup(g)),
+            .do(g => {
+                if (g.background && !(g.background instanceof background))
+                    g.background = modules.map.getBackground(g.background);
+                modules.map.createLayerGroup(g)
+            }),
 
         // spatialGroup -> item
         modules.model.observe(spatialGroup, modules.model.CREATE)
@@ -212,7 +216,23 @@ function createCommonRoutines(modules, settings) {
             .do(s => modules.nav.setVertex(s.vertex))
             .do(s => modules.timeline.toggleSelection(s.vertex.spatialGroup.item, true)),
 
+        modules.map.observe(layerGroup, modules.map.SHOW)
+            .map(l => l.spatialGroup)
+            .filter(sg => sg.background)
+            .do(sg => sg.background.addSpatialGroup(sg))
+            .do(sg => modules.map.showBackground(sg.background)),
 
+        modules.map.observe(layerGroup, modules.map.HIDE)
+            .map(l => l.spatialGroup)
+            .filter(sg => sg.background)
+            .do(sg => sg.background.removeSpatialGroup(sg))
+            .filter(sg => !sg.background.hasShownSpatialGroups() && !sg.background.editable)
+            .do(sg => modules.map.hideBackground(sg.background)),
+
+        modules.model.afterUpdate(spatialGroup, spatialGroup.prototype.BACKGROUND)
+            .filter(sg => modules.timeline.isSelected(sg.item) && sg.background)
+            .do(sg => sg.background.addSpatialGroup(sg))
+            .do(sg => modules.map.showBackground(sg.background)),
 
         modules.panorama.observe(hotspot, modules.panorama.CLICK)
             .inhibitBy(modules.panorama.afterUpdate(hotspot, hotspot.prototype.POSITION))

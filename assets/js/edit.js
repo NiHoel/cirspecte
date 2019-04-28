@@ -13,9 +13,9 @@ $(document).ready(function () {
         model: new graph(),
         logger: new logger(),
         filesys: new filesystem(),
-        map: new mapViewer("map", config.map, settings),
         timeline: new timelineViewer("timeline", config.timeline, settings)
     };
+    modules.map = new mapViewer("map", config.map, settings, modules),
     modules.panorama = new panoramaViewer("panorama", modules, config.panorama);
     modules.alg = new algorithms(modules);
     modules.nav = new navigationViewer(modules);
@@ -23,6 +23,7 @@ $(document).ready(function () {
 
     editors = {
         groupEdit: new groupEditor(settings, modules),
+        mapEdit: new mapEditor(settings, modules),
         panoramaEdit: new panoramaEditor(settings, modules)
     };
 
@@ -63,7 +64,6 @@ $(document).ready(function () {
 
         // point -[coordinates]-> vertex
         modules.map.afterUpdate(point, point.prototype.COORDINATES)
-            .do(() => modules.hist.commit())
             .do(p => modules.model.updateCoordinates(p.vertex, p.getCoordinates())),
 
         modules.model.afterUpdate(vertex, vertex.prototype.DATA)
@@ -101,6 +101,7 @@ $(document).ready(function () {
             .do(l => modules.model.deleteEdge(l.edge)),
 
         editors.groupEdit.observe(editors.groupEdit.SPATIALGROUP, editors.groupEdit.SELECT)
+	    .filter(sg => sg)
             .do(sg => modules.timeline.toggleSelection(sg.item)),
 
         Rx.Observable.fromEvent(window, 'keydown')
@@ -125,7 +126,8 @@ $(document).ready(function () {
                 var json = modules.model.toJSON({ persistLandmarks: settings.persistLandmarks() });
                 json.settings = settings.toJSON();
                 if (settings.autoSaveSelectedItems())
-                    json.settings.timeline.selections = modules.timeline.getSelectionsIds(); 
+                    json.settings.timeline.selections = modules.timeline.getSelectionsIds();
+                json.map = modules.map.toJSON();
                 modules.alg.saveJSON(json);
             }),
 

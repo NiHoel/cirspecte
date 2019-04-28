@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/css/vis.min.css" type="text/css" />
     <link rel="stylesheet" href="assets/css/select2.min.css">
+    <link rel="stylesheet" href="assets/css/bootstrap-slider.min.css">
     <link rel="stylesheet" href="assets/css/jstree-default/style.css" />
     <link rel="stylesheet" href="assets/css/tempusdominus-bootstrap-3.min.css" />
 
@@ -30,6 +31,7 @@
     <script src="assets/js/lib/Leaflet.Path.drag.js"></script>
     <script src="assets/js/lib/Leaflet.offline.js"></script>
     <script src="assets/js/lib/L.Control.Layers.Tree.js"></script>
+    <script src="assets/js/lib/Leaflet.ImageOverlay.Rotated.js"></script>
     <script src="assets/js/lib/Leaflet.AccuratePosition.js"></script>
     <script src="assets/js/lib/Leaflet.GoogleMutant.js"></script>
     <script src="assets/js/lib/Bing.js"></script>
@@ -45,13 +47,15 @@
         // auto-detect language setting for date formatting
         moment.locale(window.navigator.userLanguage || window.navigator.language);
     </script>
- 
+
     <script type="text/javascript" src="assets/js/lib/bootstrap.min.js"></script>
     <script type="text/javascript" src="assets/js/lib/select2.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/bootstrap-slider.min.js"></script>
     <script type="text/javascript" src="assets/js/lib/tempusdominus-bootstrap-3.min.js"></script>
     <script type="text/javascript" src='assets/js/lib/knockout-3.4.2.js'></script>
     <script type="text/javascript" src="assets/js/lib/knockout.mapping-latest.js"></script>
     <script type="text/javascript" src="assets/js/lib/knockout.binding.dateTimePicker.js"></script>
+    <script type="text/javascript" src="assets/js/lib/bootstrap-slider-knockout-binding.js"></script>
 
     <script type="text/javascript" src="assets/js/lib/priority-queue.min.js"></script>
     <script type="text/javascript" src="assets/js/lib/Rx.min.js"></script>
@@ -79,6 +83,7 @@
     <script type="text/javascript" src="assets/js/util.js"></script>
 
     <script type="text/javascript" src="assets/js/groupEditor.js"></script>
+    <script type="text/javascript" src="assets/js/mapEditor.js"></script>
     <script type="text/javascript" src="assets/js/panoramaEditor.js"></script>
     <script type="text/javascript" src="assets/js/navigation.js"></script>
 
@@ -101,6 +106,7 @@
 
         <ul class="nav nav-tabs">
             <li class="active"><a data-toggle="tab" href="#group-editor" title="Show group editor">Groups</a></li>
+            <li><a data-toggle="tab" href="#map-editor" title="Edit base layers and backgrounds on the map">Map</a></li>
             <li><a data-toggle="tab" href="#panorama-editor" data-bind="css:{'not-active': currentVertex() == null}" title="Show panorama editor (a panorama must be loaded)">Panorama</a></li>
         </ul>
 
@@ -274,6 +280,50 @@
 
             </div>
             <!-- /#panorama-editor -->
+            <!-- #map-editor -->
+            <div id="map-editor" class="tab-pane fade">
+                <ul class="sidebar-nav">
+                    <li>
+                        <div class="form" id="background-selector">
+                            <label for="backgroundSelector" title="Adds a background image for spatial groups.">Background</label><br />
+
+                            <select type="select" class="form-control" id="backgroundSelector" data-live-search="true" data-show-subtext="true" name="backgrounds"
+                                    data-bind="options: backgrounds, optionsCaption: 'Select a background ...', optionsText: b => {return b.label;}, value: currentBackground"></select>
+                        </div>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: () => {createBackground();}">
+                            <span class="glyphicon glyphicon-plus"></span>
+                        </button>
+                        <span>
+                            Create Background
+                        </span>
+                    </li>
+                    <li>
+                        <button class="btn btn-default" data-bind="click: deleteCurrentBackground, enable: $root.currentBackground">
+                            <span class="glyphicon glyphicon-trash"></span>
+                        </button>
+                        <span>
+                            Delete Background
+                        </span>
+                    </li>
+                    <li>
+                        <div class="form" id="background-selector">
+                            <label for="opacity-slider">Opacity</label><br />
+
+                            <input id="opacity-slider" type="text" class="slider form-control" data-bind="sliderValue: {value: opacity, min:0, max: 1, step: 0.01}" />
+                        </div>
+                    </li>
+                    <li>
+                        <div class="checkbox" title="If checked, dragging the marker will only affect the associated corner&#13;&#10;If unchecked the markers have the following behavior:&#13;&#10;top left: translate image&#13;&#10;top right: rotate and scale width&#13;&#10;bottom left: rotate and scale height">
+                            <label for="map-background-edit-skew-checkbox">
+                                <input type="checkbox" value="map-background-edit-skew" id="map-background-edit-skew-checkbox" data-bind="checked:skewEditable, enable: $root.currentBackground">Edit skew
+                            </label>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <!-- /#map-editor -->
         </div>
         <!-- /.tab-content -->
     </div>
@@ -378,6 +428,13 @@
                                     </span>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="background" title="[Optional] The image displayed on the map behind the points and edges forming this spatial group">Background</label>
+                            <select class="form-control" id="background" data-live-search="true" data-show-subtext="true" name="background" placeholder="Select a background ..."
+                                    data-bind="options: $root.backgrounds, optionsCaption: 'Select a background ...', optionsText: g => {return g.label;}, value: background"></select>
+
                         </div>
 
                         <div class="control-group" style="width: 100%">

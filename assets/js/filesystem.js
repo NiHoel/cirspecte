@@ -547,7 +547,17 @@ class file {
                     return () => { fileReader.abort(); };
                 })
             })
-            .map(JSON.parse);
+            .map(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    e.fileName = this.name;
+                    e.file = this;
+                    var message = e.message.replace("JSON.parse: ", "");
+                    message = message.replace("of the JSON data", `in "${this.getPath()}"`);
+                    throw new error(this.ERROR.JSON_PARSE_EXCEPTION, message, e);
+                }
+            });
     }
 
     /**
@@ -644,6 +654,9 @@ file.prototype.JPG = "image/jpeg";
 file.prototype.PNG = "image/png";
 file.prototype.TXT = "text/plain";
 file.prototype.JSON = "application/json";
+
+file.prototype.ERROR = {};
+file.prototype.ERROR.JSON_PARSE_EXCEPTION = "Syntax Error in JSON";
 
 
 /**************************************************************************************************

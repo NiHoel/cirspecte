@@ -233,6 +233,65 @@ class algorithms {
     }
 
     /**
+  * Given: yaw of the landmark with respect to different panoramas (computed from all landmark edges ending in v)
+  * Search space: Coordinates of v
+  * Uses coordinates to compute azimuth for each landmark hotspot
+  * Objective function: Minimize difference between yaw and azimuth.
+  * Performs gradient decent (with estimated gradients) to find the optimal solution
+  * 
+  * Required modules: panorama
+  * 
+   * @param {vertex} v
+   * @returns {Rx.Observable<JSON>} - {solution: {northOffset, coordinates}, f} where f is the standard deviation taken over all hotspots
+   */
+    static optimizeLandmark(v) {
+        return Rx.Observable.create(observer => {
+            let edges = v.outgoingEdges.map(e => e.opposite).filter(e => e.from.type === vertex.prototype.PANORAMA);
+
+            let sqr = function (x) { return x * x; };
+            let mean = function (angles) {
+                var sin = 0, cos = 0;
+                for (let a of angles) {
+                    sin += Math.sin(a / 180 * Math.PI);
+                    cos += Math.cos(a / 180 * Math.PI);
+                }
+
+                return Math.atan2(sin, cos) / Math.PI * 180;
+            };
+            let normalize = function (angle) {
+                return angle > 180 ? angle - 360 : (angle < -180 ? angle + 360 : angle);
+            };
+
+            let objective = function (coordinates) {
+                var [lat, lon] = coordinates;
+                if (lat > 90.0 || lat < -90.0 || lon > 180.0 || lon < -180.0) {
+                    //                       console.log([lat, lon]);
+                    return Number.POSITIVE_INFINITY;
+
+                }
+
+                let angles = edges.map(e => normalize(e.data.yaw - algorithms.getAzimuth(e.from, coordinates)));
+                let sum = angles.map(a => sqr(a)).reduce((a, b) => a + b);
+
+                if (!Number.isFinite(sum)) {
+                    return Number.POSITIVE_INFINITY;
+                }
+                return Math.sqrt(sum / angles.length);
+            };
+
+            let start = v.coordinates;
+            let result = numeric.uncmin(objective, start, 1e-7);
+            // console.log(result);
+            if (!result.solution)
+                observer.error(result.message);
+
+            observer.next(result);
+            observer.complete();
+
+        });
+    }
+
+    /**
      * Required modules: modal
      * 
      * @param {spatialGroup} sg

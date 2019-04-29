@@ -1112,9 +1112,12 @@ class entryAccessor {
             .map(acc => acc.request(opt))
             .map(obs => obs.subscribe(next, () => { }, complete));
 
-        this.dialog.modal("show");
+        // use timeout to prevent remaining black overlay when new dialog is immediatly opened
+        // after the previous one was closed
+        setTimeout(() => this.dialog.modal("show"), 100); 
+
         return this.targetSubject.filter(e => {
-            // user wants to open that file algthough it does not match the criteria
+            // user wants to open that file although it does not match the criteria
             if (this.accessors.map(acc => acc.isForcedFile()).reduce((l, r) => l || r))
                 return true;
 

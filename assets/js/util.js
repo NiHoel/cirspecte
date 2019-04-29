@@ -270,7 +270,8 @@ class algorithms {
 
                 }
 
-                let angles = edges.map(e => normalize(e.data.yaw - algorithms.getAzimuth(e.from, coordinates)));
+                let angles = edges.filter(e => e.data.yaw != null)
+                                  .map(e => normalize(e.data.yaw - algorithms.getAzimuth(e.from, coordinates)));
                 let sum = angles.map(a => sqr(a)).reduce((a, b) => a + b);
 
                 if (!Number.isFinite(sum)) {

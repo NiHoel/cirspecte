@@ -101,8 +101,8 @@ $(document).ready(function () {
             .do(l => modules.model.deleteEdge(l.edge)),
 
         editors.groupEdit.observe(editors.groupEdit.SPATIALGROUP, editors.groupEdit.SELECT)
-	    .filter(sg => sg)
-            .do(sg => modules.timeline.toggleSelection(sg.item)),
+            .filter(sg => sg && settings.showGroupOnEditorSelection())
+            .do(sg => modules.timeline.toggleSelection(sg.item, true)),
 
         Rx.Observable.fromEvent(window, 'keydown')
             .filter(ev => ev.keyCode === 90 && ev.ctrlKey)

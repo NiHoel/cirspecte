@@ -601,11 +601,15 @@ class mapViewer extends observable {
 
     /**
      * 
-     * @param {string} label
+     * @param {string | background} label
      * @returns {background}
      */
     getBackground(label) {
-        var background = this.backgrounds.get(label);
+	if(typeof label === "string"){
+            var background = this.backgrounds.get(label);
+	} else {
+	    var background = label;
+	}
         if (background == null)
             throw new error(this.ERROR.NO_SUCH_BACKGROUND, null, label);
 

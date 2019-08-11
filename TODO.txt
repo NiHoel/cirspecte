@@ -1,3 +1,6 @@
+bugs
+	item deselected when selecting group in editor
+	floor tiles not refined
 abort panorama image loading in loader
 online capabilities of filesystem
 fix Chrome file drop bug

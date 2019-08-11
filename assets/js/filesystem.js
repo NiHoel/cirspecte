@@ -657,6 +657,7 @@ file.prototype.JSON = "application/json";
 
 file.prototype.ERROR = {};
 file.prototype.ERROR.JSON_PARSE_EXCEPTION = "Syntax Error in JSON";
+file.prototype.ERROR.READING_FILE_EXCEPTION = "Error reading file";
 
 
 /**************************************************************************************************

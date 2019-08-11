@@ -818,7 +818,10 @@ class panoramaViewer extends observable {
 
                 if (!s.base.img) {
                     s.base.file.readAsImage()
-                        .catch(this.emit)
+                        .catch(err => {
+				this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.base.file.getPath(), err));
+				return Rx.Observable.empty();
+			})
                         .subscribe(img => s.base.imgObs.next(img));
                 }
             }
@@ -831,7 +834,10 @@ class panoramaViewer extends observable {
             s.thumb.imgObs = new Rx.ReplaySubject(1, null /* unlimited time buffer */,
                 Rx.Scheduler.queue);
             s.thumb.file.readAsImage()
-                .catch(this.emit)
+                .catch(err => {
+			this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.thumb.file.getPath(), err));
+			return Rx.Observable.empty();
+		})
                 .subscribe(img => s.thumb.imgObs.next(img));
             s.thumb.imgObs.subscribe(img => s.thumb.img = img);
         } else {

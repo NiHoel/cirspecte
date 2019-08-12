@@ -205,6 +205,29 @@ function createCommonRoutines(modules, settings) {
         modules.timeline.observe(item, modules.timeline.DESELECT)
             .do(i => modules.map.hideLayerGroup(i.spatialGroup)),
 
+        // exclusive groups
+        modules.timeline.observe(item, modules.timeline.SELECT)
+            .map(i => i.spatialGroup.superGroup)
+            .mergeMap(selGroup => {
+                return Rx.Observable.of(selGroup)
+                    .expand(g => {
+                        if (!g.superGroup)
+                            return Rx.Observable.empty();
+                        return Rx.Observable.of(g.superGroup);
+                    })
+                    .filter(g => g.exclusiveTemporalSubgroups && g != selGroup)
+                    .mergeMap(g => g.toObservable())
+                    .filter(g => g instanceof temporalGroup && !selGroup.isAncestor(g));;
+            })
+            .expand(g => {
+                if (g instanceof spatialGroup)
+                    return Rx.Observable.empty();
+                return g.toObservable();
+            })
+            .filter(sg => sg instanceof spatialGroup && sg.item)
+            .observeOn(Rx.Scheduler.queue)
+            .do(sg => modules.timeline.toggleSelection(sg.item, false)),
+
         modules.panorama.observe(scene, modules.panorama.CREATE)
             .do(s => modules.map.setView(s.vertex.coordinates))
             .mergeMap(s => s.vertex.toObservable())

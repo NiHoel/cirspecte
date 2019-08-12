@@ -493,6 +493,10 @@
                             <label for="multiselect" title="If unchecked, selecting a spatial group leads to deselecting all other spatial groups that are direct children of the same temporal group.">Multiple spatial groups can be displayed at the same time</label>
                             <input data-bind="checked: multiselect" type="checkbox" id="multiselect" />
                         </div>
+                        <div class="control-group" style="width: 100%">
+                            <label for="exclusiveTemporalSubgroups" title="If checked, selecting a spatial group in one temporal subgroup will deselect all spatial groups in all other temporal subgroups.">Selection exclusiveness of temporal subgroups</label>
+                            <input data-bind="checked: exclusiveTemporalSubgroups" type="checkbox" id="exclusiveTemporalSubgroups" />
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">

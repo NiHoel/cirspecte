@@ -239,3 +239,25 @@ div.hotspot-container:hover div.preview-tooltip:after {
 .vis-item.vis-selected .vis-item-content {
     text-shadow: 2px 2px 2px #fff785;
 }
+
+/****************/
+/***  modals  ***/
+/****************/
+
+.collapser  .glyphicon {
+    display: none;
+}
+
+.collapser {
+    cursor: pointer;
+}
+
+.collapsed.collapser .glyphicon-chevron-right {
+    display: inline;
+}
+
+:not(.collapsed).collapser .glyphicon-chevron-down {
+    display: inline;
+}
+
+

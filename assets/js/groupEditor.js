@@ -35,10 +35,10 @@ class groupEditor extends observable {
 
         this.default = {
             temporalGroup: {
-                name: '', description: '', type: 'tour', superGroup: '', autoConnectColocated: true, colocatedRadius: 3, multiselect: false, exclusiveTemporalSubgroups: false
+                name: '', description: '', type: temporalGroup.prototype.TOUR, superGroup: '', autoConnectColocated: true, colocatedRadius: 3, multiselect: false, exclusiveTemporalSubgroups: false
             },
             spatialGroup: {
-                name: '', description: '', type: 'route', background: null, superGroup: '', path: '', timeslot: ko.observable(moment())
+                name: '', description: '', type: spatialGroup.prototype.ROUTE, background: null, superGroup: '', path: '', timeslot: ko.observable(moment())
             }
         };
 
@@ -54,6 +54,8 @@ class groupEditor extends observable {
         this.backgrounds = ko.observableArray();
         this.shown = true;
         this.gpsCoordinates = ko.observable();
+        this.spatialGroupTypes = [spatialGroup.prototype.ROUTE, spatialGroup.prototype.LANDMARK];
+        this.temporalGroupTypes = [temporalGroup.prototype.TOUR, temporalGroup.prototype.LANDMARK];
 
         this.scannable = ko.pureComputed(function () {
             return this.current.spatialGroup() && this.current.spatialGroup().images.directory && this.current.spatialGroup().images.directory.directoryHandle;

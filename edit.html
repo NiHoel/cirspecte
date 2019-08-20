@@ -276,6 +276,18 @@
                             </label>
                         </div>
                     </li>
+
+                    <li>
+                        <div class="form" id="landmark-group-selector-map-editor">
+                            <label for="landmarkGroupSelectorMapEditor" title="Enable the option &quot;Create point when clicking on the map&quot;&#13;Click on the map to create a landmark point. The point will be added to the following group.">Landmark Group</label><br />
+
+                            <!-- .js-example-responsive must be initialized in javascript -->
+                            <select type="select" class="form-control" id="landmarkGroupSelectorMapEditor" data-live-search="true" data-show-subtext="true" name="landmarkGroups"
+                                    data-bind="options: landmarkGroups, optionsCaption: '<Automatically choose group>', optionsText: g => {return g.superGroup.name + ': ' + g.name;}, value: landmarkGroup, disable: $root.disabled"></select>
+
+
+                        </div>
+                    </li>
                 </ul>
 
             </div>
@@ -319,6 +331,18 @@
                             <label for="map-background-edit-skew-checkbox">
                                 <input type="checkbox" value="map-background-edit-skew" id="map-background-edit-skew-checkbox" data-bind="checked:skewEditable, enable: $root.currentBackground">Edit skew
                             </label>
+                        </div>
+                    </li>
+
+                    <li>
+                        <div class="form" id="landmark-group-selector-map-editor">
+                            <label for="landmarkGroupSelectorMapEditor" title="Enable the option &quot;Create point when clicking on the map&quot;&#13;Click on the map to create a landmark point. The point will be added to the following group.">Landmark Group</label><br />
+
+                            <!-- .js-example-responsive must be initialized in javascript -->
+                            <select type="select" class="form-control" id="landmarkGroupSelectorMapEditor" data-live-search="true" data-show-subtext="true" name="landmarkGroups"
+                                    data-bind="options: landmarkGroups, optionsCaption: '<Automatically choose group>', optionsText: g => {return g.superGroup.name + ': ' + g.name;}, value: landmarkGroup, disable: $root.disabled"></select>
+
+
                         </div>
                     </li>
                 </ul>
@@ -409,15 +433,7 @@
                             <label class="control-label" for="name">Name</label>
                             <input class="form-control" data-bind="value: name" type="text" id="name" placeholder="Group name">
                         </div>
-                        <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="name" title="[Optional]">Description</label>
-                            <input class="form-control" data-bind="value: description" type="text" id="description" placeholder="Group description">
-                        </div>
-                        <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="path" title="[Optional] Specify the folder containing the images. Use slashes (/) to separate folders. Each vertex in the group will store the path to the image relative to the folder specified here. Note: You cannot specify an absolute path here. The specified path is always relative to the folder you imported in the beginning.">Path</label>
-                            <input class="form-control" data-bind="value: path" type="text" id="path" placeholder="Folder containing images">
-                        </div>
-
+                       
                         <div class="control-group" style="width: 100%">
                             <label class="control-label" for="timeslot" title="The time the panoramas were shot. This determines the position on the timeline.">Timeslot</label>
                             <div class="controls">
@@ -431,25 +447,54 @@
                         </div>
 
                         <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="background" title="[Optional] The image displayed on the map behind the points and edges forming this spatial group">Background</label>
-                            <select class="form-control" id="background" data-live-search="true" data-show-subtext="true" name="background" placeholder="Select a background ..."
-                                    data-bind="options: $root.backgrounds, optionsCaption: 'Select a background ...', optionsText: g => {return g.label;}, value: background"></select>
-
-                        </div>
-
-                        <div class="control-group" style="width: 100%">
                             <label class="control-label" for="superGroup" title="A temporal group that aggregates several spatial groups">Super group</label>
                             <select class="form-control" id="superGroup" data-live-search="true" data-show-subtext="true" name="superGroup" placeholder="Select a super group ..."
                                     data-bind="options: $root.temporalGroups, optionsCaption: 'Select a super group ...', optionsText: g => {return g.name;}, value: superGroup"></select>
 
                         </div>
 
+                    
+
+
+                    <h4 class="collapser collapsed" data-toggle="collapse" data-target="#advanced-settings-spatial-group">
+                        <small>
+                            <span class="glyphicon glyphicon-chevron-right"></span>
+                            <span class="glyphicon glyphicon-chevron-down"></span>
+                            Advanced settings
+                        </small>
+                    </h4>
+                    <div class="collapse" id="advanced-settings-spatial-group">
+                        
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="type" title="The type of group determines which type of vertices can be placed in it">Type</label>
+                            <select class="form-control" id="type" data-live-search="true" data-show-subtext="true" name="type"
+                                    data-bind="options: $root.spatialGroupTypes, optionsText: t => {return t;}, value: type"></select>
+
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="name" title="[Optional]">Description</label>
+                            <input class="form-control" data-bind="value: description" type="text" id="description" placeholder="Group description">
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="path" title="[Optional] Specify the folder containing the images. Use slashes (/) to separate folders. Each vertex in the group will store the path to the image relative to the folder specified here. Note: You cannot specify an absolute path here. The specified path is always relative to the folder you imported in the beginning.">Path</label>
+                            <input class="form-control" data-bind="value: path" type="text" id="path" placeholder="Folder containing images">
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="background" title="[Optional] The image displayed on the map behind the points and edges forming this spatial group">Background</label>
+                            <select class="form-control" id="background" data-live-search="true" data-show-subtext="true" name="background" placeholder="Select a background ..."
+                                    data-bind="options: $root.backgrounds, optionsCaption: 'Select a background ...', optionsText: g => {return g.label;}, value: background"></select>
+
+                        </div>
+                        </div>
                     </form>
                 </div>
-                <div class="modal-footer">
-                    <button data-bind="click: createSpatialGroup" class="btn btn-primary" data-dismiss="modal">Create</button>
+                    <div class="modal-footer">
+                        <button data-bind="click: createSpatialGroup" class="btn btn-primary" data-dismiss="modal">Create</button>
+                    </div>
                 </div>
-            </div>
         </div>
     </div>
     <!-- /#spatial-group-editor -->
@@ -469,15 +514,7 @@
                             <label class="control-label" for="name">Name</label>
                             <input class="form-control" data-bind="value: name" type="text" id="name" placeholder="Group name">
                         </div>
-                        <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="name" title="[Optional]">Description</label>
-                            <input class="form-control" data-bind="value: description" type="text" id="description" placeholder="Group description">
-                        </div>
-                        <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="superGroup" title="[Optional] The new group will be a child of the selected one.">Super group</label>
-                            <select class="form-control" id="superGroup" data-live-search="true" data-show-subtext="true" name="superGroup" placeholder="Select a super group ..."
-                                    data-bind="options: $root.temporalGroups, optionsCaption: 'Select a super group ...', optionsText: g => {return g.name;}, value: superGroup"></select>
-                        </div>
+                        
                         <div class="control-group" style="width: 100%">
                             <div class="controls">
                                 <label for="autoConnectColocate" title="Enables tolerance regarding the position of panoramas. If two panorams are not more than radius apart they are treated as shot at the same location. Then switching between them by using the timeline is possible.">Auto-connect colocated vertices among spatial groups</label>
@@ -493,9 +530,39 @@
                             <label for="multiselect" title="If unchecked, selecting a spatial group leads to deselecting all other spatial groups that are direct children of the same temporal group.">Multiple spatial groups can be displayed at the same time</label>
                             <input data-bind="checked: multiselect" type="checkbox" id="multiselect" />
                         </div>
-                        <div class="control-group" style="width: 100%">
-                            <label for="exclusiveTemporalSubgroups" title="If checked, selecting a spatial group in one temporal subgroup will deselect all spatial groups in all other temporal subgroups.">Selection exclusiveness of temporal subgroups</label>
-                            <input data-bind="checked: exclusiveTemporalSubgroups" type="checkbox" id="exclusiveTemporalSubgroups" />
+                        
+
+                        <h4 class="collapser collapsed" data-toggle="collapse" data-target="#advanced-settings-temporal-group">
+                            <small>
+                                <span class="glyphicon glyphicon-chevron-right"></span>
+                                <span class="glyphicon glyphicon-chevron-down"></span>
+                                Advanced settings
+                            </small>
+                        </h4>
+
+                        <div class="collapse" id="advanced-settings-temporal-group">
+                            <div class="control-group" style="width: 100%">
+                                <label class="control-label" for="type" title="The type of group determines how the selection of subgroups is handled">Type</label>
+                                <select class="form-control" id="type" data-live-search="true" data-show-subtext="true" name="type"
+                                        data-bind="options: $root.temporalGroupTypes, optionsText: t => {return t;}, value: type"></select>
+
+                            </div>
+
+                            <div class="control-group" style="width: 100%">
+                                <label class="control-label" for="name" title="[Optional]">Description</label>
+                                <input class="form-control" data-bind="value: description" type="text" id="description" placeholder="Group description">
+                            </div>
+
+                            <div class="control-group" style="width: 100%">
+                                <label class="control-label" for="superGroup" title="[Optional] The new group will be a child of the selected one.">Super group</label>
+                                <select class="form-control" id="superGroup" data-live-search="true" data-show-subtext="true" name="superGroup" placeholder="Select a super group ..."
+                                        data-bind="options: $root.temporalGroups, optionsCaption: 'Select a super group ...', optionsText: g => {return g.name;}, value: superGroup"></select>
+                            </div>
+
+                            <div class="control-group" style="width: 100%">
+                                <label for="exclusiveTemporalSubgroups" title="If checked, selecting a spatial group in one temporal subgroup will deselect all spatial groups in all other temporal subgroups.">Selection exclusiveness of temporal subgroups</label>
+                                <input data-bind="checked: exclusiveTemporalSubgroups" type="checkbox" id="exclusiveTemporalSubgroups" />
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -672,8 +739,8 @@
                             </div>
                             <div class="checkbox">
                                 <label class="control-label" for="create-placeholders-checkbox">
-                                    <input type="checkbox" data-bind="checked: createPlaceholders" id="create-placeholders-checkbox">
-                                    Create placeholders when clicking on the map
+                                    <input type="checkbox" data-bind="checked: createVertexOnMapClick" id="create-placeholders-checkbox">
+                                    Create point when clicking on the map (type depends on editor opened in the left panel)
                                 </label>
                             </div>
                             <div class="checkbox">
@@ -1139,6 +1206,9 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                     </ul>
                     <p>Automatically derive those values:</p>
                     <ol>
+                        <li>Open the settings dialog (cogwheel left on the topbar).</li>
+                        <li>On the pop-up: Tick "Create point when clicking on map"</li>
+                        <li>Close the pop-up.</li>
                         <li>On the map: Click on one landmark that you can also see on the panorama (i.e. top of the roof, tree).</li>
                         <li>On the panorama: Drag the green hotspot onto the landmark (only the positioning along the horizontal axis matters).</li>
                         <li>Do the procedure for 4 more landmarks (the more precise you can position them on the map and on the panorama, the better).</li>
@@ -1162,14 +1232,14 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                     <!-- Temporal Groups -->
                     <h4 id="help-dialog-temporal-groups">Temporal Groups</h4>
                     <p>A temporal groups consists of several spatial groups. The temporal groups makes the navigation in time possible. If two panoramas are taken at the same location but at different times, they end up in different spatial groups. The temporal group searches all containing spatial groups and forms a connection between those two panoramas. The result is one can switch between them using the topbar navigation.</p>
-                    <p>A temporal group only requires a name. All the other values are optional. The description will be used as a tooltip. The super group exist that one can build a hierarchy of tours. The connections for navigating in time cannot be created manually. Instead the temporal group automatically takes care of it. One can disable it by unchecking the &quot;auto-connect&quot; option when creating a group. The radius determines up to which distance two panoramas are considered to be at the same location.</p>
+                    <p>A temporal group only requires a name and a type. The type determines the subgroups that can be added to the group. All the other values are optional. The description will be used as a tooltip. The super group dropdown exists that one can build a hierarchy of tours. The connections for navigating in time cannot be created manually. Instead the temporal group automatically takes care of it. One can disable it by unchecking the &quot;auto-connect&quot; option when creating a group. The radius determines up to which distance two panoramas are considered to be at the same location.</p>
                     <p>&quot;Add Panoramas&quot; will automatically create a spatial group derived from timestamp of the specified image. Create a spatial group manually to exploit all customization options.</p>
                     <p>There is no possibility to directly modify groups. The workaround is to create a new one and copy the spatial groups, see <a href="#help-dialog-spatial-groups">Spatial Groups</a>.</p>
 
                     <!-- Spatial Groups -->
                     <h4 id="help-dialog-spatial-groups">Spatial Groups</h4>
                     <p>A spatial group consists of several panoramas. All of them are shot roughly at the same time. The purpose is to have a common timeslot and name that can be displayed on the timeline.</p>
-                    <p>A spatial group requires a name, a timeslot and a super group. Path and description are optional. The description will be used as a tooltip. The path is used to specify a parent folder so that the path saved for the vertices only contains the filename.</p>
+                    <p>A spatial group requires a name, a timeslot, a super group and a type. The type determines the type of vertices that can be added to the group. Path and description are optional. The description will be used as a tooltip. The path is used to specify a parent folder so that the path saved for the vertices only contains the filename.</p>
                     <p>There is no possibility to directly modify groups. The workaround is to create a new one and copy the vertices. To do so, do the following:</p>
                     <ol>
                         <li>On the sidebar: Click &quot;Create Group&quot; under the Spatial Group section.</li>

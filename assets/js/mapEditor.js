@@ -29,7 +29,10 @@ class mapEditor extends observable {
 
         ko.applyBindings(this, $('#map-editor')[0]);
 
-        this.landmarkGroup.subscribe(g => this.modules.timeline.toggleSelection(g.item, true));
+        this.landmarkGroup.subscribe(g => {
+            if (g)
+                this.modules.timeline.toggleSelection(g.item, true)
+        });
 
         this.initialize();
     }

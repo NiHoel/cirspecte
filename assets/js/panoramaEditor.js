@@ -26,7 +26,10 @@ class panoramaEditor extends observable {
         ko.applyBindings(this, $('#panorama-editor')[0]);
         ko.applyBindings(this, $('.nav-tabs a[href="#panorama-editor"]')[0]);
 
-        this.landmarkGroup.subscribe(g => this.modules.timeline.toggleSelection(g.item, true));
+        this.landmarkGroup.subscribe(g => {
+            if (g)
+                this.modules.timeline.toggleSelection(g.item, true)
+        });
 
         this.initialize();
     }
@@ -71,12 +74,13 @@ class panoramaEditor extends observable {
                 .do(g => this.spatialGroups.remove(g)),
 
             modules.map.observe(modules.map.COORDINATES, modules.map.CLICK)
-                .filter(() => this.isShown())
+                .filter(() => this.isShown() && modules.panorama.getScene() != null)
                 .inhibitBy(modules.map.observe(point, modules.map.CLICK), 100)
                 .inhibitBy(modules.map.observe(line, modules.map.CLICK), 100)
                 .filter(() => this.settings.createVertexOnMapClick())
                 .do(() => modules.hist.commit())
-                .map(c => modules.model.createVertex({ coordinates: c, type: vertex.prototype.LANDMARK, spatialGroup: this.landmarkGroup() })),
+                .map(c => modules.model.createVertex({ coordinates: c, type: vertex.prototype.LANDMARK, spatialGroup: this.landmarkGroup() }))
+                .do(v => modules.model.createEdge({ from: modules.panorama.getVertex(), to: v, bidirectional: true })),
 
             // edge[TEMP] -> hotspot[PREVIEW]
             modules.model.observe(edge, modules.model.CREATE)
@@ -123,14 +127,6 @@ class panoramaEditor extends observable {
                 .map(e => e.vertex)
                 .filter(v => modules.panorama.getVertex() !== v)
                 .do(v => modules.model.createEdge({ from: modules.panorama.getVertex(), to: v, bidirectional: true, type: edge.prototype.TEMP })),
-
-            modules.map.observe(modules.map.COORDINATES, modules.map.CLICK)
-                .inhibitBy(modules.map.observe(point, modules.map.CLICK), 100)
-                .inhibitBy(modules.map.observe(line, modules.map.CLICK), 100)
-                .filter(() => this.isShown() && modules.panorama.getScene() != null)
-                .do(() => modules.hist.commit())
-                .map(c => modules.model.createVertex({ coordinates: c, type: vertex.prototype.LANDMARK }))
-                .do(v => modules.model.createEdge({ from: modules.panorama.getVertex(), to: v, bidirectional: true })),
 
             modules.timeline.observe(item, modules.timeline.CREATE)
                 .do(i => {

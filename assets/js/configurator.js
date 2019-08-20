@@ -47,7 +47,7 @@ class configurator {
         this.fullscreen = ko.observable(false);
         this.persistLandmarks = ko.observable(false);
         this.copySceneAttributes = ko.observable(false);
-        this.createPlaceholders = ko.observable(false);
+        this.createVertexOnMapClick = ko.observable(false);
         this.autoDisplayPanorama = ko.observable(false);
         this.autoSaveSelectedItems = ko.observable(false);
         this.showGroupOnEditorSelection = ko.observable(false);

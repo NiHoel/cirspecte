@@ -187,7 +187,7 @@ class groupEditor extends observable {
                 .filter(() => this.isShown())
                 .inhibitBy(modules.map.observe(point, modules.map.CLICK), 100)
                 .inhibitBy(modules.map.observe(line, modules.map.CLICK), 100)
-                .filter(() => this.settings.createPlaceholders())
+                .filter(() => this.settings.createVertexOnMapClick())
                 .filter(() => this.current.spatialGroup() != null)
                 .do(() => modules.hist.commit())
                 .map(c => modules.model.createVertex({ coordinates: c, type: vertex.prototype.PLACEHOLDER, spatialGroup: this.current.spatialGroup() }))

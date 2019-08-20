@@ -18,10 +18,15 @@ class panoramaEditor extends observable {
         this.currentVertex = ko.observable();
         this.vOffsetEditable = ko.observable(false);
 
+        this.landmarkGroups = ko.observableArray();
+        this.landmarkGroup = ko.observable();
+
         this.shown = false;
 
         ko.applyBindings(this, $('#panorama-editor')[0]);
         ko.applyBindings(this, $('.nav-tabs a[href="#panorama-editor"]')[0]);
+
+        this.landmarkGroup.subscribe(g => this.modules.timeline.toggleSelection(g.item, true));
 
         this.initialize();
     }
@@ -57,6 +62,21 @@ class panoramaEditor extends observable {
             modules.panorama.observe(scene, modules.panorama.DELETE)
                 .filter(() => this.isShown())
                 .do(s => this.unsetEditable(s.vertex)),
+
+            modules.model.observe(spatialGroup, modules.model.CREATE)
+                .filter(g => g.type == spatialGroup.prototype.LANDMARK)
+                .do(g => this.landmarkGroups.push(g)),
+
+            modules.model.observe(spatialGroup, modules.model.DELETE)
+                .do(g => this.spatialGroups.remove(g)),
+
+            modules.map.observe(modules.map.COORDINATES, modules.map.CLICK)
+                .filter(() => this.isShown())
+                .inhibitBy(modules.map.observe(point, modules.map.CLICK), 100)
+                .inhibitBy(modules.map.observe(line, modules.map.CLICK), 100)
+                .filter(() => this.settings.createVertexOnMapClick())
+                .do(() => modules.hist.commit())
+                .map(c => modules.model.createVertex({ coordinates: c, type: vertex.prototype.LANDMARK, spatialGroup: this.landmarkGroup() })),
 
             // edge[TEMP] -> hotspot[PREVIEW]
             modules.model.observe(edge, modules.model.CREATE)

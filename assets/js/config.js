@@ -251,7 +251,7 @@ var config = {
 
         persistLandmarks : false,
         copySceneAttributes : false,
-        createPlaceholders : false,
+        createVertexOnMapClick : false,
         autoDisplayPanorama : true,
         autoSaveSelectedItems : true,
         showGroupOnEditorSelection : true

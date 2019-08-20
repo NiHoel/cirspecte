@@ -22,9 +22,14 @@ class mapEditor extends observable {
         this.corners; // store corners of selected background when dragging
         this.skewEditable = ko.observable(false);
 
+        this.landmarkGroups = ko.observableArray();
+        this.landmarkGroup = ko.observable();
+
         this.shown = false;
 
         ko.applyBindings(this, $('#map-editor')[0]);
+
+        this.landmarkGroup.subscribe(g => this.modules.timeline.toggleSelection(g.item, true));
 
         this.initialize();
     }
@@ -56,6 +61,13 @@ class mapEditor extends observable {
             modules.map.observe(background, modules.map.DELETE)
                 .do(b => this.backgrounds.remove(b)),
 
+            modules.model.observe(spatialGroup, modules.model.CREATE)
+                .filter(g => g.type == spatialGroup.prototype.LANDMARK)
+                .do(g => this.landmarkGroups.push(g)),
+
+            modules.model.observe(spatialGroup, modules.model.DELETE)
+                .do(g => this.spatialGroups.remove(g)),
+
             modules.map.observe(point, modules.map.CLICK)
                 .filter(() => this.isShown() && modules.panorama.getScene() != null)
                 .do(() => modules.hist.commit())
@@ -68,6 +80,14 @@ class mapEditor extends observable {
                     if (this.isShown())
                         modules.timeline.toggleSelection(i, true);
                 }),
+            
+            modules.map.observe(modules.map.COORDINATES, modules.map.CLICK)
+                .filter(() => this.isShown())
+                .inhibitBy(modules.map.observe(point, modules.map.CLICK), 100)
+                .inhibitBy(modules.map.observe(line, modules.map.CLICK), 100)
+                .filter(() => this.settings.createVertexOnMapClick())
+                .do(() => modules.hist.commit())
+                .map(c => modules.model.createVertex({ coordinates: c, type: vertex.prototype.LANDMARK, spatialGroup: this.landmarkGroup() })),
 
             modules.map.afterUpdate(background, background.prototype.OPACITY)
                 .filter(b => this.currentBackground() === b)

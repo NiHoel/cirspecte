@@ -28,8 +28,8 @@ $(document).ready(function () {
     };
 
     // for debugging
-    Object.assign(window, modules);
-    Object.assign(window, editors);
+ //   Object.assign(window, modules); // name collision with timeline-plus
+ //   Object.assign(window, editors);
 
 
 

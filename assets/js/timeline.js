@@ -65,6 +65,7 @@ class group {
         this.title = g.title || g.description;
         this.content = g.content || g.name;
         this.nestedGroups = g.nestedGroups;
+        this.treeLevel = g.treeLevel || g.getDepth() + 1;
 
         if (g.superGroup) {
             let supergr = g.superGroup.group;
@@ -147,7 +148,7 @@ class timelineViewer extends observable {
         this.config = config;
 
         // Create a Timeline
-        this.timeline = new vis.Timeline(this.domElement, [], Array.from(this.groups.values()), this.config);
+        this.timeline = new timeline.Timeline(this.domElement, [], Array.from(this.groups.values()), this.config);
 
 
 
@@ -410,11 +411,11 @@ class timelineViewer extends observable {
     }
 
     refreshItems() {
-        this.timeline.setItems(new vis.DataSet(Array.from(this.items.values())));
+        this.timeline.setItems(new timeline.DataSet(Array.from(this.items.values())));
     }
 
     refreshGroups() {
-        this.timeline.setGroups(new vis.DataSet(Array.from(this.groups.values())));
+        this.timeline.setGroups(new timeline.DataSet(Array.from(this.groups.values())));
     }
 
     /**

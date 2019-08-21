@@ -196,47 +196,47 @@ div.hotspot-container:hover div.preview-tooltip:after {
 /*** timeline ***/
 /****************/
 
-.vis-grid {
+.timeline-grid {
     border-color: dimgray;
 }
 
-.vis-labelset .vis-label {
+.timeline-labelset .timeline-label {
     color: white;
 }
 
-.vis-time-axis .vis-text {
+.timeline-time-axis .timeline-text {
     color: white;
 }
 
-.vis-item-content {
+.timeline-item-content {
     color: white;
 }
 
-.vis-item.vis-selected, .vis-item.vis-point.vis-selected, .vis-nested-group {
+.timeline-item.timeline-selected, .timeline-item.timeline-point.timeline-selected, .timeline-nested-group {
     border-color: unset;
     background-color: unset;
 }
 
-.vis-item.vis-point.vis-selected {
+.timeline-item.timeline-point.timeline-selected {
     border-color: unset;
     background-color: unset;
 }
 
-.vis-item.vis-dot {
+.timeline-item.timeline-dot {
     border-width: 8px;
     border-radius: 8px;
 }
  
-.vis-item.vis-dot.vis-selected {
+.timeline-item.timeline-dot.timeline-selected {
     border-color: #235dff;
     background-color: #2386ff;
 }
 
-.vis-item.vis-selected .vis-dot {
+.timeline-item.timeline-selected .timeline-dot {
     box-shadow: 0px 0px 8px 3px #fff785;
 }
 
-.vis-item.vis-selected .vis-item-content {
+.timeline-item.timeline-selected .timeline-item-content {
     text-shadow: 2px 2px 2px #fff785;
 }
 

@@ -339,7 +339,17 @@ class temporalGroup {
             return this.colocatedRadius;
         if (this.superGroup == null)
             return 0;
-        return superGroup.getColocatedRadius();
+        return this.superGroup.getColocatedRadius();
+    }
+
+    /**
+     * 
+     * @param {Number} Number of ancestors
+     */
+    getDepth() {
+        if (this.superGroup == null)
+            return 0;
+        return this.superGroup.getDepth() + 1;
     }
 
     /**

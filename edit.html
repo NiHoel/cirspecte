@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="assets/css/L.Control.Layers.Tree.css" />
     <link rel="stylesheet" href="assets/css/Leaflet.control.minimap.css" />
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="assets/css/vis.min.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/timeline.css" />
     <link rel="stylesheet" href="assets/css/select2.min.css">
     <link rel="stylesheet" href="assets/css/bootstrap-slider.min.css">
     <link rel="stylesheet" href="assets/css/jstree-default/style.css" />
@@ -69,7 +69,7 @@
     <script type="text/javascript" src="assets/js/lib/geodesy/latlon-ellipsoidal.js"></script>
     <script type="text/javascript" src="assets/js/lib/geodesy/latlon-vincenty.js"></script>
 
-    <script type="text/javascript" src="assets/js/lib/vis.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/timeline.js"></script>
     <script type="text/javascript" src="assets/js/lib/jstree.js"></script>
 
     <script type="text/javascript" src="assets/js/config.js"></script>
@@ -464,12 +464,17 @@
                         </small>
                     </h4>
                     <div class="collapse" id="advanced-settings-spatial-group">
-                        
+
                         <div class="control-group" style="width: 100%">
                             <label class="control-label" for="type" title="The type of group determines which type of vertices can be placed in it">Type</label>
                             <select class="form-control" id="type" data-live-search="true" data-show-subtext="true" name="type"
                                     data-bind="options: $root.spatialGroupTypes, optionsText: t => {return t;}, value: type"></select>
 
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="name" title="Unique identifier used to reference this group">Identifier</label>
+                            <input class="form-control" data-bind="value: id" type="text" id="id" placeholder="<Automatically generate>">
                         </div>
 
                         <div class="control-group" style="width: 100%">
@@ -488,7 +493,7 @@
                                     data-bind="options: $root.backgrounds, optionsCaption: 'Select a background ...', optionsText: g => {return g.label;}, value: background"></select>
 
                         </div>
-                        </div>
+                    </div>
                     </form>
                 </div>
                     <div class="modal-footer">
@@ -546,6 +551,11 @@
                                 <select class="form-control" id="type" data-live-search="true" data-show-subtext="true" name="type"
                                         data-bind="options: $root.temporalGroupTypes, optionsText: t => {return t;}, value: type"></select>
 
+                            </div>
+
+                            <div class="control-group" style="width: 100%">
+                                <label class="control-label" for="name" title="Unique identifier used to reference this group">Identifier</label>
+                                <input class="form-control" data-bind="value: id" type="text" id="id" placeholder="<Automatically generate>">
                             </div>
 
                             <div class="control-group" style="width: 100%">

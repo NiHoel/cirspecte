@@ -35,10 +35,10 @@ class groupEditor extends observable {
 
         this.default = {
             temporalGroup: {
-                name: '', description: '', type: temporalGroup.prototype.TOUR, superGroup: '', autoConnectColocated: true, colocatedRadius: 3, multiselect: false, exclusiveTemporalSubgroups: false
+                id: '', name: '', description: '', type: temporalGroup.prototype.TOUR, superGroup: '', autoConnectColocated: true, colocatedRadius: 3, multiselect: false, exclusiveTemporalSubgroups: false
             },
             spatialGroup: {
-                name: '', description: '', type: spatialGroup.prototype.ROUTE, background: null, superGroup: '', path: '', timeslot: ko.observable(moment())
+                id: '', name: '', description: '', type: spatialGroup.prototype.ROUTE, background: null, superGroup: '', path: '', timeslot: ko.observable(moment())
             }
         };
 

@@ -212,6 +212,11 @@ div.hotspot-container:hover div.preview-tooltip:after {
     color: white;
 }
 
+.timeline-item.timeline-range {
+    background-color: #2E3A5E;
+    border-color: #2E3A5E;
+}
+
 .timeline-item.timeline-selected, .timeline-item.timeline-point.timeline-selected, .timeline-nested-group {
     border-color: unset;
     background-color: unset;

@@ -6,7 +6,7 @@
  * items and groups.
  * 
  * Implementation details:
- * Interface to vis.
+ * Interface to timeline.
  * Selected items need to be tracked internally 
  * since clicking on the timeline normally deselects all
  * */
@@ -41,6 +41,38 @@ class item {
     }
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    Class: rangeItem
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Visual representation of a collection of spatialGroups on the timeline.
+ * */
+class rangeItem {
+    get [Symbol.toStringTag]() {
+        return 'Timeline Range Item';
+    }
+
+    /**
+     * 
+     * @param {[item]} items
+     */
+    constructor(items) {
+        this.items = items;// = items.sort((a, b) => b.start - a.end);
+        let lastItem = items[items.length - 1];
+        this.group = items[0].group;
+        this.id = items[0].id + "-" + lastItem.id;
+        let text = items[0].content + " - " + lastItem.content;
+        this.title = text;
+        this.content = text;
+        this.start = items[0].start;
+        this.end = lastItem.start;
+        this.type = "range"
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -162,15 +194,18 @@ class timelineViewer extends observable {
             //    this.emit( it, this.SELECT);
             //}
             //this.refreshItems();
-            this.toggleSelection(this.getItem(i));
-            this.emit(this.getItem(i), this.CLICK);
+            let item = this.getItem(i);
+            if (item) {
+                this.toggleSelection(item);
+                this.emit(item, this.CLICK);
+            }
         }));
 
         this.timeline.on('click', prop => {
             if(prop.group){
                 this.emit(this.getGroup(prop.group), this.CLICK);
             }
-            this.timeline.setSelection(Array.from(this.selections.keys()));
+            this.refreshSelections();
         })
 
         //Emit changes of the height to update the document layout
@@ -185,6 +220,10 @@ class timelineViewer extends observable {
         }
         this.timeline.on('changed', heightChangeCheck);
         this.timeline.on('currentTimeTick', heightChangeCheck);
+
+        this.timeline.on('rangechanged', () => this.refreshItems());
+        this.timeline.on('timechanged', () => this.refreshItems());
+        this.timeline.on('currentTimeTick', () => this.refreshItems());
 
         /*        // Update range items 
                 this.duration = this.getEnd() - this.getStart();
@@ -411,7 +450,67 @@ class timelineViewer extends observable {
     }
 
     refreshItems() {
-        this.timeline.setItems(new timeline.DataSet(Array.from(this.items.values())));
+
+        let window = modules.timeline.timeline.getWindow();
+        let millisecondsPerPixel = this.timeline.range.millisecondsPerPixelCache
+            || (window.end - window.start) / $(this.timeline.body.dom.backgroundVertical).width();
+        let itemWidth = 140;
+        let criticalDuration = millisecondsPerPixel * itemWidth / 2;
+
+        
+        let start = new Date(window.start - (itemWidth * millisecondsPerPixel));
+        let end = window.end;
+
+        var visibleItems = new Set();
+        var items = [];
+
+        for (var item of this.items.values()) {
+            if(item && start <= item.start && item.start <= end)
+                visibleItems.add(item);
+        }
+
+
+
+        for (var group of this.groups.values()) {
+            var groupItems = [];
+            group.temporalGroup.forEach(g => {
+                var i = this.getItem(g.id);
+                if (i && visibleItems.has(i))
+                    groupItems.push(i);
+            });
+
+
+            groupItems.sort((a, b) => a.start - b.start);
+
+            var itemArray = [];
+            var latestStart = null;
+            for (var i of groupItems) {
+                if (latestStart) {
+                    if (i.start - latestStart < criticalDuration) {
+                        itemArray.push(i);
+                    } else {
+                        if (itemArray.length > 1) {
+                            items.push(new rangeItem(itemArray));
+                            itemArray = [i];
+                        } else {
+                            items.push(itemArray[0]);
+                            itemArray[0] = i;
+                        }
+
+                    }
+                } else {
+                    itemArray[0] = i;
+                }
+                latestStart = i.start;
+            }
+
+            if (itemArray.length > 1)
+                items.push(new rangeItem(itemArray));
+            else if (itemArray.length)
+                items.push(itemArray[0]);
+        }
+
+        this.timeline.setItems(new timeline.DataSet(items));
     }
 
     refreshGroups() {

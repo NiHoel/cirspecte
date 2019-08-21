@@ -569,9 +569,10 @@
                                         data-bind="options: $root.temporalGroups, optionsCaption: 'Select a super group ...', optionsText: g => {return g.name;}, value: superGroup"></select>
                             </div>
 
-                            <div class="control-group" style="width: 100%">
-                                <label for="exclusiveTemporalSubgroups" title="If checked, selecting a spatial group in one temporal subgroup will deselect all spatial groups in all other temporal subgroups.">Selection exclusiveness of temporal subgroups</label>
-                                <input data-bind="checked: exclusiveTemporalSubgroups" type="checkbox" id="exclusiveTemporalSubgroups" />
+                            <div class="custom-control custom-checkbox" style="width: 100%">
+                                <input class="custom-control-input" data-bind="checked: exclusiveTemporalSubgroups" type="checkbox" id="exclusiveTemporalSubgroups" />
+                                <label class="custom-control-label" for="exclusiveTemporalSubgroups" title="If checked, selecting a spatial group in one temporal subgroup will deselect all spatial groups in all other temporal subgroups.">Selection exclusiveness of temporal subgroups</label>
+
                             </div>
                         </div>
                     </form>

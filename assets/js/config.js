@@ -249,6 +249,7 @@ var config = {
             }
         },
 
+        aggregateItems: true,
         persistLandmarks : false,
         copySceneAttributes : false,
         createVertexOnMapClick : false,

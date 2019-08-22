@@ -45,6 +45,7 @@ class configurator {
 
         this.hideMap = ko.observable(false);
         this.fullscreen = ko.observable(false);
+        this.aggregateItems = ko.observable(false);
         this.persistLandmarks = ko.observable(false);
         this.copySceneAttributes = ko.observable(false);
         this.createVertexOnMapClick = ko.observable(false);

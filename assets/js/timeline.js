@@ -160,6 +160,9 @@ class timelineViewer extends observable {
 
         this.items = new Map();
         this.groups = new Map();
+        this.start = new Date();
+        this.end = new Date();
+        this.width = 0; 
 
         this.selections = new Map();
 
@@ -236,6 +239,9 @@ class timelineViewer extends observable {
         */
 
         // Listen when values in configurator change
+        settings.aggregateItems.subscribe(val => {
+            this.refreshItems(true);
+        })
         settings.timeline.start.subscribe(val => {
             if (val)
                 this.timeline.setOptions({ start: val });
@@ -348,7 +354,7 @@ class timelineViewer extends observable {
         if (g.item.group !== g.superGroup.id) {
             g.item.group = g.superGroup.id;
             this.timeline.setItems(Array.from(this.items.values()));
-            this.refreshItems();
+            this.refreshItems(true);
             //           this.emit( g.item, this.GROUPUPDATE);
         }
 
@@ -440,7 +446,7 @@ class timelineViewer extends observable {
             this.toggleSelection(g.item, false);
             var it = g.item;
             delete g.item;
-            this.refreshItems();
+            this.refreshItems(true);
             this.emit(it, this.DELETE);
         }
     }
@@ -449,68 +455,86 @@ class timelineViewer extends observable {
         this.timeline.setSelection(Array.from(this.selections.keys()));
     }
 
-    refreshItems() {
-
-        let window = modules.timeline.timeline.getWindow();
+    refreshItems(force = false) {
+        
+        let width = $(this.timeline.body.dom.backgroundVertical).width();
+        let window = this.timeline.getWindow();
         let millisecondsPerPixel = this.timeline.range.millisecondsPerPixelCache
-            || (window.end - window.start) / $(this.timeline.body.dom.backgroundVertical).width();
-        let itemWidth = 140;
+            || (window.end - window.start) / width;
+        let itemWidth = 160;
         let criticalDuration = millisecondsPerPixel * itemWidth / 2;
-
         
         let start = new Date(window.start - (itemWidth * millisecondsPerPixel));
         let end = window.end;
 
-        var visibleItems = new Set();
-        var items = [];
+        if (!force && width == this.width
+            && moment(start).isSame(moment(this.start))
+            && moment(end).isSame(moment(this.end)))
+            return;
 
-        for (var item of this.items.values()) {
-            if(item && start <= item.start && item.start <= end)
-                visibleItems.add(item);
-        }
+        this.width = width;
+        this.start = start;
+        this.end = end;
 
+        if (this.settings.aggregateItems()) {
+            var visibleItems = new Set();
+            var items = [];
 
-
-        for (var group of this.groups.values()) {
-            var groupItems = [];
-            group.temporalGroup.forEach(g => {
-                var i = this.getItem(g.id);
-                if (i && visibleItems.has(i))
-                    groupItems.push(i);
-            });
-
-
-            groupItems.sort((a, b) => a.start - b.start);
-
-            var itemArray = [];
-            var latestStart = null;
-            for (var i of groupItems) {
-                if (latestStart) {
-                    if (i.start - latestStart < criticalDuration) {
-                        itemArray.push(i);
-                    } else {
-                        if (itemArray.length > 1) {
-                            items.push(new rangeItem(itemArray));
-                            itemArray = [i];
-                        } else {
-                            items.push(itemArray[0]);
-                            itemArray[0] = i;
-                        }
-
-                    }
-                } else {
-                    itemArray[0] = i;
-                }
-                latestStart = i.start;
+            for (var item of this.items.values()) {
+                if (item && start <= item.start && item.start <= end)
+                    visibleItems.add(item);
             }
 
-            if (itemArray.length > 1)
-                items.push(new rangeItem(itemArray));
-            else if (itemArray.length)
-                items.push(itemArray[0]);
-        }
+            var processArray = (itemArray) => {
+                if (itemArray.length == 0) {
+                    return;
+                } else if (itemArray.length == 1) {
+                    items.push(itemArray[0]);
 
-        this.timeline.setItems(new timeline.DataSet(items));
+                } else if (itemArray.length == 2) {
+                    items.push(itemArray[0]);
+                    items.push(itemArray[1]);
+                } else {
+                    items.push(new rangeItem(itemArray));
+
+                }
+            }
+
+            for (var group of this.groups.values()) {
+                var groupItems = [];
+                group.temporalGroup.forEach(g => {
+                    var i = this.getItem(g.id);
+                    if (i && visibleItems.has(i))
+                        groupItems.push(i);
+                });
+
+
+                groupItems.sort((a, b) => a.start - b.start);
+
+                var itemArray = [];
+                var latestStart = null;
+                for (var i of groupItems) {
+                    if (latestStart) {
+                        if (i.start - latestStart < criticalDuration) {
+                            itemArray.push(i);
+                        } else {
+                            processArray(itemArray);
+                            itemArray = [i];
+                        }
+                    } else {
+                        itemArray[0] = i;
+                    }
+                    latestStart = i.start;
+                }
+
+                processArray(itemArray);
+            }
+
+            this.timeline.setItems(new timeline.DataSet(items));
+        } else {
+            this.timeline.setItems(new timeline.DataSet(Array.from(this.items.values())));
+        }
+        this.refreshSelections();
     }
 
     refreshGroups() {

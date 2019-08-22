@@ -38,3 +38,6 @@ add functionality
 	file handling
 		path specifier when adding files
 		select file from directory tree	
+multi platform support
+	python script to create tour with tiled images
+	Android app using Crosswalk (https://github.com/crosswalk-project) or Cordova ()

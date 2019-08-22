@@ -998,6 +998,7 @@
                         <li><a href="#help-dialog-workflow">Creating and modifying tours</a></li>
                         <li><a href="#help-dialog-temporal-groups">Temporal Groups</a></li>
                         <li><a href="#help-dialog-spatial-groups">Spatial Groups</a></li>
+                        <li><a href="#help-dialog-map-editor">Map editor</a></li>
                         <li><a href="#help-dialog-settings">Settings Dialog</a></li>
                         <li><a href="#help-dialog-templates">Copy Vertices</a></li>
                         <li><a href="#help-dialog-filesystem">Hints regarding the filesystem</a></li>
@@ -1065,7 +1066,7 @@
                                     <p>
                                         Location: Top left and top right of the screen.
                                     </p><p>
-                                        Effect: Switch between panorams that were shot at the same spot earlier or later in time.
+                                        Effect: Switch between panoramas that were shot at the same spot earlier or later in time.
                                     </p>
                                 </td>
                             </tr>
@@ -1152,7 +1153,7 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                             </tr>
                             <tr class="row">
                                 <td>
-                                    <div class="vis-item vis-point vis-readonly" style="background-color:black"><div class="vis-item-content" style="margin-left: 32px;">2018</div><div class="vis-item vis-dot vis-readonly" style="top: 7px; left: 8px;"></div></div>
+                                    <div class="timeline-item timeline-point timeline-readonly" style="background-color:black"><div class="timeline-item-content" style="margin-left: 32px;">2018</div><div class="timeline-item timeline-dot timeline-readonly" style="top: 7px; left: 8px;"></div></div>
                                 </td>
                                 <td>
                                     <p>
@@ -1249,14 +1250,15 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                     <!-- Temporal Groups -->
                     <h4 id="help-dialog-temporal-groups">Temporal Groups</h4>
                     <p>A temporal groups consists of several spatial groups. The temporal groups makes the navigation in time possible. If two panoramas are taken at the same location but at different times, they end up in different spatial groups. The temporal group searches all containing spatial groups and forms a connection between those two panoramas. The result is one can switch between them using the topbar navigation.</p>
-                    <p>A temporal group only requires a name and a type. The type determines the subgroups that can be added to the group. All the other values are optional. The description will be used as a tooltip. The super group dropdown exists that one can build a hierarchy of tours. The connections for navigating in time cannot be created manually. Instead the temporal group automatically takes care of it. One can disable it by unchecking the &quot;auto-connect&quot; option when creating a group. The radius determines up to which distance two panoramas are considered to be at the same location.</p>
+                    <p>A temporal group only requires a name and a type. The type determines the subgroups that can be added to the group. All the other values are optional. The description will be used as a tooltip. The super group dropdown exists that one can build a hierarchy of tours.</p> 
+                    <p>The connections for navigating in time cannot be created manually. Instead the temporal group automatically takes care of it. Two vertices are navigable in time (there are arrows in the top bar) if they are colocated. To be colocated, they must be within the distance determined by the parameter colocated radius. Moreover their spatial groups must be of type &quot;singleshot&quot; OR belong to the same temporal group. One can deny the first condition by choosing the type &quot;route&quot; for the spatial group and the second condition by unchecking the &quot;auto-connect&quot; option when creating a group.</p>
                     <p>&quot;Add Panoramas&quot; will automatically create a spatial group derived from timestamp of the specified image. Create a spatial group manually to exploit all customization options.</p>
                     <p>There is no possibility to directly modify groups. The workaround is to create a new one and copy the spatial groups, see <a href="#help-dialog-spatial-groups">Spatial Groups</a>.</p>
 
                     <!-- Spatial Groups -->
                     <h4 id="help-dialog-spatial-groups">Spatial Groups</h4>
                     <p>A spatial group consists of several panoramas. All of them are shot roughly at the same time. The purpose is to have a common timeslot and name that can be displayed on the timeline.</p>
-                    <p>A spatial group requires a name, a timeslot, a super group and a type. The type determines the type of vertices that can be added to the group. Path and description are optional. The description will be used as a tooltip. The path is used to specify a parent folder so that the path saved for the vertices only contains the filename.</p>
+                    <p>A spatial group requires a name, a timeslot, a super group and a type. The type determines the type of vertices that can be added to the group. See the third paragraph in <a href="#help-dialog-spatial-groups">Temporal Groups</a> for the purpose of &quot;route&quot; and &quot;singleshot&quot; Path and description are optional. The description will be used as a tooltip. The path is used to specify a parent folder so that the path saved for the vertices only contains the filename.</p>
                     <p>There is no possibility to directly modify groups. The workaround is to create a new one and copy the vertices. To do so, do the following:</p>
                     <ol>
                         <li>On the sidebar: Click &quot;Create Group&quot; under the Spatial Group section.</li>
@@ -1270,11 +1272,19 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                         <li>On &quot;Apply Group Template&quot;: Click &quot;Apply Template&quot;.</li>
                     </ol>
 
+                    <!-- Map Editor -->
+                    <h4 id="help-dialog-map-editor">Map Editor</h4>
+                    <p>The map editor can be found in between the &quot;Groups&quot; and &quot;Panorama&quot; editors. The map editor allows adding custom overlays to the map, here called backgrounds. The purpose is to show plans of buildings, paths, etc. To create such a background one has to click &quot;Create Background&quot; and choose an image file - just like for adding a panorama. Its name is automatically derived from the name of the file.</p>
+                    <p>Use the upper left marker (the anchor) to bring the background to the correct position. The other two markers change scale (horizontal and vertical separately) and rotate around the anchor. If one selects &quot;Edit Skew&quot; the markers can be moved without interdependencies. This means the other two markers stay at the same position and the image will be skewed.</p>
+                    <p>Afterwards, the background should be assigned to a spatial group. Therefore, create a new spatial group and choose &quot;Advanced Settings&quot; &rarr; &quot;Background&quot;. A background can be assigned to multiple spatial groups. Whenever one of these groups is selected in the timeline, the background is displayed. On can hide all backgrounds via the layer control in the upper right corner of the map.</p>
+
+
                     <!-- Settings Dialog -->
                     <h4 id="help-dialog-settings">Settings Dialog</h4>
                     <p>The settings are subdivided into three sections. The two buttons at the top form the upper section. They open separate pop-up dialogs. The "Import additional tour files" button allows to load tour.json files from outside the source folder. All the groups, vertices and edges specified in the file will be merged into the current tour. Elements that already exist remain untouched (they do not get updated). This is useful when you want to merge tours from several working directories into one. Keep in mind that you manually have to copy the image files to the correct location. Another use case is reusing landmarks.</p>
                     <p>The checkboxes form the middle section. They only affect the view and shall ease the workflow. Those settings will be reset to default when you reload the page.</p>
                     <p>The tables at the bottom form the last section. These options are a subset of the options in the configuration file but they are stored in the tour.json file. They are read and applied when you load a tour file. The current pan and zoom values of the map / panorama view / timeline determine the values when clicking "Set". "Unset" is clickable when there is a value specified. To overwrite the value click "Set" again.</p>
+                    <p>To change the default selection of the settings go to &lt;Location of this website on the filesystem&gt;/assets/js/config.js. Change the corresponding settings at the bottom of the file. Many more settings can be changed there, for instance the displayed maps and appearance of the timeline.</p>
 
                     <!-- Copy Vertices -->
                     <h4 id="help-dialog-templates">Copy Vertices</h4>

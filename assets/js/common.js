@@ -183,7 +183,6 @@ function createCommonRoutines(modules, settings) {
         modules.model.observe(temporalGroup, modules.model.CREATE)
             .do(g => modules.map.createControlGroup(g))
             .do(g => modules.timeline.createGroup(g))
-            .filter(g => g.type !== temporalGroup.prototype.LANDMARK)
         ,
 
         modules.model.observe(spatialGroup, modules.model.CREATE)

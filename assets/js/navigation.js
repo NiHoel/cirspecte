@@ -144,9 +144,13 @@ class navigationViewer extends observable {
      */
     notifyVertexCreated(v) {
         if (!this.currentVertex
-            || v.spatialGroup.superGroup !== this.currentVertex.spatialGroup.superGroup
             || !v.spatialGroup.superGroup.autoConnectColocated
             || algorithms.getDistance(this.currentVertex, v) > this.currentVertex.spatialGroup.superGroup.colocatedRadius)
+            return;
+
+        if (v.spatialGroup.superGroup !== this.currentVertex.spatialGroup.superGroup
+            && v.spatialGroup.superGroup.type !== spatialGroup.prototype.SINGLESHOT
+            && this.currentVertex.spatialGroup.superGroup.type !== spatialGroup.prototype.SINGLESHOT)
             return;
 
         let centerTime = this.currentVertex.getTimeslot();
@@ -181,6 +185,7 @@ class navigationViewer extends observable {
         if (this.successor === e || e.opposite && e.opposite === this.successor)
             this.setVertex(this.currentVertex);
     }
+
 }
 
 navigationViewer.prototype.CLICK = "click";

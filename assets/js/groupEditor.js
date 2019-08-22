@@ -54,7 +54,7 @@ class groupEditor extends observable {
         this.backgrounds = ko.observableArray();
         this.shown = true;
         this.gpsCoordinates = ko.observable();
-        this.spatialGroupTypes = [spatialGroup.prototype.ROUTE, spatialGroup.prototype.LANDMARK];
+        this.spatialGroupTypes = [spatialGroup.prototype.ROUTE, spatialGroup.prototype.LANDMARK, spatialGroup.prototype.SINGLESHOT];
         this.temporalGroupTypes = [temporalGroup.prototype.TOUR, temporalGroup.prototype.LANDMARK];
 
         this.scannable = ko.pureComputed(function () {

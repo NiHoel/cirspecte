@@ -34,7 +34,7 @@ class algorithms {
         var successful = true;
         for (let jsonBackground of ((tour.map || {}).backgrounds || [])) {
             var json = $.extend(true, { image: { directory: rootDirectory } }, jsonBackground);
-            modules.map.createBackground(json);
+            this.modules.map.createBackground(json);
         }
 
         //process temporal groups before others so that parent tour files can modify their hierarchy
@@ -335,15 +335,24 @@ class algorithms {
             }
         });
 
-        v.spatialGroup.superGroup.forEach(g => {
-            if (established.get(g.id) == null && g instanceof spatialGroup && g.type !== spatialGroup.prototype.LANDMARK) {
-                var vMin = this.getColocated(g, v.coordinates);
-                if (vMin) {
-                    edges.push(this.modules.model.createEdge({ from: v, to: vMin, type: edge.prototype.TEMPORAL, bidirectional: true }));
-                }
-            }
-        });
+        var groupsToTest = [];
+        for(var sg of this.modules.model.getSpatialGroups()) {
+            if (established.get(sg.id) != null || sg.type == spatialGroup.prototype.LANDMARK)
+                continue;
 
+            if (sg.type === spatialGroup.prototype.SINGLESHOT || sg.superGroup === v.spatialGroup.superGroup)
+                groupsToTest.push(sg);
+        }
+
+        groupsToTest.map(sg => this.getColocated(sg, v.coordinates))
+            .filter(v => !!v)
+            .map(vMin => edges.push(this.modules.model.createEdge({
+                from: v,
+                to: vMin,
+                type: edge.prototype.TEMPORAL,
+                bidirectional: true
+            })));
+       
         return edges;
     }
 

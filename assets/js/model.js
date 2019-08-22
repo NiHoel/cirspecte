@@ -538,6 +538,7 @@ class spatialGroup {
 }
 
 spatialGroup.prototype.ROUTE = 'route'; // vertex is part of a tour
+spatialGroup.prototype.SINGLESHOT = 'singleshot'; // vertices shall be inserted into temporal navigation of other temporal groups
 spatialGroup.prototype.LANDMARK = 'landmark';
 
 spatialGroup.prototype.TIMESLOT = 'timeslot';

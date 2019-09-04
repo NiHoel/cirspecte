@@ -509,7 +509,7 @@ class groupEditor extends observable {
                         to: to,
                         bidirectional: true
                     }
-                    model.createEdge(this.assign(jsonEdge, e, mask));
+                    this.modules.model.createEdge(this.assign(jsonEdge, e, mask));
                 }
             }
         });

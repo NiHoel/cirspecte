@@ -69,7 +69,7 @@ class mapEditor extends observable {
                 .do(g => this.landmarkGroups.push(g)),
 
             modules.model.observe(spatialGroup, modules.model.DELETE)
-                .do(g => this.spatialGroups.remove(g)),
+                .do(g => this.landmarkGroups.remove(g)),
 
             modules.map.observe(point, modules.map.CLICK)
                 .filter(() => this.isShown() && modules.panorama.getScene() != null)
@@ -222,7 +222,7 @@ class mapEditor extends observable {
 
         this.modules.model.spatialGroups.forEach(sg => {
             if (sg.background === this.currentBackground())
-                this.modules.model.updateBackgrond(sg, null);
+                this.modules.model.updateBackground(sg, null);
         });
 
         this.modules.map.deleteBackground(this.currentBackground());

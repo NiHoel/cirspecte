@@ -862,7 +862,7 @@ class panoramaViewer extends observable {
         }
 
         let promise = (node, img) => new Promise((resolve, reject) => {
-            if (node.level > maxLevel || node.level < 0) {
+            if (node.level > maxLevel || node.level < 0 || !s.thumb || !s.base) {
                 reject();
                 return;
             }

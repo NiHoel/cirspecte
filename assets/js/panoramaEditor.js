@@ -71,7 +71,7 @@ class panoramaEditor extends observable {
                 .do(g => this.landmarkGroups.push(g)),
 
             modules.model.observe(spatialGroup, modules.model.DELETE)
-                .do(g => this.spatialGroups.remove(g)),
+                .do(g => this.landmarkGroups.remove(g)),
 
             modules.map.observe(modules.map.COORDINATES, modules.map.CLICK)
                 .filter(() => this.isShown() && modules.panorama.getScene() != null)
@@ -155,7 +155,7 @@ class panoramaEditor extends observable {
                 .map(res => modules.panorama.getVertex())
                 .mergeMap(v => v.toObservable())
                 .filter(e => e.type === e.LANDMARK || e.type === e.TEMP)
-                .do(e => model.updateData(e, Object.assign({}, e.data, { yaw: null }), true)),
+                .do(e => modules.model.updateData(e, Object.assign({}, e.data, { yaw: null }), true)),
         ];
 
         for (let r of routines) {

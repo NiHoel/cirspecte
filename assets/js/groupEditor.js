@@ -267,7 +267,7 @@ class groupEditor extends observable {
                         type = edge.prototype.SPATIAL;
                 }
 
-                modules.model.createEdge({
+                this.modules.model.createEdge({
                     from: this.prev.vertex,
                     to: v,
                     type: type,

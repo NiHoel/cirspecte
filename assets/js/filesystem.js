@@ -1328,6 +1328,7 @@ class filesystem extends directory {
                 .catch((err, caught) => {
 
                     return root.searchDirectory(path.split("/").slice(0, -1).join('/'))
+                        .delay(100) // prevent UI bugs, e.g. pop up window does not appear
                         .mergeMap(parent => this.request({
                             name: path.split("/").pop(),
                             parent: parent,

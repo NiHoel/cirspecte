@@ -1115,7 +1115,13 @@ class entryAccessor {
 
         // use timeout to prevent remaining black overlay when new dialog is immediatly opened
         // after the previous one was closed
-        setTimeout(() => this.dialog.modal("show"), 100); 
+        let openDialog = () => {
+            if ($('.modal-backdrop').length)
+                setTimeout(() => openDialog(), 500);
+            else
+                this.dialog.modal("show");
+        }
+        openDialog();
 
         return this.targetSubject.filter(e => {
             // user wants to open that file although it does not match the criteria

@@ -207,7 +207,7 @@ class mapEditor extends observable {
                         [(c[0] + bounds[0][0]) / 2, (c[1] + bounds[0][1]) / 2]
                     ]
                 });
-                setTimeout(() => { this.currentBackground(b); }, 0)
+                setTimeout(() => { this.currentBackground(b); }, 1000)
                 return b;
             })
             .catch((err, caught) => {

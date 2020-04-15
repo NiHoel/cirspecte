@@ -68,6 +68,19 @@ class point {
     setCoordinates(coords) {
         this.layer.setLatLng(coordsToLatLng(coords));
     }
+
+/**
+* @returns {[line]}
+*/
+    getLines() {
+        var lines = [];
+        this.vertex.forEach(e => {
+            if (e.line)
+                lines.push(e.line);
+        });
+
+        return lines;
+    }
 }
 
 point.prototype.PANORAMA = 'panorama';
@@ -1020,9 +1033,10 @@ class mapViewer extends observable {
         if (elem instanceof vertex) { // show point if not visible
             if (elem.point && elem.point.type === point.prototype.EDIT)
                 return elem.point;
+            var lines = elem.point ? elem.point.getLines() : [];
             this.deletePoint(elem);
             var p = this.createPoint(elem, { type: point.prototype.EDIT });
-            elem.forEach(e => this.createLine(e));
+            lines.forEach(l => this.createLine(l.edge));
             return p;
         } else if (elem instanceof edge && elem.line && elem.line.edge === elem
             && elem.type !== edge.prototype.LANDMARK && elem.line.type !== line.prototype.EDIT) {
@@ -1062,9 +1076,10 @@ class mapViewer extends observable {
      */
     unsetEditable(elem) {
         if (elem instanceof vertex && elem.point) {
+            var lines = elem.point.getLines();
             this.deletePoint(elem);
             var p = this.createPoint(elem);
-            elem.forEach(e => this.createLine(e));
+            lines.forEach(l => this.createLine(l.edge));
             return p;
         } else if (elem instanceof edge && elem.line && elem.line.edge === elem && elem.type !== edge.prototype.LANDMARK) {
             this.deleteLine(elem);

@@ -25,12 +25,13 @@ class groupEditor extends observable {
         this.prev = {
             temporalGroup: null,
             spatialGroup: null,
-            vertex: null
+            vertex: null // used for lines
         };
 
         this.current = {
             temporalGroup: ko.observable(),
-            spatialGroup: ko.observable()
+            spatialGroup: ko.observable(),
+			vertex: null // used for dragging
         };
 
         this.default = {
@@ -66,6 +67,8 @@ class groupEditor extends observable {
         }));
 
         this.editingMode = ko.observable(this.EDIT.SCENE);
+		
+		this.dragCurrentVertex = ko.observable(false);
 
         $('.js-example-responsive').select2();
         $('#timeslot').datetimepicker();
@@ -73,7 +76,8 @@ class groupEditor extends observable {
         ko.applyBindings(this, $('#group-editor')[0]);
         ko.applyBindings(this, $('#spatial-group-editor')[0]);
         ko.applyBindings(this, $('#temporal-group-editor')[0]);
-        ko.applyBindings(this, $('#template-application-dialog')[0]);
+		if($('#template-application-dialog')[0])
+			ko.applyBindings(this, $('#template-application-dialog')[0]);
 
         this.current.spatialGroup.subscribe(g => this.emit(g, this.SELECT, this.SPATIALGROUP));
         this.current.temporalGroup.subscribe(g => this.emit(g, this.SELECT, this.TEMPORALGROUP));
@@ -89,6 +93,13 @@ class groupEditor extends observable {
         var vertexSelector = new Rx.Subject();
 
         let modules = this.modules;
+		
+		this.dragCurrentVertex.subscribe((enabled) => {
+			if(enabled)
+				modules.map.setEditable(this.modules.panorama.getVertex());
+			else
+				modules.map.unsetEditable(this.modules.panorama.getVertex());
+		});
 
         let routines = [
             Rx.Observable.fromEvent($('.nav-tabs a'), 'show.bs.tab')
@@ -201,7 +212,18 @@ class groupEditor extends observable {
             modules.timeline.observe(item, modules.timeline.CREATE)
                 .filter(i => i.spatialGroup === this.current.spatialGroup())
                 .do(i => modules.timeline.toggleSelection(i, true)),
+				
+			modules.panorama.observe(scene, modules.panorama.CREATE)
+				.do(s => {
+					modules.map.unsetEditable(this.current.vertex);
+					if(this.dragCurrentVertex())
+						modules.map.setEditable(s.vertex);
+					
+					this.current.vertex = s.vertex;
+				}),
         ];
+		
+		
 
         this.current.spatialGroup.subscribe(sg => {
             if (this.prev.spatialGroup)

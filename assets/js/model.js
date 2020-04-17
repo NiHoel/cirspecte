@@ -392,6 +392,7 @@ class temporalGroup {
             autoConnectColocated: this.autoConnectColocated,
             colocatedRadius: this.colocatedRadius,
             multiselect: this.multiselect,
+			exclusiveTemporalSubgroups: this.exclusiveTemporalSubgroups,
             subGroups: subGroups
         };
     }

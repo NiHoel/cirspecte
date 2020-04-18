@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Presentation layer for manipulating the current panorama.
  * */

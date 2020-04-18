@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Displays errors and messages to the user
  * */

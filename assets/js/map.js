@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Classes: point, line, layerGroup, controlGroup, mapViewer
  * 

@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Updates the navigation elements that let the user 
  * switch to the panorama that was shot before or after the current one.

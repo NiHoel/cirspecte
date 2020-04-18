@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  *  run utility algorithms and methods that require other modules
  * */

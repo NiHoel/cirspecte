@@ -1,3 +1,4 @@
+'use strict';
 
 Rx.Observable.fromEvent(document, 'drop')
     .do(e => e.preventDefault()),
@@ -7,9 +8,9 @@ Rx.Observable.fromEvent(document, 'drop')
     });
 
 $(document).ready(function () {
-    settings = new configurator(config.settings);
+    let settings = new configurator(config.settings);
 
-    modules = {
+    let modules = {
         model: new graph(),
         logger: new logger(),
         filesys: new filesystem(),
@@ -21,7 +22,7 @@ $(document).ready(function () {
     modules.nav = new navigationViewer(modules);
     modules.hist = new commandHistory(modules);
 
-    editors = {
+    let editors = {
         groupEdit: new groupEditor(settings, modules)
     };
 

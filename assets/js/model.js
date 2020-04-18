@@ -1,3 +1,5 @@
+'use strict';
+
 /**
 * 
 * Classes: error, observable, temporalGroup, spatialGroup, vertex, edge, graph

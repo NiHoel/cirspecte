@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Interaction between modules required for viewer and editor
  * /

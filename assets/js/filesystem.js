@@ -1,3 +1,5 @@
+'use strict';
+
 /*
 * Classes: directory, file, diskAccessor, fileTree, entryAccessor, filesystem
 *

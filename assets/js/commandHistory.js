@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Summary: 
  * Keeps track of modifications to the modal and allows to undo them.

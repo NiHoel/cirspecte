@@ -1,3 +1,4 @@
+'use strict';
 
 Rx.Observable.fromEvent(document, 'drop')
     .do(e => e.preventDefault()),
@@ -7,9 +8,9 @@ Rx.Observable.fromEvent(document, 'drop')
     });
 
 $(document).ready(function () {
-    settings = new configurator(config.settings);
+    let settings = new configurator(config.settings);
 
-    modules = {
+    let modules = {
         model: new graph(),
         logger: new logger(),
         filesys: new filesystem(),
@@ -21,7 +22,7 @@ $(document).ready(function () {
     modules.nav = new navigationViewer(modules);
     modules.hist = new commandHistory(modules);
 
-    editors = {
+    let editors = {
         groupEdit: new groupEditor(settings, modules),
         mapEdit: new mapEditor(settings, modules),
         panoramaEdit: new panoramaEditor(settings, modules)
@@ -31,13 +32,16 @@ $(document).ready(function () {
  //   Object.assign(window, modules); // name collision with timeline-plus
  //   Object.assign(window, editors);
 
+    window.modules = modules;
+	window.editors = editors;
+	window.settings = settings;
 
 
     /********************/
     /* layout animation */
     /********************/
 
-    var startIndicators = Rx.Observable.fromEvent($("#sidebar-expander"), 'click')
+    let startIndicators = Rx.Observable.fromEvent($("#sidebar-expander"), 'click')
         .merge(Rx.Observable.fromEvent($("#sidebar-collapser"), 'click'))
         .merge(Rx.Observable.fromEvent($("#sidebar-expander"), 'touchend'))
         .merge(Rx.Observable.fromEvent($("#sidebar-collapser"), 'touchend'))
@@ -50,7 +54,7 @@ $(document).ready(function () {
     /* Rx.Observable routines */
     /**************************/
 
-    let routines = createCommonRoutines(modules, settings).concat([
+    var routines = createCommonRoutines(modules, settings).concat([
 
         modules.model.observe(edge, modules.model.CREATE)
             .filter(e => e.type === edge.prototype.LANDMARK && e.from === modules.panorama.getVertex())
@@ -233,7 +237,7 @@ $(document).ready(function () {
     /**
     * @param {number} count - elements to generate
     */
-    testPerformance = function (count) {
+    var testPerformance = function (count) {
         var vertices = [];
         let start = new Date();
         let tg = modules.model.createTemporalGroup({
@@ -282,7 +286,7 @@ $(document).ready(function () {
  * @param {vertes} vertex
 * @returns {vertex}
  */
-    showImage = function (img) {
+    var showImage = function (img) {
         if (img.image)
             img = img.image;
         if (img.img)

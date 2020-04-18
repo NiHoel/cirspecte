@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Presentation layer for manipulating the tile layers and image overlays of the map.
  * */

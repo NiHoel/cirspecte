@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Summary: 
  * Keep track of all settings (map, timeline, panorama, template)

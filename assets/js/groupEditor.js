@@ -1,3 +1,5 @@
+'use strict';
+
 /*
  * Presentation layer for manipulating temporal or spatial groups.
  *

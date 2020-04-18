@@ -1,3 +1,4 @@
+'use strict';
 
 (function (root, name) {
     'use strict';

@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Classes: scene, hotspot, panoramaViewer
  * 
@@ -684,7 +686,8 @@ class panoramaViewer extends observable {
                     });
 
                     if (this.scene.vertex !== newScene.vertex) {
-                        delete this.scene.vertex.image.file.img;
+						if(this.scene.vertex.image.file)
+							delete this.scene.vertex.image.file.img;
                         delete this.scene.vertex.scene;
                         delete this.scene.base;
                         delete this.scene.thumb;

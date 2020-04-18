@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Classes: item, group, timelineViewer
  * 

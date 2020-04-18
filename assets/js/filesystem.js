@@ -301,9 +301,24 @@ class directory extends observable {
                 if (this.isDirectoryReader(reader))
                     return Rx.Observable.create(observer => {
                         reader.readEntries(entries => {
-                            entries.forEach(observer.next.bind(observer));
-                            if (entries.length != 0)
+                            entries.forEach(e => {
+								var entr;
+								if(e.isFile)
+									entr = new file(e);
+								else
+									entr = new directory(e.name, e);
+								
+								if(this.addEntry(entr))
+									observer.next(entr);								
+							});
+                            
+							if (entries.length != 0)
                                 observer.next(reader); // readEntries must be called iteratively since it returns at most 100 entries per call on Chrome and Edge 
+							else if (this.loading) {
+								this.scanned = true;
+								this.loading = false;
+								this.loadingCompleted.complete();
+							}
                             observer.complete();
                         }, err => {
                             console.log(err);
@@ -313,27 +328,7 @@ class directory extends observable {
                 else
                     return Rx.Observable.empty();
             })
-            .filter(entry => !this.isDirectoryReader(entry))
-            .map(e => {
-                if (e.isFile) {
-                    return new file(e);
-                } else {
-                    return new directory(e.name, e);
-                }
-            })
-            .filter(f => this.addEntry(f))
-
-            // notify others when scanning ends
-            .defaultIfEmpty(null)
-            .do(() => {
-                if (this.loading) {
-                    this.scanned = true;
-                    this.loading = false;
-                    this.loadingCompleted.complete();
-                }
-            });
-
-        return obs.merge(defaultObservable);
+            .filter(entry => !this.isDirectoryReader(entry));
     }
 
 

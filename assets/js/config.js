@@ -42,17 +42,15 @@ var config = {
                 base: "tileLayer",
             },
             */
-            /*
             {
-                label: "Satellite (ArcGIS)",
+                label: "Satellite",
                 url: 'Imagery', // valid values are  "Streets", "Topographic", "Oceans", "OceansLabels", "NationalGeographic", "Physical", "Gray", "GrayLabels", "DarkGray", "DarkGrayLabels", "Imagery", "ImageryLabels", "ImageryTransportation", "ImageryClarity", "ImageryFirefly", ShadedRelief", "ShadedReliefLabels", "Terrain", "TerrainLabels" or "USATopo"
                 options: {
                     detectRetina: true
                 },
                 base: "esri",
                 plugin: "basemapLayer"
-            },
-            */
+            }
 			/**
 			{
                 label: "Satellite (Google Mutant)",

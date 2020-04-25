@@ -43,12 +43,13 @@ var config = {
             */
             /*
             {
-                url: "", // obtain API-Key from https://www.microsoft.com/en-us/maps/create-a-bing-maps-key and enter it here, do not get confused with the url parameter name, it is just the key
-                label: "Satellite (Bing)",
+                label: "Satellite (ArcGIS)",
+                url: 'Imagery', // valid values are  "Streets", "Topographic", "Oceans", "OceansLabels", "NationalGeographic", "Physical", "Gray", "GrayLabels", "DarkGray", "DarkGrayLabels", "Imagery", "ImageryLabels", "ImageryTransportation", "ImageryClarity", "ImageryFirefly", ShadedRelief", "ShadedReliefLabels", "Terrain", "TerrainLabels" or "USATopo"
                 options: {
-                    type: 'Aerial' // valid values are 'Aerial', 'AerialWithLabels', and 'Road'
+                    detectRetina: true
                 },
-                base: "bingLayer"
+                base: "esri",
+                plugin: "basemapLayer"
             },
             */
 			/**

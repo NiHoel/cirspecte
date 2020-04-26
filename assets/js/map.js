@@ -757,9 +757,20 @@ class mapViewer extends observable {
         if (g.layerGroup != null)
             return g.layerGroup;
 
+        var initClustering = false;
+        if (!this.markerGroup) {
+            initClustering = true;
+            this.markerGroup = new L.markerClusterGroup.layerSupport(this.config.markerClusterGroup);
+        }
+ 
         var lg = new layerGroup(g);
         //       this.addToDerivedParent(lg);
         this.layers.set(lg.layer, lg);
+        this.markerGroup.checkIn(lg.layer);
+
+        if (initClustering)
+            this.markerGroup.addTo(this.map);
+
         this.emit(lg, this.CREATE);
 
         return lg;

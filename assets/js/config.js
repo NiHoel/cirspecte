@@ -177,6 +177,9 @@ var config = {
                 radius: 2,
                 draggable: true
             }
+        },
+        "markerClusterGroup": { // See https://github.com/Leaflet/Leaflet.markercluster#all-options
+            maxClusterRadius: 30
         }
     },
     "timeline": {

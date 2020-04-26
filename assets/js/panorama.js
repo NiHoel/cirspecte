@@ -206,6 +206,13 @@ class panoramaViewer extends observable {
     }
 
     /**
+    * @returns {number}
+    * */
+    getAzimuth() {
+        return this.viewer ? this.viewer.getYaw() - this.getNorthOffset() : null;
+    }
+
+    /**
      * @returns {number}
      * */
     getPitch() {
@@ -300,7 +307,7 @@ class panoramaViewer extends observable {
 
         var tooltipViewer = new panoramaViewer(previewPanorama, this.modules, this.config.previewOptions);
         let azimuth = algorithms.getAzimuth(args.edge.from, args.edge.to);
-        tooltipViewer.loadScene(args.edge.to, { yaw: azimuth, hfov: 70 }).subscribe();
+        tooltipViewer.loadScene(args.edge.to, { yaw: tooltipViewer.getNorthOffset() + azimuth, hfov: 70 }).subscribe();
     }
 
     /**

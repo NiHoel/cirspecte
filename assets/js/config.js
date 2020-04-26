@@ -4,6 +4,7 @@ var config = {
     "map": {
         "strings": {
             location: "GPS",
+            fieldOfView: "Field of view",
             connections: "Connections",
             savedAllTiles: "Saved all tiles",
             removedAllTiles: "Removed all tiles",
@@ -180,6 +181,12 @@ var config = {
         },
         "markerClusterGroup": { // See https://github.com/Leaflet/Leaflet.markercluster#all-options
             maxClusterRadius: 30
+        },
+        "fieldOfView": {
+            radius: 25,
+            color: 'blue',
+            fillColor: 'blue',
+            fillOpacity: 0.5
         }
     },
     "timeline": {

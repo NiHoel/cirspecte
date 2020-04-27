@@ -1,11 +1,26 @@
 bugs
 	item deselected when selecting group in editor
+	control group in map not selected when selecting item
+	when connecting single shots, consider connection radius of both ends
 abort panorama image loading in loader
 online capabilities of filesystem
-fix Chrome file drop bug
-browser plugins for automatic file loading and absolute paths
+style items more radio button like
+expand range items on click
+
+cordova:
+	initially select working directory
+	all panoramas relative to working directory
+	import external tour files
+	export functionality
+		select destination folder
+		tile panoramas
+
 add functionality
-	merge several items to lines
+	update yaw based on digital compass
+	update scene based on position (only displayed points, use colocatedRadius)
+	save settings, selected layers, and working directory in storage
+	autosave
+	
 	get height from Google API
 	display plain image if webgl unavailable -> autotiles on tesselated sphere using CSS
 	display deepzoom images with leaflet:
@@ -35,9 +50,6 @@ add functionality
 		reset: yaw, pitch, northOffset, vOffset
 		create line
 	
-	file handling
-		path specifier when adding files
-		select file from directory tree	
-multi platform support
-	python script to create tour with tiled images
-	Android app using Crosswalk (https://github.com/crosswalk-project) or Cordova ()
+
+
+

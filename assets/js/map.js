@@ -376,6 +376,7 @@ class mapViewer extends observable {
         this.layers = new Map();
         this.backgrounds = new Map();
         this.locationLayer = new L.featureGroup();
+        this.fieldOfViewLayer = new L.featureGroup();
         this.lineGroup = new L.featureGroup();
         this.lineGroup.setZIndex(10);
         this.lineGroup.addEventListener('add', event => {
@@ -431,12 +432,17 @@ class mapViewer extends observable {
             });
 
         this.overlayTree.push({
+            label: this.config.strings.fieldOfView,
+            layer: this.fieldOfViewLayer
+        });
+
+        this.overlayTree.push({
             label: this.config.strings.connections,
             layer: this.lineGroup
         });
         this.layerControl = L.control.layers.tree(this.baseTree, this.overlayTree, config.tree);
         this.layerControl.addTo(this.map).collapseTree().expandSelected();
-
+        this.fieldOfViewLayer.addTo(this.map) // show on startup
 
         // set up event listeners for storing tiles
         tileLayers.forEach(tl => {
@@ -539,6 +545,9 @@ class mapViewer extends observable {
         this.map.on('accuratepositionprogress', markLocation);
         this.map.on('accuratepositionfound', markLocation);
 
+        // Field of view
+        requestAnimationFrame(() => this.updateFieldOfView());
+
         // Listen when values in configurator change
         this.settings.map.zoom.subscribe(val => {
             if (val != null)
@@ -636,6 +645,42 @@ class mapViewer extends observable {
      * */
     getBackgrounds() {
         return Array.from(this.backgrounds.values());
+    }
+
+    /**
+     * @private
+     * Used by animation frame to update field of view
+     * */
+    updateFieldOfView() {
+        if (!this.modules.panorama || this.modules.panorama.getAzimuth() == null || this.modules.panorama.getHfov() == null || !this.config.fieldOfView || !this.config.fieldOfView.radius) {
+            requestAnimationFrame(() => this.updateFieldOfView());
+            return;
+        }
+
+        this.fieldOfViewLayer.clearLayers();
+        var azimuth = this.modules.panorama.getAzimuth() / 180 * Math.PI;
+        var aov = this.modules.panorama.getHfov() / 180 * Math.PI;
+        var centerCoords = this.modules.panorama.getVertex().coordinates;
+        var centerPoint = this.map.latLngToContainerPoint(coordsToLatLng(centerCoords));
+        var minBearing = azimuth - aov / 2;
+        if (minBearing < -Math.PI)
+            minBearing += 2 * Math.PI;
+        var maxBearing = azimuth + aov / 2;
+        if (maxBearing > Math.PI)
+            maxBearing -= 2 * Math.PI;
+
+        var lineStart = new L.Point(Math.sin(minBearing) * this.config.fieldOfView.radius + centerPoint.x, -Math.cos(minBearing) * this.config.fieldOfView.radius + centerPoint.y);
+        var lineEnd = new L.Point(Math.sin(maxBearing) * this.config.fieldOfView.radius + centerPoint.x, -Math.cos(maxBearing) * this.config.fieldOfView.radius + centerPoint.y);
+        var points = [this.map.containerPointToLatLng(lineStart), this.map.containerPointToLatLng(centerPoint), this.map.containerPointToLatLng(lineEnd)];
+
+        L.polyline(points, this.config.fieldOfView).addTo(this.fieldOfViewLayer);
+        if (this.config.fieldOfView.fillColor)
+            var fillConfig = $.extend({}, this.config.fieldOfView, {
+                opacity: 0
+            });
+            L.polygon(points,fillConfig).addTo(this.fieldOfViewLayer);
+
+        requestAnimationFrame(() => this.updateFieldOfView());
     }
 
     /**
@@ -757,9 +802,20 @@ class mapViewer extends observable {
         if (g.layerGroup != null)
             return g.layerGroup;
 
+        var initClustering = false;
+        if (!this.markerGroup) {
+            initClustering = true;
+            this.markerGroup = new L.markerClusterGroup.layerSupport(this.config.markerClusterGroup);
+        }
+ 
         var lg = new layerGroup(g);
         //       this.addToDerivedParent(lg);
         this.layers.set(lg.layer, lg);
+        this.markerGroup.checkIn(lg.layer);
+
+        if (initClustering)
+            this.markerGroup.addTo(this.map);
+
         this.emit(lg, this.CREATE);
 
         return lg;

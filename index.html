@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="assets/css/leaflet.css" />
     <link rel="stylesheet" href="assets/css/L.Control.Layers.Tree.css" />
     <link rel="stylesheet" href="assets/css/leaflet.control.minimap.css" />
+    <link rel="stylesheet" href="assets/css/MarkerCluster.css" />
+    <link rel="stylesheet" href="assets/css/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/css/timeline.css" />
 
@@ -26,10 +28,13 @@
     <script src="assets/js/Leaflet.control.minimap.js"></script>
     <script src="assets/js/lib/Leaflet.offline.js"></script>
     <script src="assets/js/lib/L.Control.Layers.Tree.js"></script>
+    <script src="assets/js/lib/leaflet.markercluster.js"></script>
+    <script src="assets/js/lib/leaflet.markercluster.layersupport.js"></script>
     <script src="assets/js/lib/Leaflet.ImageOverlay.Rotated.js"></script>
     <script src="assets/js/lib/Leaflet.AccuratePosition.js"></script>
     <script src="assets/js/lib/Leaflet.GoogleMutant.js"></script>
     <script src="assets/js/lib/Bing.js"></script>
+    <script src="assets/js/lib/esri-leaflet.js"></script>
 
     <script type="text/javascript" src="assets/js/lib/pannellum/src/js/libpannellum.js"></script>
     <script type="text/javascript" src="assets/js/lib/pannellum/src/js/pannellum.js"></script>
@@ -390,7 +395,7 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                             </tr>
                             <tr class="row">
                                 <td>
-                                    <div class="vis-item vis-point vis-readonly" style="background-color:black"><div class="vis-item-content" style="margin-left: 32px;">2018</div><div class="vis-item vis-dot vis-readonly" style="top: 7px; left: 8px;"></div></div>
+                                    <div class="timeline-item timeline-point timeline-readonly" style="background-color: black;"><div class="timeline-item-content" style="margin-left: 32px;">2019</div><div class="timeline-item timeline-dot timeline-readonly" style="top: 7px; transform: translateX(8px);"></div></div>
                                 </td>
                                 <td>
                                     <p>
@@ -401,6 +406,20 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                                 </td>
 
                             </tr>
+							<tr class="row">
+                                <td>
+                                    <div class="timeline-item timeline-range timeline-readonly" style=" width: 90px; top: 5px;position: relative;"><div class="timeline-item-overflow"><div class="timeline-item-content" style="transform: translateX(0px);">2016 - 2019</div></div><div class="timeline-item-visible-frame"></div></div>
+                                </td>
+                                <td>
+                                    <p>
+                                        Stelle: Timeline.
+                                    </p><p>
+                                        Aggregated stack of timeline items. Zoom closer to see individual items.
+                                    </p>
+                                </td>
+
+                            </tr>
+							
                             <tr class="row">
                                 <td>
                                     <div class="savetiles leaflet-bar leaflet-control"><a class="savetiles"><i class="glyphicon glyphicon-download-alt" title="Save tiles"></i></a><a class="rmtiles"><i class="glyphicon glyphicon-trash" aria-hidden="true" title="Remove tiles"></i></a></div>

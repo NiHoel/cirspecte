@@ -4,6 +4,7 @@ var config = {
     "map": {
         "strings": {
             location: "GPS",
+            fieldOfView: "Field of view",
             connections: "Connections",
             savedAllTiles: "Saved all tiles",
             removedAllTiles: "Removed all tiles",
@@ -43,12 +44,13 @@ var config = {
             */
             /*
             {
-                url: "", // obtain API-Key from https://www.microsoft.com/en-us/maps/create-a-bing-maps-key and enter it here, do not get confused with the url parameter name, it is just the key
-                label: "Satellite (Bing)",
+                label: "Satellite (ArcGIS)",
+                url: 'Imagery', // valid values are  "Streets", "Topographic", "Oceans", "OceansLabels", "NationalGeographic", "Physical", "Gray", "GrayLabels", "DarkGray", "DarkGrayLabels", "Imagery", "ImageryLabels", "ImageryTransportation", "ImageryClarity", "ImageryFirefly", ShadedRelief", "ShadedReliefLabels", "Terrain", "TerrainLabels" or "USATopo"
                 options: {
-                    type: 'Aerial' // valid values are 'Aerial', 'AerialWithLabels', and 'Road'
+                    detectRetina: true
                 },
-                base: "bingLayer"
+                base: "esri",
+                plugin: "basemapLayer"
             },
             */
 			/**
@@ -176,6 +178,15 @@ var config = {
                 radius: 2,
                 draggable: true
             }
+        },
+        "markerClusterGroup": { // See https://github.com/Leaflet/Leaflet.markercluster#all-options
+            maxClusterRadius: 30
+        },
+        "fieldOfView": {
+            radius: 25,
+            color: 'blue',
+            fillColor: 'blue',
+            fillOpacity: 0.5
         }
     },
     "timeline": {

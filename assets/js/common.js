@@ -280,7 +280,7 @@ function createCommonRoutines(modules, settings) {
             .mergeMap(() => modules.filesys.request({ name: "tour.json" }))
             .filter(f => f.isType(file.prototype.JSON))
             //only load tours on the first or second (i.e. contained in a top level folder) level of the filesystem hierarchy
-            .filter(f => !f.getParent() || !f.getParent().getParent() || !f.getParent().getParent().getParent())
+            //.filter(f => !f.getParent() || !f.getParent().getParent() || !f.getParent().getParent().getParent())
             .mergeMap(f => {
                 return f.readAsJSON()
                     .mergeMap(t => {

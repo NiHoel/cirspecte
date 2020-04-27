@@ -7,7 +7,8 @@ Rx.Observable.fromEvent(document, 'drop')
         return 'Are you sure you want to leave? All unsaved changes will be lost!';
     });
 
-$(document).ready(function () {
+
+function readyFunction() {
     let settings = new configurator(config.settings);
 
     let modules = {
@@ -304,7 +305,13 @@ $(document).ready(function () {
         }
         $('#help-dialog .modal-body').append(img);
     }
-});
+};
+
+if(window._cordovaNative) {
+	document.addEventListener('deviceready', readyFunction, false);
+} else {
+	$(document).ready(readyFunction);
+}
 
 
 

@@ -151,7 +151,8 @@ class directory extends observable {
         else if (typeof WebKitDirectoryReader !== 'undefined')
             return reader instanceof WebKitDirectoryReader;
         else
-            return reader[Symbol.toStringTag] === 'DirectoryReader' || reader[Symbol.toStringTag] === 'FileSystemDirectoryReader';
+            return reader[Symbol.toStringTag] === 'DirectoryReader' || reader[Symbol.toStringTag] === 'FileSystemDirectoryReader' || !!reader.readEntries;
+        
     }
 
     /**
@@ -363,36 +364,61 @@ class directory extends observable {
                         });
                 });
 
-        } else if (event instanceof DragEvent) {
-            /**
-    * @type {array}
-    */
-            let items = event.dataTransfer.items || [];
-            /**
-            * @type {Rx.Observable}
-            */
-            var entries = Rx.Observable.from(items)
-                .map(i => i.webkitGetAsEntry())
-                .map(e => {
-                    if (e.isFile) {
-                        return new file(e);
-                    } else {
-                        return new directory(e.name, e);
-                    }
-                });
+        } else if (event instanceof DragEvent || event instanceof Array) {
+            var entries;
 
-            entries = entries.mergeMap(i => {
-                if (root.addEntry(i))
-                    return Rx.Observable.of(i);
-                else if (i instanceof directory)
-                    return Rx.Observable.of(root.getDirectory(i.name));
-                else if (options.allUnused) {
-                    var fl = root.getFile(i.name);
-                    if (!fl.vertex && !fl.read)
-                        return Rx.Observable.of(fl);
-                }
-                return Rx.Observable.empty();
-            });
+            if (event instanceof DragEvent) {
+                /**
+        * @type {array}
+        */
+                let items = event.dataTransfer.items || [];
+                /**
+                * @type {Rx.Observable}
+                */
+                entries = Rx.Observable.from(items)
+                    .map(i => i.webkitGetAsEntry())
+                    .map(e => {
+                        if (e.isFile) {
+                            return new file(e);
+                        } else {
+                            return new directory(e.name, e);
+                        }
+                    })
+                    .mergeMap(i => {
+                        if (root.addEntry(i))
+                            return Rx.Observable.of(i);
+                        else if (i instanceof directory)
+                            return Rx.Observable.of(root.getDirectory(i.name));
+                        else if (options.allUnused) {
+                            var fl = root.getFile(i.name);
+                            if (!fl.vertex && !fl.read)
+                                return Rx.Observable.of(fl);
+                        }
+                        return Rx.Observable.empty();
+                    });
+            } else {
+                entries = Rx.Observable.from(event)
+                    .mergeMap(path => {
+                        return Rx.Observable.create(obs => {
+                            window.resolveLocalFileSystemURL(path,
+                                (entry) => { obs.next(entry); obs.complete(); },
+                                (err) => { obs.error(err); });
+                        })
+                        .mergeMap(handle => {
+                            return root.searchParent(path.replace('file:///', ''))
+                                .map(spec => {
+                                    if (handle.isFile) {
+                                        spec[0].addEntry(new file(handle));
+                                        return spec[0].getFile(spec[1]);
+                                    } else {
+                                        spec[0].addEntry(new directory(spec[1], handle));
+                                        return spec[0].getDirectory(spec[1]);
+                                    }
+                                });
+                        });
+                    });
+            }
+
             if (options.recursive || options.allUnused) {
                 entries = entries
                     .mergeMap(e => {
@@ -1027,6 +1053,100 @@ class fileTree {
     }
 }
 
+/**************************************************************************************************
+ * 
+ *    Class: filebrowserAccessor
+ *    
+ *    Forwards request to filebrowser plugin from cordova.
+ * 
+ **************************************************************************************************/
+
+class filebrowserAccessor extends observable {
+    get [Symbol.toStringTag]() {
+        return 'Filebrowser Accessor';
+    }
+
+    constructor(filesys) {
+        super();
+
+        this.root = filesys;
+    }
+
+    /**
+ * @returns {Boolean} - Pass that file even if it does not match the criteria
+ * */
+    isForcedFile() {
+        return this.forcedFile;
+    }
+
+    /**
+     * 
+     * @param {JSON} options
+     * @param {string} [options.name]
+     * @param {directory} [options.parent]
+     * @param {boolean} [options.multi]
+     * @param {boolean} [options.filter.files]
+     * @param {boolean} [options.filter.folders]
+     * @returns {Rx.observable<file>}
+     */
+    request(options) {
+        var myOptions = $.extend({}, options);
+
+        if (this.targetSubject)
+            this.targetSubject.complete();
+        this.targetSubject = new Rx.Subject();
+
+        if (options.name === "tour.json") {
+            myOptions.multi = false;
+            myOptions.filter = {
+                files: false,
+                folders: true
+            }
+        }
+
+        var picker;
+        this.forcedFile = false;
+        if (myOptions.filter && !myOptions.filter.folders) {
+            picker = window.OurCodeWorld.Filebrowser.filePicker;
+            if (myOptions.multi)
+                picker = picker.multi;
+            else
+                picker = picker.single;
+        }
+        else if (myOptions.filter && !myOptions.filter.files) {
+            picker = window.OurCodeWorld.Filebrowser.folderPicker;
+            if (myOptions.multi)
+                picker = picker.multi;
+            else {
+                picker = picker.single;
+                this.forcedFile = true;
+            }
+        }
+        else 
+            picker = window.OurCodeWorld.Filebrowser.mixedPicker;
+
+        picker({
+            success: paths => {
+                this.root.populate(paths, { root: this.root, allUnused: (options.name == null || options.name.length == 0) } )
+                    .subscribe(this.targetSubject);
+                
+            },
+            error: err => {
+                this.targetSubject.error(err);
+            },
+            //startupPath : options.parent.getPath()
+        });
+
+        return this.targetSubject
+            .mergeMap(entry => {
+                if (entry instanceof directory) {
+                    return entry.scan({ onlyNewFiles: true });
+                }else
+                    return Rx.Observable.of(entry);
+            })
+            .filter(f => f instanceof file);
+    }
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1046,12 +1166,14 @@ class entryAccessor {
     constructor(filesys) {
         this.filesys = filesys;
 
-        this.accessors = [
-            new diskAccessor(filesys)
-        ];
+        this.accessors = [new diskAccessor(filesys)];
+        if (window.OurCodeWorld && window.OurCodeWorld.Filebrowser) {
+            this.accessors.push(new filebrowserAccessor(filesys));
+        }
 
-        if ($('#file-access-browser-tab')[0])
-            this.accessors.push(new fileTree(filesys));
+            if ($('#file-access-browser-tab')[0])
+                this.accessors.push(new fileTree(filesys));
+
 
         this.dialog = $('#file-access-dialog');
         this.hasEntries = ko.observable(false);
@@ -1183,6 +1305,9 @@ class filesystem extends directory {
 * @returns {string}
 */
     getPath() {
+        if (!!window.cordova)
+            return "file:///";
+
         return "";
     }
 

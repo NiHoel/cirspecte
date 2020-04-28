@@ -1165,9 +1165,6 @@ class electronAccessor extends observable {
         super();
 
         this.root = filesys;
-        var remote = window.cordova.require('electron').remote;
-        this.dialog = remote.dialog;
-        this.window = remote.getCurrentWindow();
     }
 
     /**
@@ -1188,7 +1185,7 @@ class electronAccessor extends observable {
      * @returns {Rx.observable<file>}
      */
     request(options) {
-        var myOptions = $.extend({}, options);
+        var myOptions = $.extend({}, options, {parent: null});
 
         if (this.targetSubject)
             this.targetSubject.complete();
@@ -1205,10 +1202,14 @@ class electronAccessor extends observable {
         this.forcedFile = false;
 
         if (window.api) {
-            var receiverObs = Rx.Observable.from(window.api.receive);
-            this.targetSubject = receiverObs("fs-response")
-                .mergeMap(paths => this.root.populate(paths, { root: this.root, allUnused: (options.name == null || options.name.length == 0) }));
-            window.api.send("fs-request", myOptions);
+            Rx.Observable.create(obs => {
+				window.api.receive("fs-response", paths => {console.log(paths); obs.next(paths); obs.complete();});
+			})
+                .mergeMap(paths => this.root.populate(paths, { root: this.root, allUnused: (options.name == null || options.name.length == 0) }))
+				.subscribe(this.targetSubject);
+            console.log("sending request");
+			window.api.send("fs-request", myOptions);
+			
         }
 
         

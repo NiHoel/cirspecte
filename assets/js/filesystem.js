@@ -1148,6 +1148,83 @@ class filebrowserAccessor extends observable {
     }
 }
 
+/**************************************************************************************************
+ * 
+ *    Class: electronAccessor
+ *    
+ *    Forwards request to filebrowser from Electron.
+ * 
+ **************************************************************************************************/
+
+class electronAccessor extends observable {
+    get [Symbol.toStringTag]() {
+        return 'Electron Accessor';
+    }
+
+    constructor(filesys) {
+        super();
+
+        this.root = filesys;
+        var remote = window.cordova.require('electron').remote;
+        this.dialog = remote.dialog;
+        this.window = remote.getCurrentWindow();
+    }
+
+    /**
+ * @returns {Boolean} - Pass that file even if it does not match the criteria
+ * */
+    isForcedFile() {
+        return this.forcedFile;
+    }
+
+    /**
+     * 
+     * @param {JSON} options
+     * @param {string} [options.name]
+     * @param {directory} [options.parent]
+     * @param {boolean} [options.multi]
+     * @param {boolean} [options.filter.files]
+     * @param {boolean} [options.filter.folders]
+     * @returns {Rx.observable<file>}
+     */
+    request(options) {
+        var myOptions = $.extend({}, options);
+
+        if (this.targetSubject)
+            this.targetSubject.complete();
+        this.targetSubject = new Rx.Subject();
+
+        if (options.name === "tour.json") {
+            myOptions.multi = false;
+            myOptions.filter = {
+                files: false,
+                folders: true
+            }
+        }
+
+        this.forcedFile = false;
+
+        if (window.api) {
+            var receiverObs = Rx.Observable.from(window.api.receive);
+            this.targetSubject = receiverObs("fs-response")
+                .mergeMap(paths => this.root.populate(paths, { root: this.root, allUnused: (options.name == null || options.name.length == 0) }));
+            window.api.send("fs-request", myOptions);
+        }
+
+        
+
+        return this.targetSubject
+            
+            .mergeMap(entry => {
+                if (entry instanceof directory) {
+                    return entry.scan({ onlyNewFiles: true });
+                } else
+                    return Rx.Observable.of(entry);
+            })
+            .filter(f => f instanceof file);
+    }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -1167,7 +1244,10 @@ class entryAccessor {
         this.filesys = filesys;
 
         this.accessors = [new diskAccessor(filesys)];
-        if (window.OurCodeWorld && window.OurCodeWorld.Filebrowser) {
+        if (platform.name === "Electron") {
+            this.accessors.push(new electronAccessor(filesys));
+        } else if (window.OurCodeWorld && window.OurCodeWorld.Filebrowser) {
+            console.log("platform.name:" + platform.name);
             this.accessors.push(new filebrowserAccessor(filesys));
         }
 

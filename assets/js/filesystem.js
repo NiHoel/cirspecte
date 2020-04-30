@@ -1,7 +1,7 @@
 'use strict';
 
 /*
-* Classes: directory, file, diskAccessor, fileTree, entryAccessor, filesystem
+* Classes: directory, file, diskAccessor, fileTree, webkitAccessor, filesystem
 *
 * Usage:
 * Call filesystem.request(...) to get a specific file or folder 
@@ -9,7 +9,6 @@
 * Call file.readAs*() to get the content
 * Call directory.scan() to get the contents
 */
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -25,17 +24,340 @@ class directory extends observable {
      * @param {string} [name]
      * @param {FileSystemDirectoryEntry | DirectoryEntry}  [directoryHandle]
      */
-    constructor(name, directoryHandle) {
+    constructor(path) {
         super();
-        this.name = name;
-        this.directoryHandle = directoryHandle;
-        this.scanned = false;
-        this.files = new Map();
-        this.directories = new Map();
+
+        var seperator = '/'
+        if (path.indexOf('\\') !== -1)
+            seperator = '\\';
+
+        this.path = path;
+        if (path.endsWith(seperator))
+            this.name = path.split(seperator).splice(2, 1)[0];
+        else
+            this.name = path.split(seperator).pop();
+
+
+    }
+
+    canScan() {
+        return false;
+    }
+
+    canWrite() {
+        return false;
+    }
+
+    canTrackChanges() {
+        return false;
     }
 
     /**
-    * @param {directory} elem
+    * @returns {string}
+    */
+    getPath(rootDirectory = null) {
+        if (!rootDirectory)
+            return path;
+
+        var rootPath = rootDirectory.getPath();
+        var rootPathSeperator = '/'
+        if (rootPathSeperator.indexOf('\\') !== -1)
+            rootPathSeperator = '\\';
+        var rootPathComponents = rootPath.split(rootPathSeperator);
+
+        var pathSeperator = '/'
+        if (pathSeperator.indexOf('\\') !== -1)
+            pathSeperator = '\\';
+        var pathComponents = this.path.split(pathSeperator);
+
+        while (rootPathComponents.length && pathComponents.length && pathComponents[0] === rootPathComponents[0]) {
+            rootPathComponents.shift();
+            pathComponents.shift();
+        }
+
+        return pathComponents.join(pathSeperator);
+    }
+
+
+    /**
+* 
+* @param {string} path
+* @returns {Rx.Observablefile>}
+*/
+    searchFile(path) {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
+* 
+* @param {string} path
+* @returns {Rx.Observable<directory>}
+*/
+    searchDirectory(path) {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
+* 
+* @param {string} path
+* @returns {Rx.Observable<file|directory>}
+*/
+    searchEntry(path) {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+
+    /**
+    *
+    * @param {boolean} options.enforce - scan again
+    * @param {boolean} options.onlyNewFiles
+    * @param {boolean} options.onlyUnusedFiles
+    *@returns {Rx.Observable<file | directory>}
+    */
+    scan(options = {}) {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+
+
+    }
+
+
+
+    /**
+     * @returns {JSON}
+     * */
+    toNode() {
+        if (!this.node)
+            this.node = {
+                id: this.getPath(),
+                text: this.name,
+                children: true,
+                icon: "jstree-folder",
+                state: {
+                    opened: false
+                }
+            };
+        return this.node;
+    }
+}
+
+directory.prototype.CREATE = "create";
+
+directory.prototype.ERROR.FILE_NOT_FOUND = "file not found";
+directory.prototype.ERROR.DIRECTORY_NOT_FOUND = "directory not found";
+directory.prototype.ERROR.INVALID_PATH = "invalid path";
+directory.prototype.ERROR.NO_DIRECTORY_HANDLE = "no directory handle";
+directory.prototype.ERROR.UNSUPPORTED_OPERATION = "operation cannot be performed on this directory";
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    Class: cordovadirectory
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+class cordovadirectory extends directory {
+    get [Symbol.toStringTag]() {
+        return 'Cordovadirectory';
+    }
+
+    /**
+     * @param {string} [name]
+     * @param {FileSystemDirectoryEntry | DirectoryEntry}  [directoryHandle]
+     */
+    constructor(path) {
+        super(path);
+    }
+
+    canScan() {
+        return true;
+    }
+
+    canWrite() {
+        return true;
+    }
+
+    canTrackChanges() {
+        return true;
+    }
+
+    /**
+     * @private
+     * */
+    static handleToEntry(handle) {
+        if (handle.isFile) {
+            return new cordovafile(handle.name, handle.fullPath);
+        } else {
+            return new cordovadirectory(handle.fullPath);
+        }
+    }
+
+    static resolve(path) {
+        return Rx.Observable.create(obs => {
+            window.resolveLocalFileSystemURL(path,
+                (entry) => { obs.next(entry); obs.complete(); },
+                (err) => { obs.error(err); });
+        });
+    }
+
+     /**
+* 
+* @param {string} path
+* @returns {Rx.Observable<file>}
+*/
+    searchFile(path) {
+        return this.searchEntry(path)
+            .filter(elem => elem instanceof file);
+    }
+
+    /**
+* 
+* @param {string} path
+* @returns {Rx.Observable<directory>}
+*/
+    searchDirectory(path) {
+        return this.searchEntry(path)
+            .filter(elem => elem instanceof directory);
+    }
+
+    /**
+* 
+* @param {string} path
+* @returns {Rx.Observable<file|directory>}
+*/
+    searchEntry(path) {
+        if (path.indexOf(':') == -1)
+            path = this.getPath() + '/' + path;
+
+        return resolve(path)
+            .mergeMap(handle => {
+                return this.handleToEntry(handle);
+            });
+
+    }
+
+
+    /**
+    *
+    * @param {boolean} options.enforce - scan again
+    * @param {boolean} options.onlyNewFiles
+    * @param {boolean} options.onlyUnusedFiles
+    *@returns {Rx.Observable<file | directory>}
+    */
+    scan(options = {}) {
+        if (options.onlyNewFiles && !this.entries)
+            return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "Call trackChanges() before scanning for new files.", this.getPath()));
+
+        var defaultObservable;
+        if (options.onlyNewFiles) {
+            defaultObservable = Rx.Observable.from(this.getDirectories());
+        } else {
+            defaultObservable = Rx.Observable.from(this.getEntries());
+        }
+
+        if (options.onlyUnusedFiles) {
+            defaultObservable = defaultObservable.filter(f => !(f instanceof webkitfile) || !f.read || !f.vertex);
+        }
+
+        if (this.entries && !options.enforce)
+            return defaultObservable;
+
+
+        // get all entries
+        return resolve(this.path)
+            .map(dirEntry => dirEntry.createReader())
+            .expand(reader => {
+                if (this.isDirectoryReader(reader))
+                    return Rx.Observable.create(observer => {
+
+                        reader.readEntries(entries => {
+                            entries.forEach(handle => {
+                                var entr = this.handleToEntry(handle);
+                                var isNew = !this.entries.has(entr.name);
+
+                                if ((options.onlyNewFiles || isNew) &&
+                                    (options.onlyUnusedFiles || !(entr instanceof file) || !file.usedFiles.has(entr.getName()) ))
+                                    observer.next(entr);
+
+                                this.entries.set(entr.name, entr);
+                            });
+
+                            if (entries.length != 0)
+                                observer.next(reader); // readEntries must be called iteratively since it returns at most 100 entries per call on Chrome and Edge 
+
+                            observer.complete();
+                        }, err => {
+                            console.log(err);
+                            observer.error(err);
+                        });
+                    });
+                else
+                    return Rx.Observable.empty();
+            })
+            .filter(entry => !this.isDirectoryReader(entry));
+
+
+    }
+
+    trackChanges() {
+        if (this.entries)
+            return Rx.Observable.empty();
+
+        this.entries = new Map();
+
+        return scan()
+            .do(e => { this.entries.set(e.name, e); });
+            
+    }
+
+
+
+    /**
+     * @returns {JSON}
+     * */
+    toNode() {
+        if (!this.node)
+            this.node = {
+                id: this.getPath(),
+                text: this.name,
+                children: true,
+                icon: "jstree-folder",
+                state: {
+                    opened: false
+                }
+            };
+        return this.node;
+}
+
+     
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    Class: webkitdirectory
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+class webkitdirectory extends directory {
+    get [Symbol.toStringTag]() {
+        return 'Webkitdirectory';
+    }
+
+    /**
+     * @param {string} [name]
+     * @param {FileSystemDirectoryEntry | DirectoryEntry}  [directoryHandle]
+     */
+    constructor(name, directoryHandle) {
+        super(name);
+
+        this.files = new Map();
+        this.directories = new Map();
+
+        this.directoryHandle = directoryHandle;
+        this.scanned = false;
+    }
+
+    /**
+    * @param {webkitdirectory} elem
     * @returns {boolean} elem is ancestor of this
     */
     isAncestor(elem) {
@@ -47,47 +369,20 @@ class directory extends observable {
             return this.getParent().isAncestor(elem);
     }
 
-    /**
-     * 
-     * @param {File | directory} entry
-    *@returns {boolean};
-     */
-    addEntry(entry) {
-        if (entry instanceof file) {
-            if (!this.files.has(entry.name, entry)) {
-                this.files.set(entry.name, entry)
-                entry.parent = this;
-                this.emit(entry, this.CREATE);
-                return true;
-            }
-            var f = this.getFile(entry.name);
-            if (entry.fileHandle) {
-                f.fileHandle = entry.fileHandle;
-                delete f.file;
-            }
-            if (entry.file) {
-                f.file = entry.file;
-            }
-        } else if (entry instanceof directory) {
-            if (!this.directories.has(entry.name, entry)) {
-                this.directories.set(entry.name, entry);
-                entry.parent = this;
-                this.emit(entry, this.CREATE);
-                return true;
-            }
-            if (entry.directoryHandle) {
-                this.getDirectory(entry.name).directoryHandle = entry.directoryHandle;
-            }
-        }
-        return false;
+    canScan() {
+        return !!this.directoryHandle;
+    }
+
+    canTrackChanges() {
+        return this.canScan();
     }
 
 
     /**
-     * 
-     * @param {string} name
-    *@returns {file}
-     */
+ * 
+ * @param {string} name
+*@returns {file}
+ */
     getFile(name) {
         let file = this.files.get(name);
         if (file == null)
@@ -123,6 +418,42 @@ class directory extends observable {
     }
 
     /**
+     * 
+     * @param {File | webkitdirectory} entry
+    *@returns {boolean};
+     */
+    addEntry(entry) {
+        if (entry instanceof webkitfile) {
+            if (!this.files.has(entry.name, entry)) {
+                this.files.set(entry.name, entry)
+                entry.parent = this;
+                this.emit(entry, this.CREATE);
+                return true;
+            }
+            var f = this.getFile(entry.name);
+            if (entry.fileHandle) {
+                f.fileHandle = entry.fileHandle;
+                delete f.file;
+            }
+            if (entry.file) {
+                f.file = entry.file;
+            }
+        } else if (entry instanceof webkitdirectory) {
+            if (!this.directories.has(entry.name, entry)) {
+                this.directories.set(entry.name, entry);
+                entry.parent = this;
+                this.emit(entry, this.CREATE);
+                return true;
+            }
+            if (entry.directoryHandle) {
+                this.getDirectory(entry.name).directoryHandle = entry.directoryHandle;
+            }
+        }
+        return false;
+    }
+
+
+    /**
     * @returns {string}
     */
     getPath(rootDirectory = null) {
@@ -156,7 +487,7 @@ class directory extends observable {
     }
 
     /**
-     * @returns {directory}
+     * @returns {webkitdirectory}
      * */
     getParent() {
         return this.parent;
@@ -166,7 +497,7 @@ class directory extends observable {
     /**
    * 
    * @param {string} path
-   * @returns {Rx.Observable<[directory, string]>} - parent of the element the path specifies, this if path is empty
+   * @returns {Rx.Observable<[webkitdirectory, string]>} - parent of the element the path specifies, this if path is empty
    */
     searchParent(path = "") {
         var observable = Rx.Observable.of(null);
@@ -178,7 +509,7 @@ class directory extends observable {
             observable = Rx.Observable.of(root)
                 .expand(dir => {
                     return dir.scan()
-                        .filter(d => d instanceof directory && this.isAncestor(d))
+                        .filter(d => d instanceof webkitdirectory && this.isAncestor(d))
                 })
                 .last()
         }
@@ -195,9 +526,9 @@ class directory extends observable {
 
                 let dirName = path.shift();
                 return parent.scan()
-                    .filter(dir => dir instanceof directory && dir.name === dirName)
+                    .filter(dir => dir instanceof webkitdirectory && dir.name === dirName)
                     .defaultIfEmpty(null)
-                    .map(dir => dir == null ? new directory(dirName) : dir)
+                    .map(dir => dir == null ? new webkitdirectory(dirName) : dir)
                     .last()
                     .do(dir => parent.addEntry(dir))
                     .map(dir => [dir, path]);
@@ -208,7 +539,7 @@ class directory extends observable {
     /**
     * 
     * @param {string} path
-    * @returns {Rx.Observable<file>}
+    * @returns {Rx.Observable<webkitfile>}
     */
     searchFile(path) {
         return this.searchParent(path)
@@ -218,7 +549,7 @@ class directory extends observable {
     /**
 * 
 * @param {string} path
-* @returns {Rx.Observable<directory>}
+* @returns {Rx.Observable<webkitdirectory>}
 */
     searchDirectory(path) {
         if (path.length === 0)
@@ -232,7 +563,7 @@ class directory extends observable {
     /**
 * 
 * @param {string} path
-* @returns {Rx.Observable<file|directory>}
+* @returns {Rx.Observable<webkitfile|webkitdirectory>}
 */
     searchEntry(path) {
         return this.searchDirectory(path)
@@ -246,7 +577,7 @@ class directory extends observable {
     scanRecursive(options = {}) {
         return Rx.Observable.of(this)
             .expand(elem => {
-                if (elem instanceof directory)
+                if (elem instanceof webkitdirectory)
                     return elem.scan(options);
                 else
                     return Rx.Observable.empty();
@@ -258,7 +589,7 @@ class directory extends observable {
     * @param {boolean} options.enforce - scan again
     * @param {boolean} options.onlyNewFiles
     * @param {boolean} options.onlyUnusedFiles
-    *@returns {Rx.Observable<File | directory>}
+    *@returns {Rx.Observable<File | webkitdirectory>}
     */
     scan(options = {}) {
 
@@ -307,11 +638,19 @@ class directory extends observable {
                             entries.forEach(e => {
 								var entr;
 								if(e.isFile)
-									entr = new file(e);
+									entr = new webkitfile(e);
 								else
-									entr = new directory(e.name, e);
-								
-								if(this.addEntry(entr))
+									entr = new webkitdirectory(e.name, e);
+
+                                var isNew = this.addEntry(entr);
+                                if (!isNew)
+                                    if (e.isFile)
+                                        entr = this.getFile(entr.name);
+                                    else
+                                        entr = this.getDirectory(entr.name);
+
+                                if ((options.onlyNewFiles || isNew) &&
+                                    (options.onlyUnusedFiles || !(entr instanceof file) || !entr.read || !entr.vertex))
 									observer.next(entr);								
 							});
                             
@@ -334,16 +673,18 @@ class directory extends observable {
             .filter(entry => !this.isDirectoryReader(entry));
     }
 
-
+    trackChanges() {
+        return this.scan();
+    }
 
     /**
-   * Merge the information from a file input or drop event into the directory tree
+   * Merge the information from a webkitfile input or drop event into the webkitdirectory tree
    * 
    * @param {DragEvent | Event} event - drag event
-   *@param {directory} options.root
+   *@param {webkitdirectory} options.root
    * @param {boolean} options.recursive
    * @param {boolean} options.allUnused
-  * @returns {Rx.Observable<file>}
+  * @returns {Rx.Observable<webkitfile>}
    */
     populate(event, options = {}) {
         var root = options.root || this;
@@ -352,7 +693,7 @@ class directory extends observable {
                 .mergeMap(f => {
                     return root.searchParent(f.webkitRelativePath)
                         .mergeMap(elem => {
-                            var fl = new file(f);
+                            var fl = new webkitfile(f);
                             if (elem[0].addEntry(fl))
                                 return Rx.Observable.of(fl);
                             else if (options.allUnused) {
@@ -364,65 +705,41 @@ class directory extends observable {
                         });
                 });
 
-        } else if (event instanceof DragEvent || event instanceof Array) {
-            var entries;
-
-            if (event instanceof DragEvent) {
+        } else if (event instanceof DragEvent) {
+ 
                 /**
         * @type {array}
         */
-                let items = event.dataTransfer.items || [];
+            let items = event.dataTransfer.items || [];
                 /**
                 * @type {Rx.Observable}
                 */
-                entries = Rx.Observable.from(items)
-                    .map(i => i.webkitGetAsEntry())
-                    .map(e => {
-                        if (e.isFile) {
-                            return new file(e);
-                        } else {
-                            return new directory(e.name, e);
-                        }
-                    })
-                    .mergeMap(i => {
-                        if (root.addEntry(i))
-                            return Rx.Observable.of(i);
-                        else if (i instanceof directory)
-                            return Rx.Observable.of(root.getDirectory(i.name));
-                        else if (options.allUnused) {
-                            var fl = root.getFile(i.name);
-                            if (!fl.vertex && !fl.read)
-                                return Rx.Observable.of(fl);
-                        }
-                        return Rx.Observable.empty();
-                    });
-            } else {
-                entries = Rx.Observable.from(event)
-                    .mergeMap(path => {
-                        return Rx.Observable.create(obs => {
-                            window.resolveLocalFileSystemURL(path,
-                                (entry) => { obs.next(entry); obs.complete(); },
-                                (err) => { obs.error(err); });
-                        })
-                        .mergeMap(handle => {
-                            return root.searchParent(path.replace('file:///', ''))
-                                .map(spec => {
-                                    if (handle.isFile) {
-                                        spec[0].addEntry(new file(handle));
-                                        return spec[0].getFile(spec[1]);
-                                    } else {
-                                        spec[0].addEntry(new directory(spec[1], handle));
-                                        return spec[0].getDirectory(spec[1]);
-                                    }
-                                });
-                        });
-                    });
-            }
+            var entries = Rx.Observable.from(items)
+                .map(i => i.webkitGetAsEntry())
+                .map(e => {
+                    if (e.isFile) {
+                        return new webkitfile(e);
+                    } else {
+                        return new webkitdirectory(e.name, e);
+                    }
+                })
+                .mergeMap(i => {
+                    if (root.addEntry(i))
+                        return Rx.Observable.of(i);
+                    else if (i instanceof webkitdirectory)
+                        return Rx.Observable.of(root.getDirectory(i.name));
+                    else if (options.allUnused) {
+                        var fl = root.getFile(i.name);
+                        if (!fl.vertex && !fl.read)
+                            return Rx.Observable.of(fl);
+                    }
+                    return Rx.Observable.empty();
+                });
 
             if (options.recursive || options.allUnused) {
                 entries = entries
                     .mergeMap(e => {
-                        if (e instanceof directory)
+                        if (e instanceof webkitdirectory)
                             return e.scanRecursive({ enforce: true, onlyUnusedFiles: options.allUnused });
                         else
                             return Rx.Observable.of(e);
@@ -433,32 +750,8 @@ class directory extends observable {
         }
     }
 
-    /**
-     * @returns {JSON}
-     * */
-    toNode() {
-        if (!this.node)
-            this.node = {
-                id: this.getPath(),
-                text: this.name,
-                children: true,
-                icon: "jstree-folder",
-                state: {
-                    opened: false
-                }
-            };
-        return this.node;
-    }
+
 }
-
-directory.prototype.CREATE = "create";
-
-directory.prototype.ERROR.FILE_NOT_FOUND = "file not found";
-directory.prototype.ERROR.DIRECTORY_NOT_FOUND = "directory not found";
-directory.prototype.ERROR.INVALID_PATH = "invalid path";
-directory.prototype.ERROR.NO_DIRECTORY_HANDLE = "no directory handle";
-
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -473,10 +766,143 @@ class file {
 
     /**
      * @param {File | FileSystemFileEntry | FileEntry}  fileHandle
-     * @param {directory} parent
+     * @param {webkitdirectory} parent
+     */
+    constructor(name) {
+        this.name = name;
+    }
+
+
+    /**
+     * 
+     * @param {webkitdirectory} rootDirectory
+     */
+    getPath(rootDirectory = null) {
+        return this.name;
+    }
+
+    /**
+     * @returns {webkitdirectory}
+     * */
+    getParent() {
+        throw new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath());
+    }
+
+    /**
+    * 
+    * @param {FileSystemFileEntry | FileEntry} entry
+    * @returns {Rx.Observable<File>}
+    */
+    load() {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
+    *
+    * @returns {Rx.observable<string>}
+    */
+    readAsDataURL() {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
+ * 
+ * @returns {Rx.Observable<JSON>}
+ */
+    readAsJSON() {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
+* @returns {Rx.observable<Image>}
+ */
+    readAsImage() {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
+     * @returns {Rx.Observable<ImageBitmap>}
+     * */
+    readAsImageBitmap() {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
+     * @returns {Rx.Observable<ArrayBuffer>}
+     * */
+    readAsArrayBuffer() {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
+     * 
+     * @param {[string]} types
+     * @returns {boolean} - is the type of this webkitfile contained in types?
+     */
+    isType(types) {
+        if (!(types instanceof Array))
+            types = [types];
+
+        for (let type of types) {
+            if (this.file && this.file.type === type ||
+                this.name.endsWith("." + type.split('/')[1]) ||
+                this.name.endsWith("." + type.split('/')[1].toUpperCase()))
+                return true;
+
+            if (type === webkitfile.prototype.JPG && (
+                this.name.endsWith(".jpg") ||
+                this.name.endsWith(".JPG")
+            ))
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * @returns {JSON}
+     */
+    toNode() {
+        if (!this.node)
+            this.node = {
+                id: this.getPath(),
+                text: this.name,
+                children: false,
+                icon: "jstree-file"
+            };
+        return this.node;
+    }
+}
+
+file.prototype.JPG = "image/jpeg";
+file.prototype.PNG = "image/png";
+file.prototype.TXT = "text/plain";
+file.prototype.JSON = "application/json";
+
+file.prototype.ERROR = {};
+file.prototype.ERROR.JSON_PARSE_EXCEPTION = "Syntax Error in JSON";
+file.prototype.ERROR.READING_FILE_EXCEPTION = "Error reading file";
+file.prototype.ERROR.UNSUPPORTED_OPERATION = "operation cannot be performed on this file";
+
+file.prototype.usedFiles = new Set();
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    Class: webkitfile
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+class webkitfile extends file {
+    get [Symbol.toStringTag]() {
+        return 'file';
+    }
+
+    /**
+     * @param {File | FileSystemFileEntry | FileEntry}  fileHandle
+     * @param {webkitdirectory} parent
      */
     constructor(fileHandle) {
-        this.name = fileHandle.name;
+       super(fileHandle.name);
         if (fileHandle instanceof File)
             this.file = fileHandle;
         else
@@ -487,14 +913,14 @@ class file {
 
     /**
      * 
-     * @param {directory} rootDirectory
+     * @param {webkitdirectory} rootDirectory
      */
     getPath(rootDirectory = null) {
         return this.parent.getPath(rootDirectory) + this.name;
     }
 
     /**
-     * @returns {directory}
+     * @returns {webkitdirectory}
      * */
     getParent() {
         return this.parent;
@@ -634,60 +1060,86 @@ class file {
         });
     }
 
-    /**
-     * 
-     * @param {[string]} types
-     * @returns {boolean} - is the type of this file contained in types?
-     */
-    isType(types) {
-        if (!(types instanceof Array))
-            types = [types];
-
-        for (let type of types) {
-            if (this.file && this.file.type === type ||
-                this.name.endsWith("." + type.split('/')[1]) ||
-                this.name.endsWith("." + type.split('/')[1].toUpperCase()))
-                return true;
-
-            if (type === file.prototype.JPG && (
-                this.name.endsWith(".jpg") ||
-                this.name.endsWith(".JPG")
-            ))
-                return true;
-        }
-        return false;
-    }
-
-    /**
-     * @returns {JSON}
-     */
-    toNode() {
-        if (!this.node)
-            this.node = {
-                id: this.getPath(),
-                text: this.name,
-                children: false,
-                icon: "jstree-file"
-            };
-        return this.node;
-    }
 }
 
-file.prototype.JPG = "image/jpeg";
-file.prototype.PNG = "image/png";
-file.prototype.TXT = "text/plain";
-file.prototype.JSON = "application/json";
 
-file.prototype.ERROR = {};
-file.prototype.ERROR.JSON_PARSE_EXCEPTION = "Syntax Error in JSON";
-file.prototype.ERROR.READING_FILE_EXCEPTION = "Error reading file";
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    Class: cordovafile
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+class cordovafile extends webkitfile {
+    get [Symbol.toStringTag]() {
+        return 'cordovafile';
+    }
+
+    /**
+     * @param {String}  name
+     * @param {String} path
+     */
+    constructor(name, path) {
+        super({ name: name });
+        this.path = path;
+        delete this.fileHandle;
+    }
+
+
+    /**
+     * 
+     * @param {directory} rootDirectory
+     */
+    getPath(rootDirectory = null) {
+        return (new directory(this.path)).getPath(rootDirectory);
+    }
+
+    /**
+     * @returns {cordovadirectory}
+     * */
+    getParent() {
+        var pathSeperator = '/'
+        if (pathSeperator.indexOf('\\') !== -1)
+            pathSeperator = '\\';
+        var pathComponents = this.path.split(pathSeperator);
+
+        return new cordovadirectory(pathComponents.slice(0, -1).join(pathSeperator));
+    }
+
+    /**
+    * 
+    * @returns {Rx.Observable<File>}
+    */
+    load() {
+        return Rx.Observable.create(obs => {
+            window.resolveLocalFileSystemURL(this.path,
+                (entry) => { obs.next(entry); obs.complete(); },
+                (err) => { obs.error(err); });
+        })
+            .mergeMap(handle => {
+
+                return Rx.Observable.create(observer => {
+                    handle.file(
+                        file => {
+                            this.file = file;
+                            observer.next(file);
+                            observer.complete();
+                        }
+                        //                , err => observer(err)
+                    );
+                });
+            });
+    }
+
+ 
+}
 
 
 /**************************************************************************************************
  * 
  *    Class: disAccessor
  *    
- *    Observes file input buttons and drop areas.
+ *    Observes webkitfile input buttons and drop areas.
  * 
  **************************************************************************************************/
 
@@ -781,7 +1233,7 @@ class diskAccessor extends observable {
     }
 
     /**
-     * @returns {Boolean} - Pass that file even if it does not match the criteria
+     * @returns {Boolean} - Pass that webkitfile even if it does not match the criteria
      * */
     isForcedFile() {
         return this.forcedFile;
@@ -791,9 +1243,9 @@ class diskAccessor extends observable {
      * 
      * @param {JSON} options
      * @param {string} [options.name]
-     * @param {directory} [options.parent]
+     * @param {webkitdirectory} [options.parent]
      * @param {boolean} [options.multi]
-     * @returns {Rx.observable<file>}
+     * @returns {Rx.observable<webkitfile>}
      */
     request(options) {
         this.root = options.parent;
@@ -812,12 +1264,12 @@ class diskAccessor extends observable {
 
         return this.targetSubject.mergeMap(ev => options.parent.populate(ev, { root: this.root, allUnused: (this.name() == null || this.name().length == 0) }))
             .mergeMap(entry => {
-                if (entry instanceof directory)
+                if (entry instanceof webkitdirectory)
                     return entry.scan({ onlyNewFiles: true })
                 else
                     return Rx.Observable.of(entry);
             })
-            .filter(f => f instanceof file);
+            .filter(f => f instanceof webkitfile);
     }
 }
 
@@ -860,7 +1312,7 @@ class fileTree {
 
 
                     dir.scan()
-                        .filter(e => !(e instanceof file) || e.isType([file.prototype.JPG, file.prototype.PNG, file.prototype.JSON]))
+                        .filter(e => !(e instanceof webkitfile) || e.isType([webkitfile.prototype.JPG, webkitfile.prototype.PNG, webkitfile.prototype.JSON]))
                         .map(e => {
                             let cNode = e.toNode();
                             self.nodeIdToEntry.set(cNode.id, e);
@@ -868,8 +1320,8 @@ class fileTree {
                         })
                         .toArray()
                         .do(() => {
-                            dir.observe(file, dir.CREATE)
-                                .merge(dir.observe(directory, dir.CREATE))
+                            dir.observe(webkitfile, dir.CREATE)
+                                .merge(dir.observe(webkitdirectory, dir.CREATE))
                                 .subscribe(e => {
                                     if (!e.node) {
                                         let cNode = e.toNode();
@@ -889,8 +1341,8 @@ class fileTree {
                 }
             },
             'sort': function (a, b) {
-                let a_directory = self.nodeIdToEntry.has(a) && (self.nodeIdToEntry.get(a) instanceof directory);
-                let b_directory = self.nodeIdToEntry.has(b) && (self.nodeIdToEntry.get(b) instanceof directory);
+                let a_directory = self.nodeIdToEntry.has(a) && (self.nodeIdToEntry.get(a) instanceof webkitdirectory);
+                let b_directory = self.nodeIdToEntry.has(b) && (self.nodeIdToEntry.get(b) instanceof webkitdirectory);
                 return a_directory === b_directory ? (this.get_text(a) > this.get_text(b) ? 1 : -1) : (b_directory ? 1 : -1);
             },
             /*          'contextmenu': {
@@ -915,13 +1367,13 @@ class fileTree {
                                       "action": function (data) {
                                           var inst = $.jstree.reference(data.reference),
                                               obj = inst.get_node(data.reference);
-                                          inst.create_node(obj, { type: "file" }, "last", function (new_node) {
+                                          inst.create_node(obj, { type: "webkitfile" }, "last", function (new_node) {
                                               setTimeout(function () { inst.edit(new_node); }, 0);
                                           });
                                       }
                                   }
                               };
-                              if (this.get_type(node) === "file") {
+                              if (this.get_type(node) === "webkitfile") {
                                   delete tmp.create;
                               }
                               return tmp;
@@ -966,7 +1418,7 @@ class fileTree {
     }
 
     /**
- * @returns {Boolean} - Pass that file even if it does not match the criteria
+ * @returns {Boolean} - Pass that webkitfile even if it does not match the criteria
  * */
     isForcedFile() {
         return this.forcedFile;
@@ -976,11 +1428,11 @@ class fileTree {
      * 
      * @param {JSON} options
      * @param {string} [options.name]
-     * @param {directory} [options.parent]
+     * @param {webkitdirectory} [options.parent]
      * @param {boolean} [options.multi]
      * @param {boolean} [options.filter.files]
      * @param {boolean} [options.filter.folders]
-     * @returns {Rx.observable<file>}
+     * @returns {Rx.observable<webkitfile>}
      */
     request(options) {
         delete this.forcedFile;
@@ -1043,10 +1495,10 @@ class fileTree {
             return false;
 
         let entr = this.nodeIdToEntry.get(n.id);
-        if (this.filter.files && entr instanceof file)
+        if (this.filter.files && entr instanceof webkitfile)
             return true;
 
-        if (this.filter.folders && entr instanceof directory)
+        if (this.filter.folders && entr instanceof webkitdirectory)
             return true;
 
         return false;
@@ -1055,13 +1507,13 @@ class fileTree {
 
 /**************************************************************************************************
  * 
- *    Class: filebrowserAccessor
+ *    Class: cordovaAccessor
  *    
  *    Forwards request to filebrowser plugin from cordova.
  * 
  **************************************************************************************************/
 
-class filebrowserAccessor extends observable {
+class cordovaAccessor extends observable {
     get [Symbol.toStringTag]() {
         return 'Filebrowser Accessor';
     }
@@ -1073,7 +1525,7 @@ class filebrowserAccessor extends observable {
     }
 
     /**
- * @returns {Boolean} - Pass that file even if it does not match the criteria
+ * @returns {Boolean} - Pass that webkitfile even if it does not match the criteria
  * */
     isForcedFile() {
         return this.forcedFile;
@@ -1083,11 +1535,11 @@ class filebrowserAccessor extends observable {
      * 
      * @param {JSON} options
      * @param {string} [options.name]
-     * @param {directory} [options.parent]
+     * @param {webkitdirectory} [options.parent]
      * @param {boolean} [options.multi]
      * @param {boolean} [options.filter.files]
      * @param {boolean} [options.filter.folders]
-     * @returns {Rx.observable<file>}
+     * @returns {Rx.observable<webkitfile>}
      */
     request(options) {
         var myOptions = $.extend({}, options);
@@ -1095,14 +1547,6 @@ class filebrowserAccessor extends observable {
         if (this.targetSubject)
             this.targetSubject.complete();
         this.targetSubject = new Rx.Subject();
-
-        if (options.name === "tour.json") {
-            myOptions.multi = false;
-            myOptions.filter = {
-                files: false,
-                folders: true
-            }
-        }
 
         var picker;
         this.forcedFile = false;
@@ -1127,9 +1571,11 @@ class filebrowserAccessor extends observable {
 
         picker({
             success: paths => {
-                this.root.populate(paths, { root: this.root, allUnused: (options.name == null || options.name.length == 0) } )
-                    .subscribe(this.targetSubject);
-                
+                for (var path of paths)
+                    this.targetSubject.next(path);
+
+                this.targetSubject.complete();
+       
             },
             error: err => {
                 this.targetSubject.error(err);
@@ -1138,13 +1584,8 @@ class filebrowserAccessor extends observable {
         });
 
         return this.targetSubject
-            .mergeMap(entry => {
-                if (entry instanceof directory) {
-                    return entry.scan({ onlyNewFiles: true });
-                }else
-                    return Rx.Observable.of(entry);
-            })
-            .filter(f => f instanceof file);
+            .mergeMap(path => cordovadirectory.resolve(path))
+            .map(handle => cordovadirectory.handleToEntry(handle));
     }
 }
 
@@ -1168,7 +1609,7 @@ class electronAccessor extends observable {
     }
 
     /**
- * @returns {Boolean} - Pass that file even if it does not match the criteria
+ * @returns {Boolean} - Pass that webkitfile even if it does not match the criteria
  * */
     isForcedFile() {
         return this.forcedFile;
@@ -1178,11 +1619,11 @@ class electronAccessor extends observable {
      * 
      * @param {JSON} options
      * @param {string} [options.name]
-     * @param {directory} [options.parent]
+     * @param {webkitdirectory} [options.parent]
      * @param {boolean} [options.multi]
      * @param {boolean} [options.filter.files]
      * @param {boolean} [options.filter.folders]
-     * @returns {Rx.observable<file>}
+     * @returns {Rx.observable<webkitfile>}
      */
     request(options) {
         var myOptions = $.extend({}, options, {parent: null});
@@ -1191,49 +1632,40 @@ class electronAccessor extends observable {
             this.targetSubject.complete();
         this.targetSubject = new Rx.Subject();
 
-        if (options.name === "tour.json") {
-            myOptions.multi = false;
-            myOptions.filter = {
-                files: false,
-                folders: true
-            }
-        }
-
         this.forcedFile = false;
 
         if (window.api) {
             Rx.Observable.create(obs => {
-				window.api.receive("fs-response", paths => {console.log(paths); obs.next(paths); obs.complete();});
-			})
-                .mergeMap(paths => this.root.populate(paths, { root: this.root, allUnused: (options.name == null || options.name.length == 0) }))
-				.subscribe(this.targetSubject);
-            console.log("sending request");
-			window.api.send("fs-request", myOptions);
-			
+                window.api.receive("fs-response", handles => {
+                    for(var handle in handles)
+                        obs.next(handle);
+
+                    obs.complete();
+                });
+            })
+                .subscribe(this.targetSubject);
+
+            window.api.send("fs-request", myOptions);
+
+        } else {
+            this.targetSubject.throw(new error(electrondirectory.prototype.ERROR.UNSUPPORTED_OPERATION, "window.api not available"));
         }
 
         
 
         return this.targetSubject
-            
-            .mergeMap(entry => {
-                if (entry instanceof directory) {
-                    return entry.scan({ onlyNewFiles: true });
-                } else
-                    return Rx.Observable.of(entry);
-            })
-            .filter(f => f instanceof file);
+            .map(handle => electrondirectory.handleToEntry(handle));
     }
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
-//    Class: entryAccessor
+//    Class: webkitAccessor
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-class entryAccessor {
+class webkitAccessor {
     get [Symbol.toStringTag]() {
         return 'Entry Accessor';
     }
@@ -1245,21 +1677,14 @@ class entryAccessor {
         this.filesys = filesys;
 
         this.accessors = [new diskAccessor(filesys)];
-        if (platform.name === "Electron") {
-            this.accessors.push(new electronAccessor(filesys));
-        } else if (window.OurCodeWorld && window.OurCodeWorld.Filebrowser) {
-            console.log("platform.name:" + platform.name);
-            this.accessors.push(new filebrowserAccessor(filesys));
-        }
-
-            if ($('#file-access-browser-tab')[0])
-                this.accessors.push(new fileTree(filesys));
+        if ($('#file-access-browser-tab')[0])
+            this.accessors.push(new fileTree(filesys));
 
 
         this.dialog = $('#file-access-dialog');
         this.hasEntries = ko.observable(false);
-        filesys.observe(file, filesys.CREATE)
-            .merge(filesys.observe(directory, filesys.CREATE))
+        filesys.observe(webkitfile, filesys.CREATE)
+            .merge(filesys.observe(webkitdirectory, filesys.CREATE))
             .subscribe(() => this.hasEntries(true));
 
         if ($('#file-access-dialog-header')[0])
@@ -1280,11 +1705,11 @@ class entryAccessor {
      * 
      * @param {JSON} options
      * @param {string} [options.name]
-     * @param {directory} [options.parent]
+     * @param {webkitdirectory} [options.parent]
      * @param {boolean} [options.multi]
      * @param {boolean} [options.filter.files]
      * @param {boolean} [options.filter.folders]
-     * @returns {Rx.observable<file>}
+     * @returns {Rx.observable<webkitfile>}
      */
     request(options) {
         var opt = $.extend(true, {
@@ -1324,7 +1749,7 @@ class entryAccessor {
         openDialog();
 
         return this.targetSubject.filter(e => {
-            // user wants to open that file although it does not match the criteria
+            // user wants to open that webkitfile although it does not match the criteria
             if (this.accessors.map(acc => acc.isForcedFile()).reduce((l, r) => l || r))
                 return true;
 
@@ -1342,17 +1767,17 @@ class entryAccessor {
      * 
      * @param {boolean} [filter.files]
      * @param {boolean} [filter.folders]
-     * @param {file | directory} entr
+     * @param {webkitfile | webkitdirectory} entr
      * @returns {boolean}
      */
     matchesFilter(filter, entr) {
         if (!filter)
             return true;
 
-        if (filter.files && entr instanceof file)
+        if (filter.files && entr instanceof webkitfile)
             return true;
 
-        if (filter.folders && entr instanceof directory)
+        if (filter.folders && entr instanceof webkitdirectory)
             return true;
 
         return false;
@@ -1370,33 +1795,35 @@ class entryAccessor {
  * Listen to events: this.observe(vertex, <action>).subscribe(elem => / do something with element here /)
  * <action> in {this.LINK, this.UNLINK}
  * */
-class filesystem extends directory {
+class filesystem extends observable {
     get [Symbol.toStringTag]() {
         return 'Filesystem';
     }
 
     constructor() {
         super();
-        this.name = "root";
-        delete this.directoryHandle;
-        this.acc = new entryAccessor(this);
+
+
+        if (platform.name === "Electron") {
+            this.acc = new electronAccessor(this);
+        } else if (window.OurCodeWorld && window.OurCodeWorld.Filebrowser) {
+            console.log("platform.name:" + platform.name);
+            this.acc = new cordovaAccessor(this);
+        } else {
+            
+            this.root = new webkitdirectory("");
+            this.acc = new webkitAccessor(this.root);
+        }
+        this.requestMissingFiles = false;
     }
 
-    /**
-* @returns {string}
-*/
-    getPath() {
-        if (!!window.cordova)
-            return "file:///";
 
-        return "";
-    }
 
     /**
-     * @returns {directory} - first directory or this
+     * @returns {webkitdirectory} - first webkitdirectory or this
      * */
-    getRoot() {
-        return this.directories.values().next().value || this;
+    getWorkspace() {
+        return this.workspace;
     }
 
     toNode() {
@@ -1417,7 +1844,7 @@ class filesystem extends directory {
     /**
      * 
      * @param {vertex | background} v
-     * @param {file} f
+     * @param {webkitfile} f
      */
     link(v, f) {
         if (v.image.file === f) {
@@ -1425,6 +1852,8 @@ class filesystem extends directory {
                 v.background = f;
             else
                 f.vertex = v;
+
+            file.prototype.usedFiles.add(f.getPath());
             return;
         }
 
@@ -1447,11 +1876,13 @@ class filesystem extends directory {
         else
             f.vertex = v;
 
+        file.prototype.usedFiles.add(f.getPath());
+
         this.emit(v, this.LINK);
     }
 
     /**
-     * Removes the link between vertex and file.
+     * Removes the link between vertex and webkitfile.
      * 
      * @param {vertex} v
      */
@@ -1459,8 +1890,10 @@ class filesystem extends directory {
         if (v.image.file == null)
             return;
 
-        if (v.image.file.vertex === v)
+        if (v.image.file.vertex === v) {
+            file.prototype.usedFiles.delete(f.getPath());
             delete v.image.file.vertex;
+        }
         delete v.image.file;
 
         this.emit(v, this.UNLINK);
@@ -1474,11 +1907,17 @@ class filesystem extends directory {
      * @returns {string}
      */
     static concatPaths(parentPath = "", childPath = "", prefix = "") {
+        var seperator = '/';
+        if (parentPath.indexOf('\\') != -1)
+            seperator = '\\'
+
         var path = parentPath;
-        if (path[path.length - 1] != "/" && childPath != "" && parentPath != "") {
-            path += "/";
+        if (path[path.length - 1] != seperator && childPath != "" && parentPath != "") {
+            path += seperator;
         }
         path += childPath;
+        path = path.replace(/\\|\//gi, seperator);
+        prefix = prefix.replace(/\\|\//gi, seperator);
         let idxLastSlash = path.lastIndexOf("/");
         if (idxLastSlash == -1)
             return prefix + path;
@@ -1489,12 +1928,12 @@ class filesystem extends directory {
 
     /**
      * checks specified directories for existence
-     * and provides handles via directory attribute in sg.images and sg.thumbnails
+     * and provides handles via webkitdirectory attribute in sg.images and sg.thumbnails
      * @param {spatialGroup} sg
      * @returns {Rx.Observable<spatialGroup>}
      */
     prepareDirectoryAccess(sg) {
-        sg.directory = sg.directory || this.getRoot();
+        sg.directory = sg.directory || this.getWorkspace();
 
         var obs = Rx.Observable.of(sg);
 
@@ -1505,6 +1944,15 @@ class filesystem extends directory {
             obs = sg.directory.searchDirectory(imgPath)
                 .do(dir => sg.images.directory = dir);
         }
+
+        obs = obs.mergeMap(() => {
+            if (sg.images.directory.canTrackChanges())
+                return sg.images.directory.trackChanges()
+                    .defaultIfEmpty(null)
+                    .last();
+            else
+                return Rx.Observable.of(sg);
+        })
 
         var thumbPath = filesystem.concatPaths(sg.path, sg.thumbnails.path);
         if (!thumbPath || thumbPath.length == 0) {
@@ -1531,10 +1979,12 @@ class filesystem extends directory {
         var imgConfig = v.getImageConfig();
 
         if (!imgConfig.file) {
-            var root = imgConfig.directory || this;
+            var root = imgConfig.directory || this.getWorkspace();
             var path = filesystem.concatPaths(v.path, imgConfig.path, imgConfig.prefix);
-            obs = root.searchFile(path)
-                .catch((err, caught) => {
+            obs = root.searchFile(path);
+
+            if (this.requestMissingFiles)
+                obs = obs.catch((err, caught) => {
 
                     return root.searchDirectory(path.split("/").slice(0, -1).join('/'))
                         .delay(100) // prevent UI bugs, e.g. pop up window does not appear
@@ -1555,13 +2005,14 @@ class filesystem extends directory {
                             return f;
                         })
                         .first();
-                })
-                .do(f => this.link(v, f));
+                });
+
+            obs = obs.do(f => this.link(v, f));
         }
 
         var thumbConfig = v.getThumbConfig();
         if (thumbConfig && !thumbConfig.file) {
-            var thumbRoot = thumbConfig.directory || this; // do not use the same variable names as above
+            var thumbRoot = thumbConfig.directory || this.getWorkspace(); // do not use the same variable names as above
             var thumbPath = filesystem.concatPaths(v.path, thumbConfig.path, thumbConfig.prefix);
             obs = obs.mergeMap(() => thumbRoot.searchFile(thumbPath)
                 .do(f => v.thumbnail.file = f)
@@ -1588,11 +2039,11 @@ class filesystem extends directory {
      * 
      * @param {JSON} options
      * @param {string} [options.name]
-     * @param {directory} [options.parent]
+     * @param {webkitdirectory} [options.parent]
      * @param {boolean} [options.multi]
      * @param {boolean} [options.filter.files]
      * @param {boolean} [options.filter.folders]
-     * @returns {Rx.observable<file>}
+     * @returns {Rx.observable<webkitfile>}
      */
     request(options) {
 

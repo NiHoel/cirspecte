@@ -3,6 +3,20 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="
+          child-src blob:;
+          connect-src http: https:;
+          font-src 'self';
+          frame-src 'none';
+          default-src 'self' data:  'unsafe-eval'; 
+          img-src data: blob: filesystem: 'self' http: https: *; 
+          manifest-src *; 
+          media-src *; 
+          object-src resource:;
+          prefetch-src 'none';
+          script-src 'self' 'unsafe-inline' 'unsafe-eval'  ; 
+          style-src 'self' 'unsafe-inline'; 
+          ">
     <meta name="author" content="Nico Höllerich">
     <title>Cirspecte</title>
 
@@ -26,6 +40,8 @@
     <script type="text/javascript" src="cordova.js"></script>
     <script type="text/javascript" src="assets/js/lib/platform.js"></script>
     <script src="https://maps.googleapis.com/maps/api/js" async defer></script>
+
+    <script type="text/javascript" src="assets/js/init.js"></script>
 
     <script src="assets/js/lib/localforage.min.js"></script> <!-- for Leaflet.offline -->
     <!-- Make sure you put this AFTER Leaflet's CSS -->

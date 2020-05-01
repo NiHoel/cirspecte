@@ -331,13 +331,13 @@ function createCommonRoutines(modules, settings) {
             .catch(() => Rx.Observable.of(true))
             .mergeMap(() => {
                 var tourParam = new URLSearchParams(window.location.search).get("tour");
-                if (tourParam) // check config file
+                if (tourParam) // check query parameter
                     return modules.filesys.getApplicationExternalDirectory()
                         .mergeMap(dir => {
                             return dir.searchFile(tourParam)
                                 .mergeMap(f => {
                                     modules.filesys.workspace = dir;
-                                    return loadTour(f, dir)
+                                    return loadTour(f, f.getParent())
                                 })
                         });
                 else
@@ -345,10 +345,7 @@ function createCommonRoutines(modules, settings) {
             })
             .catch(() => {
                 return modules.filesys.getApplicationExternalDirectory() // check application directory
-                    .mergeMap(dir => modules.filesys.request({
-                        name: "files/tour.json",
-                        parent: dir
-                    })
+                    .mergeMap(dir => dir.searchFile("files/tour.json")
                         .mergeMap(f => {
                             modules.filesys.workspace = dir;
                             return loadTour(f, dir)
@@ -364,7 +361,6 @@ function createCommonRoutines(modules, settings) {
                 })
                     .first()
                     .mergeMap(dir => {
-                        console.log(dir);
                         modules.filesys.workspace = dir;
                         return dir.searchFile("tour.json")
                             .mergeMap(f => {
@@ -372,7 +368,7 @@ function createCommonRoutines(modules, settings) {
                             }); 
                     });
             })
-            .catch(() => { })
+            .catch(() => Rx.Observable.empty())
      ];
 
 

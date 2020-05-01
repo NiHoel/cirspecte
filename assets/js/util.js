@@ -58,7 +58,7 @@ class algorithms {
                 .mergeMap(path => rootDirectory.searchFile(path))
                 .mergeMap(f =>
                     f.readAsJSON()
-                        .mergeMap(t => this.readTour(t, f.parent))
+                        .mergeMap(t => this.readTour(t, f.getParent()))
                 );
         }
 

@@ -27,15 +27,20 @@ class directory extends observable {
     constructor(path) {
         super();
 
-        path = path.replace('\\', '/');
+        path = path.replace(/\\/g, '/');
 
         this.path = path;
         if (path.endsWith('/'))
-            this.name = path.split('/').splice(2, 1)[0];
+            this.name = path.split('/').splice(-2, 1)[0];
         else
             this.name = path.split('/').pop();
+    }
 
+    equals(otherDirectory) {
+        if (!(otherDirectory instanceof directory))
+            return false;
 
+        return this.getPath() === otherDirectory.getPath();
     }
 
     canScan() {
@@ -55,7 +60,7 @@ class directory extends observable {
     */
     getPath(rootDirectory = null) {
         if (!rootDirectory)
-            return path;
+            return this.path;
         return directory.toRelativePath(rootDirectory.getPath(), this.path);
     }
 
@@ -132,7 +137,7 @@ class directory extends observable {
         if (!basePath)
             return path;
 
-        var basePathComponents = basePath().split('/');
+        var basePathComponents = basePath.split('/');
 
         var pathComponents = path.split('/');
 
@@ -190,8 +195,13 @@ class cordovadirectory extends directory {
         return true;
     }
 
+
+    getEntries() {
+        return this.entries ? this.entries.values() : [];
+    }
+
     /**
-     * @private
+     * @param {DirEntry} handle
      * */
     static handleToEntry(handle) {
         if (handle.isFile) {
@@ -245,10 +255,8 @@ class cordovadirectory extends directory {
         }
 
 
-        return resolve(filesystem.concatPaths(this.getPath(), path))
-            .mergeMap(handle => {
-                return this.handleToEntry(handle);
-            });
+        return cordovadirectory.resolve(filesystem.concatPaths(this.getPath(), path))
+            .map(cordovadirectory.handleToEntry);
 
     }
 
@@ -266,7 +274,7 @@ class cordovadirectory extends directory {
 
         var defaultObservable;
         if (options.onlyNewFiles) {
-            defaultObservable = Rx.Observable.from(this.getDirectories());
+            defaultObservable = Rx.Observable.empty();
         } else {
             defaultObservable = Rx.Observable.from(this.getEntries());
         }
@@ -280,7 +288,7 @@ class cordovadirectory extends directory {
 
 
         // get all entries
-        return resolve(this.path)
+        return cordovadirectory.resolve(this.path)
             .map(dirEntry => dirEntry.createReader())
             .expand(reader => {
                 if (this.isDirectoryReader(reader))
@@ -288,7 +296,7 @@ class cordovadirectory extends directory {
 
                         reader.readEntries(entries => {
                             entries.forEach(handle => {
-                                var entr = this.handleToEntry(handle);
+                                var entr = cordovadirectory.handleToEntry(handle);
                                 var isNew = !this.entries.has(entr.name);
 
                                 if ((options.onlyNewFiles || isNew) &&
@@ -321,7 +329,7 @@ class cordovadirectory extends directory {
 
         this.entries = new Map();
 
-        return scan()
+        return this.scan()
             .do(e => { this.entries.set(e.name, e); });
             
     }
@@ -374,12 +382,16 @@ class webkitdirectory extends directory {
         this.scanned = false;
     }
 
+    equals(otherDirectory) {
+        return this === otherDirectory;
+    }
+
     /**
     * @param {webkitdirectory} elem
     * @returns {boolean} elem is ancestor of this
     */
     isAncestor(elem) {
-        if (elem == null || this === elem)
+        if (elem == null || this.equals(elem))
             return true;
         else if (this.getParent() == null)
             return false;
@@ -475,7 +487,7 @@ class webkitdirectory extends directory {
     * @returns {string}
     */
     getPath(rootDirectory = null) {
-        if (rootDirectory === this || this == null || this.parent == null)
+        if (this === null || this.equals(rootDirectory) || this.parent == null)
             return "";
         return this.parent.getPath(rootDirectory) + this.name + "/";
     }
@@ -561,8 +573,7 @@ class webkitdirectory extends directory {
     */
     searchFile(path) {
         if (directory.isAbsolutePath(path) && !path.startsWith("file:")) {
-            return Rx.Observable.ajax.getJSON(this.path)
-                .map(() => new remotefile(path));
+            return remoteFile.createFile(this.path);
         }        
 
         return this.searchParent(path)
@@ -796,6 +807,13 @@ class remotedirectory extends directory {
         super(path);
     }
 
+    equals(otherDirectory) {
+        if (!(otherDirectory instanceof directory))
+            return false;
+
+        return this.getPath().substr(this.getPath().indexOf(':') + 1) === otherDirectory.getPath().substr(otherDirectory.getPath().indexOf(':') + 1);
+    }
+
     canScan() {
         return false;
     }
@@ -809,6 +827,7 @@ class remotedirectory extends directory {
     }
 
 
+
     /**
 * 
 * @param {string} path
@@ -818,16 +837,7 @@ class remotedirectory extends directory {
         if (!directory.isAbsolutePath(path))
             path = filesystem.concatPaths(this.getPath(), path);
 
-        return Rx.Observable.create(obs => {
-            $.ajax({
-                type: 'HEAD',
-                url: path,
-                sucess: (r) => {
-                    obs.next(new remotefile(path, r.getAllResponseHeaders())); obs.complete();
-                },
-                error: obs.error.bind(obs)
-            });
-        });
+        return remotefile.createFile(path);
     }
 
     /**
@@ -850,9 +860,8 @@ class remotedirectory extends directory {
     searchEntry(path) {
         if (!directory.isAbsolutePath(path))
             path = filesystem.concatPaths(this.getPath(), path);
-                
-        return Rx.Observable.ajax.getJSON(this.path)
-            .map(() => new remotefile(path))
+
+        return remotefile.createFile(path)
             .catch(() => new remotedirectory(path));
 
     }
@@ -890,6 +899,10 @@ class file {
      */
     constructor(name) {
         this.name = name;
+    }
+
+    equals(otherFile) {
+        return this === otherFile;
     }
 
 
@@ -1028,6 +1041,10 @@ class webkitfile extends file {
         else
             this.fileHandle = fileHandle;
         this.read = false;
+    }
+
+    equals(otherFile) {
+        return this === otherFile;
     }
 
 
@@ -1205,6 +1222,12 @@ class cordovafile extends webkitfile {
         delete this.fileHandle;
     }
 
+    equals(otherFile) {
+        if (!(otherFile instanceof file))
+            return false;
+
+        return this.getPath() === otherFile.getPath();
+    }
 
     /**
      * 
@@ -1279,6 +1302,25 @@ class remotefile extends file {
         this.contentType = /content-type: (.*)/.exec(responseHeader)[1];
     }
 
+    equals(otherFile) {
+        if (!(otherFile instanceof file))
+            return false;
+
+        return this.getPath().substr(this.getPath().indexOf(':') + 1) === otherFile.getPath().substr(otherFile.getPath().indexOf(':') + 1);
+    }
+
+    static createFile(path) {
+        return Rx.Observable.create(obs => {
+            var r = $.ajax({
+                type: 'HEAD',
+                url: encodeURI(path),
+                success: () => {
+                    obs.next(new remotefile(path, r.getAllResponseHeaders())); obs.complete();
+                },
+                error: obs.error.bind(obs)
+            });
+        });
+    }
 
     /**
      * 
@@ -1305,7 +1347,7 @@ class remotefile extends file {
     * @returns {Rx.observable<string>}
     */
     readAsDataURL() {
-        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+        return this.getPath();
     }
 
     /**
@@ -1313,7 +1355,28 @@ class remotefile extends file {
  * @returns {Rx.Observable<JSON>}
  */
     readAsJSON() {
-        return Rx.Observable.ajax.getJSON(this.path);
+        // Rx.Observable.ajax fails to load content from other sites
+        return Rx.Observable.create(obs => {
+            var r = $.ajax({
+                type: 'GET',
+                url: encodeURI(this.path),
+                success: (data) => {
+                    obs.next(data); obs.complete();
+                },
+                error: obs.error.bind(obs)
+            });
+        })
+            .map(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    e.fileName = this.name;
+                    e.file = this;
+                    var message = e.message.replace("JSON.parse: ", "");
+                    message = message.replace("of the JSON data", `in "${this.getPath()}"`);
+                    throw new error(this.ERROR.JSON_PARSE_EXCEPTION, message, e);
+                }
+            });
     }
 
     /**
@@ -1333,7 +1396,8 @@ class remotefile extends file {
                 observer.error(err);
             };
 
-            img.src = src;
+            img.crossOrigin = "Anonymous";
+            img.src = this.path;
         });
     }
 
@@ -1363,7 +1427,7 @@ class remotefile extends file {
             types = [types];
 
         for (let type of types) {
-            if (this.contentType === type)
+            if (this.contentType.startsWith(type))
                 return true;
 
         }
@@ -1374,7 +1438,7 @@ class remotefile extends file {
 
 /**************************************************************************************************
  * 
- *    Class: disAccessor
+ *    Class: diskAccessor
  *    
  *    Observes webkitfile input buttons and drop areas.
  * 
@@ -1573,7 +1637,7 @@ class fileTree {
             'sort': function (a, b) {
                 let a_directory = self.nodeIdToEntry.has(a) && (self.nodeIdToEntry.get(a) instanceof directory);
                 let b_directory = self.nodeIdToEntry.has(b) && (self.nodeIdToEntry.get(b) instanceof directory);
-                return a_directory === b_directory ? (this.get_text(a) > this.get_text(b) ? 1 : -1) : (b_directory ? 1 : -1);
+                return a_directory.equals(b_directory) ? (this.get_text(a) > this.get_text(b) ? 1 : -1) : (b_directory ? 1 : -1);
             },
             /*          'contextmenu': {
                           'items': function (node) {
@@ -1856,7 +1920,7 @@ class electronAccessor extends observable {
      * @returns {Rx.observable<webkitfile>}
      */
     request(options) {
-        var myOptions = $.extend({}, options, {parent: null});
+        var myOptions = $.extend({}, options, {parent: options.parent ? options.parent.getPath() : null});
 
         if (this.targetSubject)
             this.targetSubject.complete();
@@ -1864,10 +1928,14 @@ class electronAccessor extends observable {
 
         this.forcedFile = false;
 
-        if (window.api) {
-            Rx.Observable.create(obs => {
-                window.api.receive("fs-response", paths => {
-                    for(var path in paths)
+        if (window.electron && window.electron.ipcRenderer) {
+
+            if (this.subscription)
+                this.subscription.unsubscribe();
+
+            this.subscription = Rx.Observable.create(obs => {
+                window.electron.ipcRenderer.on("fs-response", (emitter, paths) => {
+                    for (var path of paths)
                         obs.next(path);
 
                     obs.complete();
@@ -1875,10 +1943,11 @@ class electronAccessor extends observable {
             })
                 .subscribe(this.targetSubject);
 
-            window.api.send("fs-request", myOptions);
+
+            window.electron.ipcRenderer.send("fs-request", myOptions);
 
         } else {
-            this.targetSubject.throw(new error(cordovadirectory.prototype.ERROR.UNSUPPORTED_OPERATION, "window.api not available"));
+            this.targetSubject.error(new error(cordovadirectory.prototype.ERROR.UNSUPPORTED_OPERATION, "window.electron not available"));
         }
 
         
@@ -2078,7 +2147,7 @@ class filesystem extends observable {
      * @param {webkitfile} f
      */
     link(v, f) {
-        if (v.image.file === f) {
+        if (f.equals(v.image.file)) {
             if (v instanceof background)
                 v.background = f;
             else
@@ -2089,7 +2158,7 @@ class filesystem extends observable {
         }
 
         if (v.image.file) {
-            this.unlinkFile(v);
+            this.unlink(v);
         }
 
         v.image.file = f;

@@ -151,6 +151,43 @@ function createCommonRoutines(modules, settings) {
         .filter(i => modules.panorama.getVertex() != null && modules.panorama.getVertex().spatialGroup !== i.spatialGroup)
         .mergeMap(i => modules.panorama.getVertex().toObservable().filter(e => e.type === edge.prototype.TEMPORAL && e.to.spatialGroup === i.spatialGroup));
 
+    let loadTour = (f, dir) => {
+        var obs;
+
+        if (!dir && f.getParent)
+            dir = f.getParent();
+
+        if (f instanceof file)
+            obs = f.readAsJSON();
+        else
+            obs = Rx.Observable.of(f);
+
+        return obs
+            .mergeMap(t => {
+                var obs = modules.alg.readTour(t, dir)
+                    .filter(success => success && t.settings)
+                    .do(() => settings.setOptions(t.settings));
+
+                if (t.settings && t.settings.panorama)
+                    return obs
+                        .filter(() => t.settings.panorama.scene)
+                        .mapTo(t.settings.panorama.scene)
+                else
+                    return obs.ignoreElements();
+            })
+            //                   .subscribe({ error: console.log });
+            .mergeMap(initialScene => {
+                try {
+                    return Rx.Observable.of(modules.model.getVertex(initialScene)); //throws if not existent
+                } catch (err) {
+                    return modules.model.observe(vertex, modules.model.CREATE)
+                        .filter(v => v.id == initialScene);
+                }
+            })
+            .delay(1000)  // give filesystem enough time to register all files
+            .mergeMap(v => modules.panorama.loadScene(v, settings.getPanoramaOptions()));
+    }
+
     /**************************/
     /* Rx.Observable routines */
     /**************************/
@@ -275,39 +312,68 @@ function createCommonRoutines(modules, settings) {
          * Listen to all events that cause to load a new tour
          * Load the tour model and apply the view related settings from the tour specification
          * */
-        Rx.Observable.of(true)
-            .merge(Rx.Observable.fromEvent(document.querySelector('#import-tour'), 'click'))
-            .mergeMap(() => modules.filesys.request({ name: "tour.json" }))
-            .filter(f => f.isType(file.prototype.JSON))
-            //only load tours on the first or second (i.e. contained in a top level folder) level of the filesystem hierarchy
-            //.filter(f => !f.getParent() || !f.getParent().getParent() || !f.getParent().getParent().getParent())
-            .mergeMap(f => {
-                return f.readAsJSON()
-                    .mergeMap(t => {
-                        var obs = modules.alg.readTour(t, f.getParent())
-                            .filter(success => success && t.settings)
-                            .do(() => settings.setOptions(t.settings));
+        Rx.Observable.fromEvent(document.querySelector('#import-tour'), 'click')
+            .filter(f => f instanceof file && f.isType(file.prototype.JSON))
+              .mergeMap(loadTour),
 
-                        if (t.settings && t.settings.panorama)
-                            return obs
-                                .filter(() => t.settings.panorama.scene)
-                                .mapTo(t.settings.panorama.scene)
-                        else
-                            return obs.ignoreElements();
+        // search for tours
+        Rx.Observable.of(true)
+            .mergeMap(() => {
+                if (config.tour && Object.entries(config.tour).length) // check config file
+                    return modules.filesys.getApplicationInternalDirectory()
+                        .mergeMap(dir => {
+                            modules.filesys.workspace = dir;
+                            return loadTour(config.tour, dir)
+                        });
+                else
+                    return Rx.Observable.throw();
+            })
+            .catch(() => Rx.Observable.of(true))
+            .mergeMap(() => {
+                var tourParam = new URLSearchParams(window.location.search).get("tour");
+                if (tourParam) // check config file
+                    return modules.filesys.getApplicationExternalDirectory()
+                        .mergeMap(dir => {
+                            return dir.searchFile(tourParam)
+                                .mergeMap(f => {
+                                    modules.filesys.workspace = dir;
+                                    return loadTour(f, dir)
+                                })
+                        });
+                else
+                    return Rx.Observable.error();
+            })
+            .catch(() => {
+                return modules.filesys.getApplicationExternalDirectory() // check application directory
+                    .mergeMap(dir => modules.filesys.request({
+                        name: "files/tour.json",
+                        parent: dir
+                    })
+                        .mergeMap(f => {
+                            modules.filesys.workspace = dir;
+                            return loadTour(f, dir)
+                        })
+                    );
+            })
+            .catch(() => {
+                return modules.filesys.request({ // ask to specify workspace
+                    filter: {
+                        folders: true,
+                        files: false
+                    }
+                })
+                    .first()
+                    .mergeMap(dir => {
+                        console.log(dir);
+                        modules.filesys.workspace = dir;
+                        return dir.searchFile("tour.json")
+                            .mergeMap(f => {
+                                return loadTour(f, dir);
+                            }); 
                     });
-                //                   .subscribe({ error: console.log });
             })
-            .mergeMap(initialScene => {
-                try {
-                    return Rx.Observable.of(modules.model.getVertex(initialScene)); //throws if not existent
-                } catch (err) {
-                    return modules.model.observe(vertex, modules.model.CREATE)
-                        .filter(v => v.id == initialScene);
-                }
-            })
-            .delay(1000)  // give filesystem enough time to register all files
-            .mergeMap(v => modules.panorama.loadScene(v, settings.getPanoramaOptions()))
-    ];
+            .catch(() => { })
+     ];
 
 
 }

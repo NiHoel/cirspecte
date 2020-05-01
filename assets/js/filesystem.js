@@ -27,15 +27,13 @@ class directory extends observable {
     constructor(path) {
         super();
 
-        var seperator = '/'
-        if (path.indexOf('\\') !== -1)
-            seperator = '\\';
+        path = path.replace('\\', '/');
 
         this.path = path;
-        if (path.endsWith(seperator))
-            this.name = path.split(seperator).splice(2, 1)[0];
+        if (path.endsWith('/'))
+            this.name = path.split('/').splice(2, 1)[0];
         else
-            this.name = path.split(seperator).pop();
+            this.name = path.split('/').pop();
 
 
     }
@@ -58,24 +56,7 @@ class directory extends observable {
     getPath(rootDirectory = null) {
         if (!rootDirectory)
             return path;
-
-        var rootPath = rootDirectory.getPath();
-        var rootPathSeperator = '/'
-        if (rootPathSeperator.indexOf('\\') !== -1)
-            rootPathSeperator = '\\';
-        var rootPathComponents = rootPath.split(rootPathSeperator);
-
-        var pathSeperator = '/'
-        if (pathSeperator.indexOf('\\') !== -1)
-            pathSeperator = '\\';
-        var pathComponents = this.path.split(pathSeperator);
-
-        while (rootPathComponents.length && pathComponents.length && pathComponents[0] === rootPathComponents[0]) {
-            rootPathComponents.shift();
-            pathComponents.shift();
-        }
-
-        return pathComponents.join(pathSeperator);
+        return directory.toRelativePath(rootDirectory.getPath(), this.path);
     }
 
 
@@ -138,7 +119,37 @@ class directory extends observable {
             };
         return this.node;
     }
+
+    /**
+     * @param {string} basePath
+     * @param {string} path
+     * @returns {path} common path of basePath and path removed from path
+     */
+    static toRelativePath(basePath, path) {
+        if (!path)
+            throw new error(directory.prototype.ERROR.INVALID_PATH, "", path);
+
+        if (!basePath)
+            return path;
+
+        var basePathComponents = basePath().split('/');
+
+        var pathComponents = path.split('/');
+
+        while (basePathComponents.length && pathComponents.length && pathComponents[0] === basePathComponents[0]) {
+            basePathComponents.shift();
+            pathComponents.shift();
+        }
+
+        return pathComponents.join('/');
+    }
+
+    static isAbsolutePath(path) {
+        return directory.prototype.ABSOLUTE_URL_TESTER.test(path);
+    }
 }
+
+directory.prototype.ABSOLUTE_URL_TESTER = new RegExp('^\\s*(?:[a-z0-9]+:)?//', 'i');
 
 directory.prototype.CREATE = "create";
 
@@ -224,10 +235,17 @@ class cordovadirectory extends directory {
 * @returns {Rx.Observable<file|directory>}
 */
     searchEntry(path) {
-        if (path.indexOf(':') == -1)
-            path = this.getPath() + '/' + path;
+        if (directory.isAbsolutePath(path)) {
+            if (path.startsWith("file:")) {
+                return cordovadirectory.resolve(path)
+                    .map(cordovadirectory.handleToEntry);
+            } else {
+                return (new remotedirectory("")).searchEntry(path);
+            }
+        }
 
-        return resolve(path)
+
+        return resolve(filesystem.concatPaths(this.getPath(), path))
             .mergeMap(handle => {
                 return this.handleToEntry(handle);
             });
@@ -254,7 +272,7 @@ class cordovadirectory extends directory {
         }
 
         if (options.onlyUnusedFiles) {
-            defaultObservable = defaultObservable.filter(f => !(f instanceof webkitfile) || !f.read || !f.vertex);
+            defaultObservable = defaultObservable.filter(f => !(f instanceof file) || !f.read || !f.vertex);
         }
 
         if (this.entries && !options.enforce)
@@ -423,7 +441,7 @@ class webkitdirectory extends directory {
     *@returns {boolean};
      */
     addEntry(entry) {
-        if (entry instanceof webkitfile) {
+        if (entry instanceof file) {
             if (!this.files.has(entry.name, entry)) {
                 this.files.set(entry.name, entry)
                 entry.parent = this;
@@ -438,7 +456,7 @@ class webkitdirectory extends directory {
             if (entry.file) {
                 f.file = entry.file;
             }
-        } else if (entry instanceof webkitdirectory) {
+        } else if (entry instanceof directory) {
             if (!this.directories.has(entry.name, entry)) {
                 this.directories.set(entry.name, entry);
                 entry.parent = this;
@@ -509,7 +527,7 @@ class webkitdirectory extends directory {
             observable = Rx.Observable.of(root)
                 .expand(dir => {
                     return dir.scan()
-                        .filter(d => d instanceof webkitdirectory && this.isAncestor(d))
+                        .filter(d => d instanceof directory && this.isAncestor(d))
                 })
                 .last()
         }
@@ -526,7 +544,7 @@ class webkitdirectory extends directory {
 
                 let dirName = path.shift();
                 return parent.scan()
-                    .filter(dir => dir instanceof webkitdirectory && dir.name === dirName)
+                    .filter(dir => dir instanceof directory && dir.name === dirName)
                     .defaultIfEmpty(null)
                     .map(dir => dir == null ? new webkitdirectory(dirName) : dir)
                     .last()
@@ -542,6 +560,11 @@ class webkitdirectory extends directory {
     * @returns {Rx.Observable<webkitfile>}
     */
     searchFile(path) {
+        if (directory.isAbsolutePath(path) && !path.startsWith("file:")) {
+            return Rx.Observable.ajax.getJSON(this.path)
+                .map(() => new remotefile(path));
+        }        
+
         return this.searchParent(path)
             .map(elem => elem[0].getFile(elem[1][0]));
     }
@@ -554,6 +577,11 @@ class webkitdirectory extends directory {
     searchDirectory(path) {
         if (path.length === 0)
             return Rx.Observable.of(this);
+
+        if (directory.isAbsolutePath(path) && !path.startsWith("file:")) {
+            return new remotedirectory(path);
+        } 
+        
         if (!path.endsWith('/'))
             path += '/';
         return this.searchParent(path)
@@ -577,7 +605,7 @@ class webkitdirectory extends directory {
     scanRecursive(options = {}) {
         return Rx.Observable.of(this)
             .expand(elem => {
-                if (elem instanceof webkitdirectory)
+                if (elem.canScan && elem.canScan())
                     return elem.scan(options);
                 else
                     return Rx.Observable.empty();
@@ -749,7 +777,99 @@ class webkitdirectory extends directory {
             return entries;
         }
     }
+}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    Class: remotedirectory
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+class remotedirectory extends directory {
+    get [Symbol.toStringTag]() {
+        return 'Directory';
+    }
+
+    /**
+     * @param {string} path
+     */
+    constructor(path) {
+        super(path);
+    }
+
+    canScan() {
+        return false;
+    }
+
+    canWrite() {
+        return false;
+    }
+
+    canTrackChanges() {
+        return false;
+    }
+
+
+    /**
+* 
+* @param {string} path
+* @returns {Rx.Observablefile>}
+*/
+    searchFile(path) {
+        if (!directory.isAbsolutePath(path))
+            path = filesystem.concatPaths(this.getPath(), path);
+
+        return Rx.Observable.create(obs => {
+            $.ajax({
+                type: 'HEAD',
+                url: path,
+                sucess: (r) => {
+                    obs.next(new remotefile(path, r.getAllResponseHeaders())); obs.complete();
+                },
+                error: obs.error.bind(obs)
+            });
+        });
+    }
+
+    /**
+* 
+* @param {string} path
+* @returns {Rx.Observable<directory>}
+*/
+    searchDirectory(path) {
+        if (!directory.isAbsolutePath(path))
+            path = filesystem.concatPaths(this.getPath(), path);
+
+        return Rx.Observable.of(new remotedirectory(path));
+    }
+
+    /**
+* 
+* @param {string} path
+* @returns {Rx.Observable<file|directory>}
+*/
+    searchEntry(path) {
+        if (!directory.isAbsolutePath(path))
+            path = filesystem.concatPaths(this.getPath(), path);
+                
+        return Rx.Observable.ajax.getJSON(this.path)
+            .map(() => new remotefile(path))
+            .catch(() => new remotedirectory(path));
+
+    }
+
+
+    /**
+    *
+    * @param {boolean} options.enforce - scan again
+    * @param {boolean} options.onlyNewFiles
+    * @param {boolean} options.onlyUnusedFiles
+    *@returns {Rx.Observable<file | directory>}
+    */
+    scan(options = {}) {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+
+
+    }
 
 }
 
@@ -849,7 +969,7 @@ class file {
                 this.name.endsWith("." + type.split('/')[1].toUpperCase()))
                 return true;
 
-            if (type === webkitfile.prototype.JPG && (
+            if (type === file.prototype.JPG && (
                 this.name.endsWith(".jpg") ||
                 this.name.endsWith(".JPG")
             ))
@@ -1081,7 +1201,7 @@ class cordovafile extends webkitfile {
      */
     constructor(name, path) {
         super({ name: name });
-        this.path = path;
+        this.path = path.replace(/\\/g, '/');
         delete this.fileHandle;
     }
 
@@ -1091,19 +1211,19 @@ class cordovafile extends webkitfile {
      * @param {directory} rootDirectory
      */
     getPath(rootDirectory = null) {
-        return (new directory(this.path)).getPath(rootDirectory);
+        if (!rootDirectory)
+            return this.path;
+
+        return directory.toRelativePath(rootDirectory.getPath(), this.path);
     }
 
     /**
      * @returns {cordovadirectory}
      * */
     getParent() {
-        var pathSeperator = '/'
-        if (pathSeperator.indexOf('\\') !== -1)
-            pathSeperator = '\\';
-        var pathComponents = this.path.split(pathSeperator);
+        var pathComponents = this.path.split('/');
 
-        return new cordovadirectory(pathComponents.slice(0, -1).join(pathSeperator));
+        return new cordovadirectory(pathComponents.slice(0, -1).join('/'));
     }
 
     /**
@@ -1134,6 +1254,123 @@ class cordovafile extends webkitfile {
  
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    Class: remotefile
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+class remotefile extends file {
+    get [Symbol.toStringTag]() {
+        return 'file';
+    }
+
+    /**
+     * @param {string}  path
+     *  @param {string}  responseHeader
+     */
+    constructor(path, responseHeader) {
+        path = path.replace(/\\/g, '/')
+        super(path.split('/').pop());
+
+        this.path = path;
+
+        this.contentType = /content-type: (.*)/.exec(responseHeader)[1];
+    }
+
+
+    /**
+     * 
+     * @param {directory} rootDirectory
+     */
+    getPath(rootDirectory = null) {
+        if (!rootDirectory)
+            return this.path;
+
+        return directory.toRelativePath(rootDirectory.getPath(), this.path);
+    }
+
+    /**
+     * @returns {directory}
+     * */
+    getParent() {
+        var pathComponents = this.path.split('/');
+
+        return new remotedirectory(pathComponents.slice(0, -1).join('/'));;
+    }
+
+    /**
+    *
+    * @returns {Rx.observable<string>}
+    */
+    readAsDataURL() {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
+ * 
+ * @returns {Rx.Observable<JSON>}
+ */
+    readAsJSON() {
+        return Rx.Observable.ajax.getJSON(this.path);
+    }
+
+    /**
+* @returns {Rx.observable<Image>}
+ */
+    readAsImage() {
+
+        return Rx.Observable.create(observer => {
+
+            var img = new Image();
+
+            img.onload = () => {
+                observer.next(img);
+                observer.complete();
+            };
+            img.onError = (err) => {
+                observer.error(err);
+            };
+
+            img.src = src;
+        });
+    }
+
+    /**
+     * @returns {Rx.Observable<ImageBitmap>}
+     * */
+    readAsImageBitmap() {
+        return this.readAsImage().mergeMap(img => {
+            return createImageBitmap(img)
+        });
+    }
+
+    /**
+     * @returns {Rx.Observable<ArrayBuffer>}
+     * */
+    readAsArrayBuffer() {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
+     * 
+     * @param {[string]} types
+     * @returns {boolean} - is the type of this webkitfile contained in types?
+     */
+    isType(types) {
+        if (!(types instanceof Array))
+            types = [types];
+
+        for (let type of types) {
+            if (this.contentType === type)
+                return true;
+
+        }
+        return false;
+    }
+
+}
 
 /**************************************************************************************************
  * 
@@ -1262,14 +1499,7 @@ class diskAccessor extends observable {
         delete this.forcedFile;
 
 
-        return this.targetSubject.mergeMap(ev => options.parent.populate(ev, { root: this.root, allUnused: (this.name() == null || this.name().length == 0) }))
-            .mergeMap(entry => {
-                if (entry instanceof webkitdirectory)
-                    return entry.scan({ onlyNewFiles: true })
-                else
-                    return Rx.Observable.of(entry);
-            })
-            .filter(f => f instanceof webkitfile);
+        return this.targetSubject.mergeMap(ev => options.parent.populate(ev, { root: this.root, allUnused: (this.name() == null || this.name().length == 0) }));
     }
 }
 
@@ -1312,7 +1542,7 @@ class fileTree {
 
 
                     dir.scan()
-                        .filter(e => !(e instanceof webkitfile) || e.isType([webkitfile.prototype.JPG, webkitfile.prototype.PNG, webkitfile.prototype.JSON]))
+                        .filter(e => !(e instanceof file) || e.isType([file.prototype.JPG, file.prototype.PNG, file.prototype.JSON]))
                         .map(e => {
                             let cNode = e.toNode();
                             self.nodeIdToEntry.set(cNode.id, e);
@@ -1341,8 +1571,8 @@ class fileTree {
                 }
             },
             'sort': function (a, b) {
-                let a_directory = self.nodeIdToEntry.has(a) && (self.nodeIdToEntry.get(a) instanceof webkitdirectory);
-                let b_directory = self.nodeIdToEntry.has(b) && (self.nodeIdToEntry.get(b) instanceof webkitdirectory);
+                let a_directory = self.nodeIdToEntry.has(a) && (self.nodeIdToEntry.get(a) instanceof directory);
+                let b_directory = self.nodeIdToEntry.has(b) && (self.nodeIdToEntry.get(b) instanceof directory);
                 return a_directory === b_directory ? (this.get_text(a) > this.get_text(b) ? 1 : -1) : (b_directory ? 1 : -1);
             },
             /*          'contextmenu': {
@@ -1495,10 +1725,10 @@ class fileTree {
             return false;
 
         let entr = this.nodeIdToEntry.get(n.id);
-        if (this.filter.files && entr instanceof webkitfile)
+        if (this.filter.files && entr instanceof file)
             return true;
 
-        if (this.filter.folders && entr instanceof webkitdirectory)
+        if (this.filter.folders && entr instanceof directory)
             return true;
 
         return false;
@@ -1636,9 +1866,9 @@ class electronAccessor extends observable {
 
         if (window.api) {
             Rx.Observable.create(obs => {
-                window.api.receive("fs-response", handles => {
-                    for(var handle in handles)
-                        obs.next(handle);
+                window.api.receive("fs-response", paths => {
+                    for(var path in paths)
+                        obs.next(path);
 
                     obs.complete();
                 });
@@ -1648,13 +1878,14 @@ class electronAccessor extends observable {
             window.api.send("fs-request", myOptions);
 
         } else {
-            this.targetSubject.throw(new error(electrondirectory.prototype.ERROR.UNSUPPORTED_OPERATION, "window.api not available"));
+            this.targetSubject.throw(new error(cordovadirectory.prototype.ERROR.UNSUPPORTED_OPERATION, "window.api not available"));
         }
 
         
 
         return this.targetSubject
-            .map(handle => electrondirectory.handleToEntry(handle));
+            .mergeMap(path => cordovadirectory.resolve(path))
+            .map(handle => cordovadirectory.handleToEntry(handle));
     }
 }
 
@@ -1774,10 +2005,10 @@ class webkitAccessor {
         if (!filter)
             return true;
 
-        if (filter.files && entr instanceof webkitfile)
+        if (filter.files && entr instanceof file)
             return true;
 
-        if (filter.folders && entr instanceof webkitdirectory)
+        if (filter.folders && entr instanceof directory)
             return true;
 
         return false;
@@ -1907,17 +2138,16 @@ class filesystem extends observable {
      * @returns {string}
      */
     static concatPaths(parentPath = "", childPath = "", prefix = "") {
-        var seperator = '/';
-        if (parentPath.indexOf('\\') != -1)
-            seperator = '\\'
+        parentPath = parentPath.replace(/\\/g, '/');
+        childPath = childPath.replace(/\\/g, '/');
+        prefix = prefix.replace(/\\/g, '/');
 
         var path = parentPath;
-        if (path[path.length - 1] != seperator && childPath != "" && parentPath != "") {
-            path += seperator;
+        if (path[path.length - 1] != '/' && childPath != "" && parentPath != "") {
+            path += '/';
         }
         path += childPath;
-        path = path.replace(/\\|\//gi, seperator);
-        prefix = prefix.replace(/\\|\//gi, seperator);
+
         let idxLastSlash = path.lastIndexOf("/");
         if (idxLastSlash == -1)
             return prefix + path;
@@ -2049,6 +2279,44 @@ class filesystem extends observable {
 
 	
         return this.acc.request(options);
+    }
+
+    /**
+     * @param {string} path  absolute path refering to a directory or file
+     * @return {Rx.Observable<directory>}
+     */
+    resolvePath(path) {
+        path = path.replace(/\\/g, '/');
+        if (path.split('/').pop().indexOf('.') != -1)
+            path = path.split('/').slice(0, -1).join('/');
+
+        if (path.startsWith('file:') && window.resolveLocalFileSystemURL)
+            return webkitdirectory.resolve(path)
+                .map(handle => webkitdirectory.handleToEntry(handle));
+        else if (!path.startsWith('file:'))
+            return Rx.Observable.of(new remotedirectory(path));
+        else
+            return Rx.Observable.throw(new error(directory.prototype.ERROR.DIRECTORY_NOT_FOUND, "", path));
+    }
+
+    /*
+     * @return {Rx.Observable<directory>} Internal root directory of an packed application, identical to applicationExternalDirectory if application is not packed
+     */
+    getApplicationInternalDirectory() {
+        if (window.cordova && window.cordova.file && window.cordova.file.applicationStorageDirectory)
+            return this.resolvePath(window.cordova.file.applicationStorageDirectory)
+        else
+            return this.getApplicationExternalDirectory();
+    }
+
+    /*
+ * @return {Rx.Observable<directory>} Directory the application resides
+ */
+    getApplicationExternalDirectory() {
+        if (window.cordova && window.cordova.file && window.cordova.file.applicationDirectory)
+            return this.resolvePath(window.cordova.file.applicationDirectory)
+        else
+            return this.resolvePath(window.location.href);
     }
 }
 

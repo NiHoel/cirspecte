@@ -1,14 +1,15 @@
 'use strict';
 
 Rx.Observable.fromEvent(document, 'drop')
-    .do(e => e.preventDefault()),
-
-    $(window).bind('beforeunload', function () {
-        return 'Are you sure you want to leave? All unsaved changes will be lost!';
-    });
-
+    .do(e => e.preventDefault());
 
 function readyFunction() {
+    if (platform.name !== "Electron" && platform.name !== "Cordova") {
+        $(window).bind('beforeunload', function () {
+            return 'Are you sure you want to leave? All unsaved changes will be lost!';
+        });
+    }
+
     let settings = new configurator(config.settings);
 
     let modules = {

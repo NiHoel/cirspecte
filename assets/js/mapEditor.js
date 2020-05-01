@@ -200,7 +200,7 @@ class mapEditor extends observable {
                 var b = modules.map.createBackground({
                     image: {
                         file: f,
-                        path: f.getPath(this.modules.filesys.getRoot())
+                        path: f.getPath(this.modules.filesys.getWorkspace())
                     },
                     label: f.name,
                     corners: [ // cover 1/4 of the map around the center

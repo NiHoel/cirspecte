@@ -61,7 +61,7 @@ class groupEditor extends observable {
         this.temporalGroupTypes = [temporalGroup.prototype.TOUR, temporalGroup.prototype.LANDMARK];
 
         this.scannable = ko.pureComputed(function () {
-            return this.current.spatialGroup() && this.current.spatialGroup().images.directory && this.current.spatialGroup().images.directory.directoryHandle;
+            return this.current.spatialGroup() && this.current.spatialGroup().images.directory && this.current.spatialGroup().images.directory.canScan();
         }, this);
 
         this.editingModes = ko.observableArray($.map(this.EDIT, function (value, index) {
@@ -553,7 +553,7 @@ class groupEditor extends observable {
             .catch(() => Rx.Observable.empty())
             .defaultIfEmpty(null)
             .last()
-            .mergeMap(() => g.images.directory.scanRecursive({ enforce: true, onlyNewFiles: true }))
+            .mergeMap(() => g.images.directory.scan({ enforce: true, onlyNewFiles: true }))
             .mergeMap(entry => this.createVertex(this.current.spatialGroup(), entry))
             .subscribe();
     }

@@ -203,11 +203,11 @@ class cordovadirectory extends directory {
     /**
      * @param {DirEntry} handle
      * */
-    static handleToEntry(handle) {
+    static handleToEntry(handle, fullPath) {
         if (handle.isFile) {
-            return new cordovafile(handle.name, handle.fullPath);
+            return new cordovafile(handle.name, fullPath ? fullPath : handle.fullPath);
         } else {
-            return new cordovadirectory(handle.fullPath);
+            return new cordovadirectory(fullPath ? fullPath : handle.fullPath);
         }
     }
 
@@ -248,15 +248,15 @@ class cordovadirectory extends directory {
         if (directory.isAbsolutePath(path)) {
             if (path.startsWith("file:")) {
                 return cordovadirectory.resolve(path)
-                    .map(cordovadirectory.handleToEntry);
+                    .map((handle) => cordovadirectory.handleToEntry(handle, path));
             } else {
                 return (new remotedirectory("")).searchEntry(path);
             }
         }
 
-
-        return cordovadirectory.resolve(filesystem.concatPaths(this.getPath(), path))
-            .map(cordovadirectory.handleToEntry);
+        path = filesystem.concatPaths(this.getPath(), path);
+        return cordovadirectory.resolve(path)
+            .map((handle) => cordovadirectory.handleToEntry(handle, path));
 
     }
 
@@ -296,7 +296,7 @@ class cordovadirectory extends directory {
 
                         reader.readEntries(entries => {
                             entries.forEach(handle => {
-                                var entr = cordovadirectory.handleToEntry(handle);
+                                var entr = cordovadirectory.handleToEntry(handle, filesystem.concatPaths(this.path, handle.name));
                                 var isNew = !this.entries.has(entr.name);
 
                                 if ((options.onlyNewFiles || isNew) &&
@@ -1368,7 +1368,10 @@ class remotefile extends file {
         })
             .map(text => {
                 try {
-                    return JSON.parse(text);
+                    if (typeof text === 'string')
+                        return JSON.parse(text);
+                    else
+                        return text;
                 } catch (e) {
                     e.fileName = this.name;
                     e.file = this;
@@ -1865,8 +1868,9 @@ class cordovaAccessor extends observable {
 
         picker({
             success: paths => {
-                for (var path of paths)
+                for (var path of paths) {
                     this.targetSubject.next(path);
+                }
 
                 this.targetSubject.complete();
        
@@ -1874,12 +1878,11 @@ class cordovaAccessor extends observable {
             error: err => {
                 this.targetSubject.error(err);
             },
-            //startupPath : options.parent.getPath()
+            startupPath : options.parent ? options.parent.getPath() : null
         });
 
         return this.targetSubject
-            .mergeMap(path => cordovadirectory.resolve(path))
-            .map(handle => cordovadirectory.handleToEntry(handle));
+            .mergeMap(path => cordovadirectory.resolve(path).map(handle => cordovadirectory.handleToEntry(handle, path)));
     }
 }
 
@@ -1953,8 +1956,7 @@ class electronAccessor extends observable {
         
 
         return this.targetSubject
-            .mergeMap(path => cordovadirectory.resolve(path))
-            .map(handle => cordovadirectory.handleToEntry(handle));
+            .mergeMap(path => cordovadirectory.resolve(path).map(handle => cordovadirectory.handleToEntry(handle, path)));
     }
 }
 
@@ -2105,12 +2107,13 @@ class filesystem extends observable {
 
 
         if (platform.name === "Electron") {
+            console.log("Accessor: Electron");
             this.acc = new electronAccessor(this);
-        } else if (window.OurCodeWorld && window.OurCodeWorld.Filebrowser) {
-            console.log("platform.name:" + platform.name);
+        } else if (window.OurCodeWorld && window.OurCodeWorld.Filebrowser && platform.name === "Android Browser") {
+            console.log("Accessor: Android");
             this.acc = new cordovaAccessor(this);
         } else {
-            
+            console.log("Accessor: Web");
             this.root = new webkitdirectory("");
             this.acc = new webkitAccessor(this.root);
         }

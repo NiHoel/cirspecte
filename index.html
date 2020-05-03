@@ -170,11 +170,12 @@
     <div id="select-directory-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div id="webkit-access-dialog-header" class="modal-header">
-                    <h3 data-bind="visible: workspace">Select project directory</h3>
-                    <h3 data-bind="visible: !workspace">Select a directory</h3>
+                <div id="select-directory-dialog-header" class="modal-header">
+
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
                     <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h3 data-bind="visible: workspace">Select project directory</h3>
+                    <h3 data-bind="visible: !workspace">Select a directory</h3>
                 </div>
                 <div class="modal-body">
 
@@ -232,10 +233,7 @@
                         </label>
                         <p>Select all files in project directory</p>
                     </div>
-
-
                 </div>
-
             </div>
         </div>
     </div>

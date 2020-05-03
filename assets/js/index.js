@@ -30,7 +30,7 @@
         };
         modules.map = new mapViewer("map", config.map, settings, modules),
         modules.panorama = new panoramaViewer("panorama", modules, config.panorama);
-        modules.alg = new algorithms(modules);
+        modules.alg = new algorithms(modules, settings);
         modules.nav = new navigationViewer(modules);
 
         animateLayout(settings, modules);

@@ -316,7 +316,7 @@ function createCommonRoutines(modules, settings) {
                 if (config.tour && Object.entries(config.tour).length) // check config file
                     return modules.filesys.getApplicationInternalDirectory()
                         .mergeMap(dir => {
-                            modules.filesys.workspace = dir;
+                            modules.filesys.setWorkspace(dir);
                             return loadTour(config.tour, dir)
                         });
                 else
@@ -330,7 +330,7 @@ function createCommonRoutines(modules, settings) {
                         .mergeMap(dir => {
                             return dir.searchFile(tourParam)
                                 .mergeMap(f => {
-                                    modules.filesys.workspace = dir;
+                                    modules.filesys.setWorkspace(dir);
                                     return loadTour(f, f.getParent())
                                 })
                         });
@@ -341,7 +341,7 @@ function createCommonRoutines(modules, settings) {
                 return modules.filesys.getApplicationExternalDirectory() // check application directory
                     .mergeMap(dir => dir.searchFile("files/tour.json")
                         .mergeMap(f => {
-                            modules.filesys.workspace = dir;
+                            modules.filesys.setWorkspace(dir);
                             return loadTour(f, dir)
                         })
                     );
@@ -356,7 +356,7 @@ function createCommonRoutines(modules, settings) {
                 })
                     .first()
                     .mergeMap(dir => {
-                        modules.filesys.workspace = dir;
+                        modules.filesys.setWorkspace(dir);
                         return dir.searchFile("tour.json")
                             .mergeMap(f => {
                                 return loadTour(f, dir);
@@ -424,7 +424,7 @@ function createCommonRoutines(modules, settings) {
                         modules.model.deleteTemporalGroup(tg);
                     }
 
-                    modules.filesys.workspace = dir;
+                    modules.filesys.setWorkspace(dir);
 
                     if (modules.hist)
                         modules.hist.clear();
@@ -432,6 +432,33 @@ function createCommonRoutines(modules, settings) {
                 .mergeMap(f => loadTour(f, dir))
             )
         );
+
+    // logic for save buttons
+    if (document.querySelector('#save-workspace'))
+        obs.push(Rx.Observable.fromEvent(document.querySelector('#save-workspace'), 'click')
+            .mergeMap(() => modules.filesys.saveWorkspace(modules.alg.stateToJson()))
+        );
+
+    if (document.querySelector('#save-workspace-as'))
+        obs.push(Rx.Observable.fromEvent(document.querySelector('#save-workspace-as'), 'click')
+            .mergeMap(() => modules.filesys.saveWorkspaceAs(modules.alg.stateToJson()))
+        );
+
+    if (document.querySelector('#backup-tour'))
+        obs.push(Rx.Observable.fromEvent(document.querySelector('#backup-tour'), 'click')
+            .mergeMap(() => modules.filesys.saveWorkspaceAs(modules.alg.stateToJson()))
+        );
+
+    if (document.querySelector('#save-workspace') && (document.querySelector('#save-workspace-as')))
+        obs.push(modules.filesys.observe(cordovadirectory, modules.filesys.WORKSPACE)
+            .do(workspace => {
+                if (workspace.canWrite()) {
+                    $('#save-workspace-as').hide();
+                    $('#save-workspace').show();
+                }
+            })
+        );
+        
 
     return obs;
 }

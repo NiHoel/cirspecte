@@ -20,7 +20,7 @@ function readyFunction() {
     };
     modules.map = new mapViewer("map", config.map, settings, modules),
     modules.panorama = new panoramaViewer("panorama", modules, config.panorama);
-    modules.alg = new algorithms(modules);
+    modules.alg = new algorithms(modules, settings);
     modules.nav = new navigationViewer(modules);
     modules.hist = new commandHistory(modules);
 
@@ -126,16 +126,7 @@ function readyFunction() {
             .merge(modules.nav.observe(edge, modules.nav.CLICK))
             .do(() => modules.hist.commit()),
 
-        // logic for save button
-        Rx.Observable.fromEvent(document.querySelector('#export'), 'click')
-            .do(() => {
-                var json = modules.model.toJSON({ persistLandmarks: settings.persistLandmarks() });
-                json.settings = settings.toJSON();
-                if (settings.autoSaveSelectedItems())
-                    json.settings.timeline.selections = modules.timeline.getSelectionsIds();
-                json.map = modules.map.toJSON();
-                modules.alg.saveJSON(json);
-            }),
+
 
 
     ]);

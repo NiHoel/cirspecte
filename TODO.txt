@@ -11,9 +11,7 @@ ux
 
 cordova:
 	all panoramas relative to working directory
-	save
-	saveAs
-	save Image
+	browse button to select path
 	export functionality
 		select destination folder
 		tile panoramas

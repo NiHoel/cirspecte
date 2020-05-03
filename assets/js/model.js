@@ -1273,7 +1273,6 @@ class graph extends observable {
         this.emit(e, this.DELETE);
     }
 
-
     /**
     * @param  {boolean} [config.ignoreSubGroups] - children not included
     * @param  {boolean} [config.ignoreSuperGroup] - id of parent not included

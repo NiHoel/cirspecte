@@ -382,7 +382,8 @@
                     <div id="topbar-nav">
                         <ul class="nav nav-pills">
                             <li title="Show sidebar" id="sidebar-expander" style="display:none;"><a href="#" class="btn topbar-nav-item" onclick="$('#sidebar-wrapper').removeClass('collapsed'); $('#sidebar-expander').hide()"><span class="glyphicon glyphicon-chevron-right"></span></a></li>
-                            <li title="Save tour"><a href="#" id="export" class="btn topbar-nav-item"><span class="glyphicon glyphicon-save-file"></span></a></li>
+                            <li title="Save tour.json"><a href="#" id="save-workspace-as" class="btn topbar-nav-item"><span class="glyphicon glyphicon-save-file"></span></a></li>
+                            <li title="Save workspace" ><a href="#" id="save-workspace" class="btn topbar-nav-item" style="display:none"><span class="glyphicon glyphicon-save"></span></a></li>
                             <li title="Undo (Ctrl + Z)" id="undo-button" data-bind="css: { 'not-active': undoStackCount() == 0 }, click: undo"><a href="#" class="btn topbar-nav-item"><span class="glyphicon glyphicon-share-alt" style="transform:matrix(-0.9397,0.342,0.342,0.9397,0,0)"></span></a></li>
                             <li title="Redo (Ctrl + Y)" id="redo-button" data-bind="css: { 'not-active': redoStackCount() == 0 }, click: redo"><a href="#" class="btn topbar-nav-item"><span class="glyphicon glyphicon-share-alt" style="transform:rotate(20deg)"></span></a></li>
                             <li title="Open Settings"><a href="#" class="btn topbar-nav-item" data-toggle="modal" data-target="#settings-dialog"><span class="glyphicon glyphicon-cog"></span></a></li>
@@ -842,6 +843,12 @@
                                     <span class="glyphicon glyphicon-import"></span>
                                 </button>
                                 <label class="control-label" for="import-tour">Import external tour file</label>
+                            </div>
+                            <div>
+                                <button id="backup-tour" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
+                                    <span class="glyphicon glyphicon-export"></span>
+                                </button>
+                                <label class="control-label" for="export-tour">Save backup copy of tour file</label>
                             </div>
                             <div>
                                 <button id="vertex-template-settings" class="btn btn-default" data-toggle="modal" data-target="#vertex-template-settings-dialog">

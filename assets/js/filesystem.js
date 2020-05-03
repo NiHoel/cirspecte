@@ -154,7 +154,7 @@ class directory extends observable {
     }
 }
 
-directory.prototype.ABSOLUTE_URL_TESTER = new RegExp('^\\s*(?:[a-z0-9]+:)?//', 'i');
+directory.prototype.ABSOLUTE_URL_TESTER = new RegExp('^\\s*(?:(?:[a-z0-9]+:)?//+)|(?:[a-z0-9]+:/)', 'i');
 
 directory.prototype.CREATE = "create";
 
@@ -163,6 +163,17 @@ directory.prototype.ERROR.DIRECTORY_NOT_FOUND = "directory not found";
 directory.prototype.ERROR.INVALID_PATH = "invalid path";
 directory.prototype.ERROR.NO_DIRECTORY_HANDLE = "no directory handle";
 directory.prototype.ERROR.UNSUPPORTED_OPERATION = "operation cannot be performed on this directory";
+directory.prototype.ERROR.SECURITY_ERR = "security violation occured when accessing path";
+directory.prototype.ERROR.ABORT_ERR = "failed to abort";
+directory.prototype.ERROR.NOT_READABLE_ERR = "cannot read file";
+directory.prototype.ERROR.ENCODING_ERR = "file has inproper endocing";
+directory.prototype.ERROR.NO_MODIFICATION_ALLOWED_ERR = "modifiaction not allowed";
+directory.prototype.ERROR.INVALID_STATE_ERR = "invalid state";
+directory.prototype.ERROR.SYNTAX_ERR = "syntax error";
+directory.prototype.ERROR.INVALID_MODIFICATION_ERR = "invalid modification";
+directory.prototype.ERROR.QUOTA_EXCEEDED_ERR = "storage quoat exceeded";
+directory.prototype.ERROR.TYPE_MISMATCH_ERR = "type mismatch";
+directory.prototype.ERROR.PATH_EXISTS_ERR = "path already exists";
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -211,12 +222,56 @@ class cordovadirectory extends directory {
         }
     }
 
+    /**
+     * 
+     * @param {string} path
+     * @returns {Rx.Observable<DirectoryEntry|FileEntry>}
+     */
     static resolve(path) {
         return Rx.Observable.create(obs => {
             window.resolveLocalFileSystemURL(path,
                 (entry) => { obs.next(entry); obs.complete(); },
-                (err) => obs.error(new error(directory.prototype.ERROR.FILE_NOT_FOUND, path, err))
-        )});
+                (err) => cordovadirectory.toError(err, path)
+            )
+        });
+    }
+
+    /**
+ * 
+ * @param {string} path
+ * @returns {Rx.Observable<DirectoryEntry|FileEntry>}
+ */
+    createPath(path) {
+        var obs = cordovadirectory.resolve(this.path);
+        var pathComponents = path.split('/');
+        if (directory.isAbsolutePath(path)) {
+            var protocol = this.ABSOLUTE_URL_TESTER.exec(path)[0];
+            pathComponents = path.substr(protocol.length).split('/');
+
+            obs = cordovadirectory.resolve(protocol + pathComponents.shift());
+        }
+
+        pathComponents = pathComponents.filter(p => p != null && p != "");
+        return obs.expand(handle => {
+            if (!pathComponents.length)
+                return Rx.Observable.empty();
+
+            var name = pathComponents.shift();
+
+            if (pathComponents.length || name.indexOf('.') == -1)
+
+                return Rx.Observable.create(obs => {
+                    handle.getDirectory(name, { create: true, exclusive: false },
+                        (entry) => { obs.next(entry); obs.complete(); },
+                        (err) => cordovadirectory.toError(err, path));
+                });
+            else
+                return Rx.Observable.create(obs => {
+                    handle.getFile(name, { create: true, exclusive: false },
+                        (entry) => { obs.next(entry); obs.complete(); },
+                        (err) => cordovadirectory.toError(err, path));
+                });
+        }).last();
     }
 
     /**
@@ -337,6 +392,33 @@ class cordovadirectory extends directory {
 
 
     /**
+     * @param {file|string} path
+     * @param {string|Image}
+     */
+    write(path, content) {
+        path = path instanceof file ? file.getPath(this) : path;
+
+        return this.createPath(path)
+            .mergeMap(handle => Rx.Observable.create(obs => {
+                handle.createWriter(writer => { obs.next(writer); obs.complete(); },
+                    err => obs.error(cordovadirectory.toError(err, filesystem.concatPaths(this.getPath(), path)))
+                )
+            })
+                .mergeMap(writer => {
+                    var obs = Rx.Observable.of(content);
+                    if (content instanceof file)
+                        obs = file.readAsBlob();
+
+                    return obs.mergeMap(content => Rx.Observable.create(obs => {
+                        writer.onwriteend = () => { obs.next(cordovadirectory.handleToEntry(handle)); obs.complete(); };
+                        writer.onerror = err => { obs.error(cordovadirectory.toError(err, filesystem.concatPaths(this.getPath(), path))) };
+                        writer.write(content);
+                        return () => { if (writer.readyState !== FileWriter.DONE) writer.abort(); };
+                    }));
+                }));
+    }
+
+    /**
      * @returns {JSON}
      * */
     toNode() {
@@ -353,7 +435,60 @@ class cordovadirectory extends directory {
         return this.node;
     }
 
+    /**
+    * 
+    * @param {FileError} err
+    * @param {string} path
+    */
+    static toError(err, path) {
+        switch (err.code) {
+            case
+                FileError.NOT_FOUND_ERR:
+                return new error(directory.prototype.ERROR.FILE_NOT_FOUND, "", path);
+            case FileError.SECURITY_ERR:
+                return new error(directory.prototype.ERROR.SECURITY_ERR, "", path);
 
+            case FileError.ABORT_ERR
+                :
+                return new error(directory.prototype.ERROR.ABORT_ERR
+                    , "", path);
+            case FileError.NOT_READABLE_ERR
+                :
+                return new error(directory.prototype.ERROR.NOT_READABLE_ERR
+                    , "", path);
+            case FileError.ENCODING_ERR
+                :
+                return new error(directory.prototype.ERROR.ENCODING_ERR
+                    , "", path);
+            case FileError.NO_MODIFICATION_ALLOWED_ERR
+                :
+                return new error(directory.prototype.ERROR.NO_MODIFICATION_ALLOWED_ERR
+                    , "", path);
+            case FileError.INVALID_STATE_ERR
+                :
+                return new error(directory.prototype.ERROR.INVALID_STATE_ERR
+                    , "", path);
+            case FileError.SYNTAX_ERR
+                :
+                return new error(directory.prototype.ERROR.SYNTAX_ERR
+                    , "", path);
+            case FileError.INVALID_MODIFICATION_ERR
+                :
+                return new error(directory.prototype.ERROR.INVALID_MODIFICATION_ERR
+                    , "", path);
+            case FileError.QUOTA_EXCEEDED_ERR
+                :
+                return new error(directory.prototype.ERROR.QUOTA_EXCEEDED_ERR
+                    , "", path);
+            case FileError.TYPE_MISMATCH_ERR
+                :
+                return new error(directory.prototype.ERROR.TYPE_MISMATCH_ERR
+                    , "", path);
+            case FileError.PATH_EXISTS_ERR:
+                return new error(directory.prototype.ERROR.PATH_EXISTS_ERR, "", path);
+
+        }
+    }
 }
 
 
@@ -573,7 +708,7 @@ class webkitdirectory extends directory {
     */
     searchFile(path) {
         if (directory.isAbsolutePath(path) && !path.startsWith("file:")) {
-            return remoteFile.createFile(this.path);
+            return remotefile.fromPath(this.path);
         }
 
         return this.searchParent(path)
@@ -837,7 +972,7 @@ class remotedirectory extends directory {
         if (!directory.isAbsolutePath(path))
             path = filesystem.concatPaths(this.getPath(), path);
 
-        return remotefile.createFile(path);
+        return remotefile.fromPath(path);
     }
 
     /**
@@ -861,7 +996,7 @@ class remotedirectory extends directory {
         if (!directory.isAbsolutePath(path))
             path = filesystem.concatPaths(this.getPath(), path);
 
-        return remotefile.createFile(path)
+        return remotefile.fromPath(path)
             .catch(() => new remotedirectory(path));
 
     }
@@ -968,6 +1103,13 @@ class file {
     }
 
     /**
+ * @returns {Rx.Observable<Blob>}
+ * */
+    readAsBlob() {
+        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+    }
+
+    /**
      * 
      * @param {[string]} types
      * @returns {boolean} - is the type of this webkitfile contained in types?
@@ -1064,6 +1206,26 @@ class webkitfile extends file {
     }
 
     /**
+    * @returns {string}
+    * */
+    getContentType() {
+        if (this.contentType)
+            return this.contentType;
+        else {
+            for (var type of [file.prototype.JPG,
+            file.prototype.PNG,
+            file.prototype.TXT,
+            file.prototype.JSON]) {
+                if (this.isType(type))
+                    return type;
+            }
+        }
+
+
+        throw new error(this.ERROR.UNSUPPORTED_OPERATION, "load file before inspecting content type");
+    }
+
+    /**
     * 
     * @param {FileSystemFileEntry | FileEntry} entry
     * @returns {Rx.Observable<File>}
@@ -1104,7 +1266,7 @@ class webkitfile extends file {
 
                 fileReader.readAsDataURL(file);
 
-                return () => { fileReader.abort(); };
+                return () => { if (fileReader.readyState !== FileReader.DONE) fileReader.abort(); };
             });
         });
     }
@@ -1121,7 +1283,10 @@ class webkitfile extends file {
 
                     fileReader.onload = function (event) {
                         this.read = true;
-                        observer.next(event.target.result || event.currentTarget.result);
+                        if (event.target.result == "")
+                            observer.next("");
+                        else
+                            observer.next(event.target.result || event.currentTarget.result);
                         observer.complete();
                     };
                     fileReader.onerror = function (err) {
@@ -1130,7 +1295,7 @@ class webkitfile extends file {
 
                     fileReader.readAsText(file);
 
-                    return () => { fileReader.abort(); };
+                    return () => { if (fileReader.readyState !== FileReader.DONE) fileReader.abort(); };
                 })
             })
             .map(text => {
@@ -1197,6 +1362,13 @@ class webkitfile extends file {
         });
     }
 
+    /**
+ * @returns {Rx.Observable<Blob>}
+ * */
+    readAsBlob() {
+        return this.load();
+    }
+
 }
 
 
@@ -1257,13 +1429,15 @@ class cordovafile extends webkitfile {
         return Rx.Observable.create(obs => {
             window.resolveLocalFileSystemURL(this.path,
                 (entry) => { obs.next(entry); obs.complete(); },
-                (err) => obs.error(new error(file.prototype.ERROR.FILE_NOT_FOUND, this.path, err))
-        )})
+                (err) => cordovadirectory.toError(err, this.path)
+            )
+        })
             .mergeMap(handle => {
 
                 return Rx.Observable.create(observer => {
                     handle.file(
                         file => {
+                            this.contentType = file.type;
                             this.file = file;
                             observer.next(file);
                             observer.complete();
@@ -1309,7 +1483,17 @@ class remotefile extends file {
         return this.getPath().substr(this.getPath().indexOf(':') + 1) === otherFile.getPath().substr(otherFile.getPath().indexOf(':') + 1);
     }
 
-    static createFile(path) {
+    /**
+* @returns {string}
+* */
+    getContentType() {
+        if (this.contentType)
+            return this.contentType;
+        else
+            throw new error(this.ERROR.UNSUPPORTED_OPERATION, "load file before inspecting content type");
+    }
+
+    static fromPath(path) {
         return Rx.Observable.create(obs => {
             var r = $.ajax({
                 type: 'HEAD',
@@ -1417,8 +1601,37 @@ class remotefile extends file {
      * @returns {Rx.Observable<ArrayBuffer>}
      * */
     readAsArrayBuffer() {
-        return Rx.Observable.throw(new error(this.ERROR.UNSUPPORTED_OPERATION, "", this.getPath()));
+        return Rx.Observable.create(obs => {
+            var request = new XMLHttpRequest();
+            request.open('GET', this.path, true);
+            request.responseType = 'arraybuffer';
+            request.onload = function () {
+                obs.next(request.response);
+                obs.complete();
+            };
+            request.send();
+            return () => { if (request.readyState !== request.DONE) request.abort(); }
+        });
     }
+
+    /**
+ * @returns {Rx.Observable<Blob>}
+ * */
+    readAsBlob() {
+        return Rx.Observable.create(obs => {
+            var request = new XMLHttpRequest();
+            request.open('GET', this.path, true);
+            request.responseType = 'blob';
+            request.onload = function () {
+                obs.next(request.response);
+                obs.complete();
+            };
+            request.send();
+            return () => { if (request.readyState !== request.DONE) request.abort(); }
+        });
+    }
+
+
 
     /**
      * 
@@ -1999,6 +2212,27 @@ class androidAccessor extends observable {
         return this.targetSubject
             .mergeMap(path => cordovadirectory.resolve(path).map(handle => cordovadirectory.handleToEntry(handle, path)));
     }
+
+    /**
+* @returns {Rx.observable<string>}
+ * */
+    selectNewFilePath() {
+        return Rx.Observable.create(obs => {
+            window.OurCodeWorld.Filebrowser.createFileDialog({
+                success: paths => {
+                    if (paths.length)
+                        obs.next(paths[0]);
+
+                    this.targetSubject.complete();
+
+                },
+                error: err => {
+                    this.targetSubject.error(err);
+                },
+                //startupPath: options.parent ? options.parent.getPath() : null
+            });
+        });
+    }
 }
 
 /**************************************************************************************************
@@ -2024,7 +2258,7 @@ class electronAccessor extends observable {
         this.dialogResponse = Rx.Observable.create(obs => {
             window.electron.ipcRenderer.on("fs-response", (emitter, paths) => {
                 for (var path of (paths || []))
-                    obs.next(path);
+                    obs.next(path.replace(/\\/g, '/'));
 
                 obs.complete();
             });
@@ -2055,7 +2289,7 @@ class electronAccessor extends observable {
      * @param {boolean} [options.multi]
      * @param {boolean} [options.filter.files]
      * @param {boolean} [options.filter.folders]
-     * @returns {Rx.observable<webkitfile>}
+     * @returns {Rx.observable<cordovafile>}
      */
     request(options) {
         this.workspace(options.workspace);
@@ -2104,6 +2338,27 @@ class electronAccessor extends observable {
 
         return this.targetSubject
             .mergeMap(path => cordovadirectory.resolve(path).map(handle => cordovadirectory.handleToEntry(handle, path)));
+    }
+
+    /**
+    * @returns {Rx.observable<string>}
+     * */
+    selectNewFilePath() {
+        if (this.targetSubject)
+            this.targetSubject.complete();
+        this.targetSubject = new Rx.Subject();
+
+        if (window.electron && window.electron.ipcRenderer) {
+
+            if (this.subscription)
+                this.subscription.unsubscribe();
+
+            this.subscription = this.dialogResponse
+                .subscribe(this.targetSubject);
+            window.electron.ipcRenderer.send("fs-create", this.options);
+        }
+
+        return this.targetSubject;
     }
 }
 
@@ -2255,6 +2510,7 @@ class webkitAccessor {
 /**
  * Listen to events: this.observe(vertex, <action>).subscribe(elem => / do something with element here /)
  * <action> in {this.LINK, this.UNLINK}
+ * this.observe(cordovadirectory, this.WORKSPACE)
  * */
 class filesystem extends observable {
     get [Symbol.toStringTag]() {
@@ -2287,6 +2543,66 @@ class filesystem extends observable {
      * */
     getWorkspace() {
         return this.workspace;
+    }
+
+    /**
+     * 
+     * 
+     * @param {directory} dir
+     */
+    setWorkspace(dir) {
+        this.workspace = dir;
+        this.emit(dir, this.WORKSPACE);
+    }
+
+    /**
+     * @param {JSON} json representation of the worksapce state
+     * */
+    saveWorkspace(json) {
+        return Rx.Observable.of(true)
+            .mergeMap(() => {
+                if (this.workspace && this.workspace.canWrite()) {
+                    return this.workspace.write("tour.json", JSON.stringify(json, null, 4));
+                }
+                return Rx.Observable.throw();
+            })
+            .catch(() => {
+                return this.saveWorkspaceAs(json);
+            });
+    }
+
+    /**
+    * @param {JSON} json representation of the worksapce state
+    * */
+    saveWorkspaceAs(json) {
+        var blob = new Blob([JSON.stringify(json, null, 4)], { type: "text/json" });
+        if (this.acc instanceof webkitAccessor)
+            return filesystem.saveByDownload("tour.json", blob);
+
+        return this.acc.selectNewFilePath()
+            .mergeMap(path => this.workspace.write(path, blob));
+    }
+
+    /**
+    * Create a file and offer it for download
+    *
+    * @param {Blob} content
+    */
+    static saveByDownload(name, blob) {
+        var saveData = (function () {
+            var a = document.createElement("a");
+            document.body.appendChild(a);
+            a.style = "display: none";
+            return function (fileName, data) {
+                var url = window.URL.createObjectURL(data);
+                a.href = url;
+                a.download = fileName;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            };
+        }());
+
+        saveData(name, blob);
     }
 
     toNode() {
@@ -2554,3 +2870,4 @@ class filesystem extends observable {
 
 filesystem.prototype.LINK = "link file";
 filesystem.prototype.UNLINK = "unlink file";
+filesystem.prototype.WORKSPACE = "workspace";

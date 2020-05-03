@@ -14,9 +14,11 @@ class algorithms {
      * @param {logger} modules.logger
      * @param {panoramaViewer} modules.panorama
      * @param {filesystem} modules.filesys
+     * @param {configurator} settings
      */
-    constructor(modules) {
+    constructor(modules, settings) {
         this.modules = modules;
+        this.settings = settings;
         this.filenamePattern = /([+-]?\d+(?:\.\d+)?),\s+([+-]?\d+(?:\.\d+)?)\.jpg/;
     }
 
@@ -144,27 +146,13 @@ class algorithms {
         return successful;
     }
 
-    /**
-     * Create a file and offer it for download
-     * 
-     * @param {any} content
-     */
-    saveJSON(content) {
-        var saveData = (function () {
-            var a = document.createElement("a");
-            document.body.appendChild(a);
-            a.style = "display: none";
-            return function (data, fileName) {
-                var blob = new Blob([JSON.stringify(data, null, 4)], { type: "text/json" }),
-                    url = window.URL.createObjectURL(blob);
-                a.href = url;
-                a.download = fileName;
-                a.click();
-                window.URL.revokeObjectURL(url);
-            };
-        }());
-
-        saveData(content, "tour.json");
+    stateToJson() {
+        var json = this.modules.model.toJSON({ persistLandmarks: this.settings.persistLandmarks() });
+        json.settings = this.settings.toJSON();
+        if (this.settings.autoSaveSelectedItems())
+            json.settings.timeline.selections = this.modules.timeline.getSelectionsIds();
+        json.map = this.modules.map.toJSON();
+        return json;
     }
 
     /**
@@ -543,3 +531,168 @@ class algorithms {
     }
 
 }
+
+class imageConverter extends observable {
+    constructor() {
+        super();
+        this.loaderCanvas = document.createElement('canvas');
+        this.loaderContext = this.loaderCanvas.getContext('2d');
+    }
+
+    toImage(img) {
+        if (img instanceof Image) {
+            return Rx.Observable.of(img);
+        } else if (img instanceof Blob) {
+            var img = blob;
+            return Rx.Observable.create(obs => {
+                var url = URL.createObjectURL(blob);
+                img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = function () {
+                    URL.revokeObjectURL(this.src);             // free memory held by Object URL
+                    obs.next(img);
+                    obs.complete();
+                };
+                img.onerror = (err) => { obs.error(new error(this.CONVERSION_ERROR, "", err)) };
+
+                img.src = url;
+            });
+        } else if (img instanceof ImageData) {
+            return this.toDataURL(img).mergeMap(i => this.toImage(i));
+        } else if (img instanceof ArrayBuffer) {
+            return this.toBlob(img).mergeMap(blob => this.toImage(blob));
+        } else if (typeof img === "string") {
+            var img = url;
+            return Rx.Observable.create(obs => {
+                img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = function () {
+                    obs.next(img);
+                    obs.complete();
+                };
+                img.onerror = (err) => { obs.error(new error(this.CONVERSION_ERROR, "", err)) };
+                img.src = url;
+            });
+        }
+
+        return Rx.Observable.throw(new error(directory.prototype.ERROR.UNSUPPORED_OPERATION, "cannot convert this object to an Image"));
+    }
+
+    toImageData(img) {
+        if (img instanceof ImageData)
+            return Rx.Observable.of(img);
+        else if (img instanceof Image)
+            return Rx.Observable.create(obs => {
+                this.drawOnInternalCanvas(img);
+                obs.next(this.loaderContext.getImageData(0, 0, width, height));
+                obs.complete();
+            });
+        else if (typeof img === "string" || img instanceof Blob || img instanceof ArrayBuffer)
+            return this.toImage().mergeMap(i => this.toImageData(i));
+
+    }
+
+    toDataURL(img, contentType = "image/png", quality = 1) {
+        if (typeof img === "string")
+            return Rx.Observable.of(img);
+        else if (img instanceof Image) {
+            return Rx.Observable.create(obs => {
+                this.drawOnInternalCanvas(img);
+                obs.next(this.loaderCanvas.toDataURL(contentType, quality));
+                obs.complete();
+            });
+        } else if (img instanceof ImageData) {
+            return Rx.Observable.create(obs => {
+                this.loaderCanvas.width = img.width;
+                this.loaderCanvas.height = img.height;
+                this.loaderContext.putImageData(img, img.width, img.height);
+                obs.next(this.loaderCanvas.toDataURL(contentType, quality));
+                obs.complete();
+            });
+        } else if (img instanceof Blob) {
+            return Rx.Observable.create(obs => {
+                let reader = new FileReader();
+                reader.onload = function () {
+                    obs.next(reader.result);
+                    obs.complete();
+                };
+                reader.onerror = (err) => { obs.error(new error(this.CONVERSION_ERROR, "", err)) };
+
+                reader.readAsDataURL(img); // converts the blob to base64 and calls onload
+
+                return () => reader.abort();
+            });
+        }
+    }
+
+    toBlob(img, contentType = "image/png", quality = 1) {
+        if (img instanceof Blob && img.type === contentType)
+            return Rx.Observable.of(img);
+        else if (img instanceof Blob) {
+            return this.toImage(img).mergeMap(i => this.toBlob(i, contentType, quality));
+        }
+        else if (img instanceof Image) {
+            return Rx.Observable.create(obs => {
+                this.drawOnInternalCanvas(img);
+                this.loaderCanvas.toBlob(blob => {
+                    obs.next(blob);
+                    obs.complete();
+                }, contentType, quality);
+
+            });
+        } else if (img instanceof ImageData) {
+            return Rx.Observable.create(obs => {
+                this.loaderCanvas.width = img.width;
+                this.loaderCanvas.height = img.height;
+                this.loaderContext.putImageData(img, img.width, img.height);
+                this.loaderCanvas.toBlob(blob => {
+                    obs.next(blob);
+                    obs.complete();
+                }, contentType, quality);
+            });
+        } else if (typeof img === "string") {
+            var url = img;
+            var dataType;
+            return Rx.Observable.create(obs => {
+                var block = url.split(';');
+                dataType = block[0].split(':')[1];
+                var realData = block[1].split(',')[1];
+                contentType = contentType || '';
+                sliceSize = sliceSize || 512;
+
+                var byteCharacters = atob(realData);
+                var byteArrays = [];
+
+                for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+                    var slice = byteCharacters.slice(offset, offset + sliceSize);
+
+                    var byteNumbers = new Array(slice.length);
+                    for (var i = 0; i < slice.length; i++) {
+                        byteNumbers[i] = slice.charCodeAt(i);
+                    }
+
+                    var byteArray = new Uint8Array(byteNumbers);
+
+                    byteArrays.push(byteArray);
+                }
+
+                var blob = new Blob(byteArrays, { type: dataType });
+                obs.next(blob);
+                obs.complete();
+            }).mergeMap(blob => this.toBlob(blob, contentType));
+        } else if (img instanceof ArrayBuffer) {
+            return Rx.Observable.of(new Blob([new Uint8Array(img, 0, img.byteLength)]));
+        }
+    }
+
+    /**
+     *  @private
+     **/
+    drawOnInternalCanvas(img) {
+        this.loaderCanvas.width = img.width;
+        this.loaderCanvas.height = img.height;
+        this.loaderContext.drawImage(img, 0, 0);
+    }
+}
+
+imageConverter.prototype.ERROR.CONVERSION_ERROR = "unable to convert image";

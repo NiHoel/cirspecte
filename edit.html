@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="
           child-src blob:;
-          connect-src http: https:;
+          connect-src http: https: file:;
           font-src 'self';
           frame-src 'none';
           default-src 'self' data:  'unsafe-eval';
@@ -454,7 +454,7 @@
                             <label class="control-label" for="name">Name</label>
                             <input class="form-control" data-bind="value: name" type="text" id="name" placeholder="Group name">
                         </div>
-                       
+
                         <div class="control-group" style="width: 100%">
                             <label class="control-label" for="timeslot" title="The time the panoramas were shot. This determines the position on the timeline.">Timeslot</label>
                             <div class="controls">
@@ -474,53 +474,53 @@
 
                         </div>
 
-                    
 
 
-                    <h4 class="collapser collapsed" data-toggle="collapse" data-target="#advanced-settings-spatial-group">
-                        <small>
-                            <span class="glyphicon glyphicon-chevron-right"></span>
-                            <span class="glyphicon glyphicon-chevron-down"></span>
-                            Advanced settings
-                        </small>
-                    </h4>
-                    <div class="collapse" id="advanced-settings-spatial-group">
 
-                        <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="type" title="The type of group determines which type of vertices can be placed in it">Type</label>
-                            <select class="form-control" id="type" data-live-search="true" data-show-subtext="true" name="type"
-                                    data-bind="options: $root.spatialGroupTypes, optionsText: t => {return t;}, value: type"></select>
+                        <h4 class="collapser collapsed" data-toggle="collapse" data-target="#advanced-settings-spatial-group">
+                            <small>
+                                <span class="glyphicon glyphicon-chevron-right"></span>
+                                <span class="glyphicon glyphicon-chevron-down"></span>
+                                Advanced settings
+                            </small>
+                        </h4>
+                        <div class="collapse" id="advanced-settings-spatial-group">
 
+                            <div class="control-group" style="width: 100%">
+                                <label class="control-label" for="type" title="The type of group determines which type of vertices can be placed in it">Type</label>
+                                <select class="form-control" id="type" data-live-search="true" data-show-subtext="true" name="type"
+                                        data-bind="options: $root.spatialGroupTypes, optionsText: t => {return t;}, value: type"></select>
+
+                            </div>
+
+                            <div class="control-group" style="width: 100%">
+                                <label class="control-label" for="name" title="Unique identifier used to reference this group">Identifier</label>
+                                <input class="form-control" data-bind="value: id" type="text" id="id" placeholder="<Automatically generate>">
+                            </div>
+
+                            <div class="control-group" style="width: 100%">
+                                <label class="control-label" for="name" title="[Optional]">Description</label>
+                                <input class="form-control" data-bind="value: description" type="text" id="description" placeholder="Group description">
+                            </div>
+
+                            <div class="control-group" style="width: 100%">
+                                <label class="control-label" for="path" title="[Optional] Specify the folder containing the images. Use slashes (/) to separate folders. Each vertex in the group will store the path to the image relative to the folder specified here. Note: You cannot specify an absolute path here. The specified path is always relative to the folder you imported in the beginning.">Path</label>
+                                <input class="form-control" data-bind="value: path" type="text" id="path" placeholder="Folder containing images">
+                            </div>
+
+                            <div class="control-group" style="width: 100%">
+                                <label class="control-label" for="background" title="[Optional] The image displayed on the map behind the points and edges forming this spatial group">Background</label>
+                                <select class="form-control" id="background" data-live-search="true" data-show-subtext="true" name="background" placeholder="Select a background ..."
+                                        data-bind="options: $root.backgrounds, optionsCaption: 'Select a background ...', optionsText: g => {return g.label;}, value: background"></select>
+
+                            </div>
                         </div>
-
-                        <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="name" title="Unique identifier used to reference this group">Identifier</label>
-                            <input class="form-control" data-bind="value: id" type="text" id="id" placeholder="<Automatically generate>">
-                        </div>
-
-                        <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="name" title="[Optional]">Description</label>
-                            <input class="form-control" data-bind="value: description" type="text" id="description" placeholder="Group description">
-                        </div>
-
-                        <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="path" title="[Optional] Specify the folder containing the images. Use slashes (/) to separate folders. Each vertex in the group will store the path to the image relative to the folder specified here. Note: You cannot specify an absolute path here. The specified path is always relative to the folder you imported in the beginning.">Path</label>
-                            <input class="form-control" data-bind="value: path" type="text" id="path" placeholder="Folder containing images">
-                        </div>
-
-                        <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="background" title="[Optional] The image displayed on the map behind the points and edges forming this spatial group">Background</label>
-                            <select class="form-control" id="background" data-live-search="true" data-show-subtext="true" name="background" placeholder="Select a background ..."
-                                    data-bind="options: $root.backgrounds, optionsCaption: 'Select a background ...', optionsText: g => {return g.label;}, value: background"></select>
-
-                        </div>
-                    </div>
                     </form>
                 </div>
-                    <div class="modal-footer">
-                        <button data-bind="click: createSpatialGroup" class="btn btn-primary" data-dismiss="modal">Create</button>
-                    </div>
+                <div class="modal-footer">
+                    <button data-bind="click: createSpatialGroup" class="btn btn-primary" data-dismiss="modal">Create</button>
                 </div>
+            </div>
         </div>
     </div>
     <!-- /#spatial-group-editor -->
@@ -540,7 +540,7 @@
                             <label class="control-label" for="name">Name</label>
                             <input class="form-control" data-bind="value: name" type="text" id="name" placeholder="Group name">
                         </div>
-                        
+
                         <div class="control-group" style="width: 100%">
                             <div class="controls">
                                 <label for="autoConnectColocate" title="Enables tolerance regarding the position of panoramas. If two panorams are not more than radius apart they are treated as shot at the same location. Then switching between them by using the timeline is possible.">Auto-connect colocated vertices among spatial groups</label>
@@ -556,7 +556,7 @@
                             <label for="multiselect" title="If unchecked, selecting a spatial group leads to deselecting all other spatial groups that are direct children of the same temporal group.">Multiple spatial groups can be displayed at the same time</label>
                             <input data-bind="checked: multiselect" type="checkbox" id="multiselect" />
                         </div>
-                        
+
 
                         <h4 class="collapser collapsed" data-toggle="collapse" data-target="#advanced-settings-temporal-group">
                             <small>
@@ -640,84 +640,171 @@
         </div>
     </div>
     <!-- /#template-application-dialog -->
-    <!-- #file-access-dialog -->
-    <div id="file-access-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+    <!-- #select-directory-dialog -->
+    <div id="select-directory-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div id="file-access-dialog-header" class="modal-header">
+                <div id="select-directory-dialog-header" class="modal-header">
+
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h3 data-bind="visible: workspace">Select project directory</h3>
+                    <h3 data-bind="visible: !workspace">Select a directory</h3>
+                </div>
+                <div class="modal-body">
+
+                    <div>
+                        <section id="workspace-droparea">
+                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:application/json" class="centerall">
+                                Drop directory here
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="btn-center-spaced" >
+                        <label class="btn btn-primary" id="workspace-directory-selector">
+                            Open native file dialog
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#select-directory-dialog -->
+    <!-- #webkit-select-workspace-dialog -->
+    <div id="webkit-select-workspace-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div id="webkit-select-workspace-dialog-header" class="modal-header">
+
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h3>Select project directory</h3>
+                </div>
+                <div class="modal-body">
+
+                    <div data-bind="visible: allowsDrop">
+                        <section id="webkit-workspace-droparea">
+                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:application/json" class="centerall">
+                                Drop directory here
+                            </div>
+                        </section>
+                    </div>
+
+                    <div data-bind="visible: allowsDirectorySelect">
+                        <label class="btn btn-primary btn-center-spaced" for="webkit-workspace-directory-selector">
+                            <input id="webkit-workspace-directory-selector" type="file" style="display: none;" multiple directory webkitdirectory="">
+                            Open native file dialog
+                        </label>
+                        <p></p>
+                    </div>
+
+                    <div data-bind="visible: !allowsDrop &amp;&amp; !allowsDirectorySelect" style="display: none;">
+                        <label class="btn btn-primary btn-center-spaced" for="webkit-workspace-files-selector">
+                            <input id="webkit-workspace-files-selector" type="file" multiple style="display: none;">
+                            Select files
+                        </label>
+                        <p>Select all files in project directory</p>
+                    </div>
+
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- /#webkit-select-workspace-dialog -->
+    <!-- #webkit-access-dialog -->
+    <div id="webkit-access-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div id="webkit-access-dialog-header" class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
                     <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
                     <ul class="nav nav-tabs">
-                        <li class="active"><a data-toggle="tab" href="#file-access-disk-tab">Disk</a></li>
-                        <li><a data-toggle="tab" href="#file-access-browser-tab" data-bind="css:{'not-active': !hasEntries()}">Browser</a></li>
+                        <li class="active"><a data-toggle="tab" href="#webkit-access-disk-tab">Disk</a></li>
+                        <li><a data-toggle="tab" href="#webkit-access-browser-tab" data-bind="css:{'not-active': !hasEntries()}">Browser</a></li>
                     </ul>
 
 
                 </div>
                 <div class="modal-body">
                     <div class="tab-content">
-                        <div id="file-access-disk-tab" class="tab-pane fade in active">
+                        <div id="webkit-access-disk-tab" class="tab-pane fade in active">
                             <div data-bind="if: name" class="form">
-                                <label for="file-access-name">
+                                <label for="webkit-access-name">
                                     Please provide the following file:
                                 </label>
                                 <span data-bind="text: path"></span>
                                 <div class="input-group">
-                                    <input id="file-access-name" class="form-control" data-bind="value: name" readonly="readonly" type="text">
+                                    <input id="webkit-access-name" class="form-control" data-bind="value: name" readonly="readonly" type="text">
                                     <span class="input-group-btn">
-                                        <button class="btn clipboard" type="button" data-clipboard-target="#file-access-name">
+                                        <button class="btn clipboard" type="button" data-clipboard-target="#webkit-access-name">
                                             <img src="assets/images/clippy.svg" alt="Copy to clipboard" width="13" style="margin-top: -3px; position: relative; top:3px;">
                                         </button>
                                     </span>
                                 </div>
                             </div>
                             <div data-bind="ifnot: name">
-                                Choose the files to add.
+                                <div data-bind="visible: !allowsFiles() && !multi()">
+                                    Select a directory.
+                                </div>
+                                <div data-bind="visible: !allowsFiles() && multi()">
+                                    Select one or more directories.
+                                </div>
+                                <div data-bind="visible: !allowsFolders() && !multi()">
+                                    Select a file.
+                                </div>
+                                <div data-bind="visible: !allowsFolders() && multi()">
+                                    Select one or more files.
+                                </div>
+                                <div data-bind="visible: allowsFiles() && allowsFolders() && !multi()">
+                                    Select a file or directory.
+                                </div>
+                                <div data-bind="visible:  allowsFiles() && allowsFolders() && multi()">
+                                    Select one or more files or directories.
+                                </div>
                             </div>
-                            <p>Note: If you select a folder or more files, all (sub-)files can be accessed by the browser and you won't be asked again if access is needed to display them.</p>
-                            <p>Note: "File upload" is the only possibility that a website can access a file on the local disk and thus show its contents. We won't transfer any file to any server.</p>
 
-                            <div data-bind="visible: allowsDrop">
-                                <section id="droparea">
+                            <div data-bind="visible: allowsDrop && !name()">
+                                <section id="webkit-droparea">
                                     <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:application/json" class="centerall">
-                                        Drop folder or files
+                                        Drop here
                                     </div>
                                 </section>
                             </div>
 
-                            <div data-bind="visible: allowsDirectorySelect">
-                                <label class="btn btn-primary" for="directory-selector" data-bind="visible: allowsDirectorySelect">
-                                    <input id="directory-selector" type="file" style="display: none;" multiple directory webkitdirectory="">
-                                    Select root directory
+                            <div data-bind="visible: allowsDirectorySelect && allowsFolders()">
+                                <label class="btn btn-primary btn-center-spaced" for="webkit-directory-selector">
+                                    <input id="webkit-directory-selector" type="file" style="display: none;" multiple directory webkitdirectory="">
+                                    Select directory
                                 </label>
-                                <p>Choose a directory containing the file.</p>
                             </div>
 
-                            <div data-bind="visible: allowsMultiFileSelect">
-                                <label class="btn btn-primary" for="files-selector">
-                                    <input id="files-selector" type="file" multiple style="display: none;">
+                            <div data-bind="visible: allowsMultiFileSelect && multi() && allowsFiles()">
+                                <label class="btn btn-primary btn-center-spaced" for="webkit-files-selector">
+                                    <input id="webkit-files-selector" type="file" multiple style="display: none;">
                                     Select files
                                 </label>
-                                <p>Choose multiple files within the directory of the target file.</p>
                             </div>
 
-                            <div>
-                                <label class="btn btn-primary" for="file-selector">
-                                    <input id="file-selector" type="file" style="display: none;">
+                            <div data-bind="visible: !multi() && allowsFiles()">
+                                <label class="btn btn-primary btn-center-spaced" for="webkit-file-selector">
+                                    <input id="webkit-file-selector" type="file" style="display: none;">
                                     Select file
                                 </label>
-                                <p>Choose a single file. Updates the referenced file name.</p>
                             </div>
                         </div>
 
-                        <!-- /#file-access-disk-tab -->
+                        <!-- /#webkit-access-disk-tab -->
 
-                        <div id="file-access-browser-tab" class="tab-pane fade">
-                            <div id="file-access-browser-tab-jstree"></div>
+                        <div id="webkit-access-browser-tab" class="tab-pane fade">
+                            <div id="webkit-access-browser-tab-jstree"></div>
                             <button data-bind="click: confirmSelection, enable: hasSelections" class="btn btn-primary" data-dismiss="modal">Confirm</button>
 
                         </div>
-                        <!-- /#file-access-browser-tab -->
+                        <!-- /#webkit-access-browser-tab -->
                     </div>
                     <!-- /.tab-content -->
                 </div>
@@ -725,7 +812,7 @@
             </div>
         </div>
     </div>
-    <!-- /#file-access-dialog -->
+    <!-- /#webkit-access-dialog -->
     <!-- #settings-dialog -->
     <div id="settings-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
         <div class="modal-dialog modal-lg">
@@ -739,10 +826,22 @@
                     <div class="form-horizontal">
                         <div>
                             <div>
+                                <button id="switch-workspace" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
+                                    <span class="glyphicon glyphicon-refresh"></span>
+                                </button>
+                                <label class="control-label" for="switch-workspace">Switch workspace</label>
+                            </div>
+                            <div>
+                                <button id="import-workspace" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
+                                    <span class="glyphicon glyphicon-import"></span>
+                                </button>
+                                <label class="control-label" for="import-workspace">Import workspace</label>
+                            </div>
+                            <div>
                                 <button id="import-tour" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
                                     <span class="glyphicon glyphicon-import"></span>
                                 </button>
-                                <label class="control-label" for="import-tour">Import additional tour files</label>
+                                <label class="control-label" for="import-tour">Import external tour file</label>
                             </div>
                             <div>
                                 <button id="vertex-template-settings" class="btn btn-default" data-toggle="modal" data-target="#vertex-template-settings-dialog">
@@ -1185,7 +1284,7 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                                 </td>
 
                             </tr>
-							<tr class="row">
+                            <tr class="row">
                                 <td>
                                     <div class="timeline-item timeline-range timeline-readonly" style=" width: 90px; top: 5px;position: relative;"><div class="timeline-item-overflow"><div class="timeline-item-content" style="transform: translateX(0px);">2016 - 2019</div></div><div class="timeline-item-visible-frame"></div></div>
                                 </td>
@@ -1284,7 +1383,7 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                     <!-- Temporal Groups -->
                     <h4 id="help-dialog-temporal-groups">Temporal Groups</h4>
                     <p>A temporal groups consists of several spatial groups. The temporal groups makes the navigation in time possible. If two panoramas are taken at the same location but at different times, they end up in different spatial groups. The temporal group searches all containing spatial groups and forms a connection between those two panoramas. The result is one can switch between them using the topbar navigation.</p>
-                    <p>A temporal group only requires a name and a type. The type determines the subgroups that can be added to the group. All the other values are optional. The description will be used as a tooltip. The super group dropdown exists that one can build a hierarchy of tours.</p> 
+                    <p>A temporal group only requires a name and a type. The type determines the subgroups that can be added to the group. All the other values are optional. The description will be used as a tooltip. The super group dropdown exists that one can build a hierarchy of tours.</p>
                     <p>The connections for navigating in time cannot be created manually. Instead the temporal group automatically takes care of it. Two vertices are navigable in time (there are arrows in the top bar) if they are colocated. To be colocated, they must be within the distance determined by the parameter colocated radius. Moreover their spatial groups must be of type &quot;singleshot&quot; OR belong to the same temporal group. One can deny the first condition by choosing the type &quot;route&quot; for the spatial group and the second condition by unchecking the &quot;auto-connect&quot; option when creating a group.</p>
                     <p>&quot;Add Panoramas&quot; will automatically create a spatial group derived from timestamp of the specified image. Create a spatial group manually to exploit all customization options.</p>
                     <p>There is no possibility to directly modify groups. The workaround is to create a new one and copy the spatial groups, see <a href="#help-dialog-spatial-groups">Spatial Groups</a>.</p>

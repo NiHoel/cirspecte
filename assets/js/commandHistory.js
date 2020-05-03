@@ -132,6 +132,19 @@ class commandHistory extends observable {
     }
 
     /**
+     * Clears the complete history
+     * */
+    clear() {
+        this.undoStack = [];
+        this.redoStack = [];
+        this.undoRoutine = [];
+        this.redoRoutine = [];
+        this.mode = this.MODES.NORMAL;
+
+        this.computeCounters();
+    }
+
+    /**
      * Update stack counters
      * 
      * @private

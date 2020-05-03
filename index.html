@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="
           child-src blob:;
-          connect-src http: https:;
+          connect-src http: https: file:;
           font-src 'self';
           frame-src 'none';
           default-src 'self' data:  'unsafe-eval';
@@ -166,80 +166,87 @@
         <!-- /#right-pane -->
     </div>
     <!-- /#right-pane-wrapper -->
-
-    <!-- #file-access-dialog -->
-    <div id="file-access-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+    <!-- #select-directory-dialog -->
+    <div id="select-directory-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
+                <div id="webkit-access-dialog-header" class="modal-header">
+                    <h3 data-bind="visible: workspace">Select project directory</h3>
+                    <h3 data-bind="visible: !workspace">Select a directory</h3>
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-		    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
-                    <h4>File Access</h4>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
                 </div>
-                <div class="modal-body" id="file-access-disk-tab">
-                    <div data-bind="if: name" class="form">
-                        <label for="file-access-name">
-                            Please provide the following file:
-                        </label>
-                        <span data-bind="text: path"></span>
-                        <div class="input-group">
-                            <input id="file-access-name" class="form-control" data-bind="value: name" readonly="readonly" type="text">
-                            <span class="input-group-btn">
-                                <button class="btn clipboard" type="button" data-clipboard-target="#file-access-name">
-                                    <img src="assets/images/clippy.svg" alt="Copy to clipboard" width="13" style="margin-top: -3px; position: relative; top:3px;">
-                                </button>
-                            </span>
-                        </div>
+                <div class="modal-body">
+
+                    <div>
+                        <section id="workspace-droparea">
+                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:application/json" class="centerall">
+                                Drop directory here
+                            </div>
+                        </section>
                     </div>
 
+                    <div class="btn-center-spaced">
+                        <label class="btn btn-primary" id="workspace-directory-selector">
+                            Open native file dialog
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#select-directory-dialog -->
+    <!-- #webkit-select-workspace-dialog -->
+    <div id="webkit-select-workspace-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div id="webkit-select-workspace-dialog-header" class="modal-header">
+
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h3>Select project directory</h3>
+                </div>
+                <div class="modal-body">
+
                     <div data-bind="visible: allowsDrop">
-                        <br />
-                        <section id="droparea">
+                        <section id="webkit-workspace-droparea">
                             <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:application/json" class="centerall">
-                                Drop root folder or files
+                                Drop directory here
                             </div>
                         </section>
                     </div>
 
                     <div data-bind="visible: allowsDirectorySelect">
-                        <br/>
-
-                        <label class="btn btn-primary" for="directory-selector" data-bind="visible: allowsDirectorySelect">
-                            <input id="directory-selector" style="display: none;" multiple="" directory="" webkitdirectory="" type="file">
-                            Select root directory
+                        <label class="btn btn-primary btn-center-spaced" for="webkit-workspace-directory-selector">
+                            <input id="webkit-workspace-directory-selector" type="file" style="display: none;" multiple directory webkitdirectory="">
+                            Open native file dialog
                         </label>
-                        <strong>Or</strong> choose a directory containing the file.
+                        <p></p>
                     </div>
 
-                    <div data-bind="visible: allowsMultiFileSelect && !allowsDirectorySelect">
-                        <br />
-                        <label class="btn btn-primary" for="files-selector">
-                            <input id="files-selector" type="file" multiple style="display: none;">
+                    <div data-bind="visible: !allowsDrop && !allowsDirectorySelect" style="display: none;">
+                        <label class="btn btn-primary btn-center-spaced" for="webkit-workspace-files-selector">
+                            <input id="webkit-workspace-files-selector" type="file" multiple style="display: none;">
                             Select files
                         </label>
-                        <strong>Or</strong> choose all files within the directory of the target file.
+                        <p>Select all files in project directory</p>
                     </div>
 
-                    <div data-bind="visible: !allowsMultiFileSelect">
-                        <br />
-                        <label class="btn btn-primary" for="file-selector">
-                            <input id="file-selector" type="file" style="display: none;">
-                            Select file
-                        </label>
-                    </div>
+
                 </div>
 
             </div>
         </div>
     </div>
-    <!-- /#file-access-dialog -->
+    <!-- /#webkit-select-workspace-dialog -->
     <!-- #settings-dialog -->
     <div id="settings-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-		    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
                     <h4>Settings</h4>
                 </div>
                 <div class="modal-body">
@@ -423,7 +430,7 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                                 </td>
 
                             </tr>
-							<tr class="row">
+                            <tr class="row">
                                 <td>
                                     <div class="timeline-item timeline-range timeline-readonly" style=" width: 90px; top: 5px;position: relative;"><div class="timeline-item-overflow"><div class="timeline-item-content" style="transform: translateX(0px);">2016 - 2019</div></div><div class="timeline-item-visible-frame"></div></div>
                                 </td>
@@ -436,7 +443,7 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                                 </td>
 
                             </tr>
-							
+
                             <tr class="row">
                                 <td>
                                     <div class="savetiles leaflet-bar leaflet-control"><a class="savetiles"><i class="glyphicon glyphicon-download-alt" title="Save tiles"></i></a><a class="rmtiles"><i class="glyphicon glyphicon-trash" aria-hidden="true" title="Remove tiles"></i></a></div>

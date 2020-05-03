@@ -192,7 +192,7 @@ function createCommonRoutines(modules, settings) {
     /* Rx.Observable routines */
     /**************************/
 
-    return [
+    var obs = [
         // vertex -> point
         modules.model.observe(vertex, modules.model.CREATE)
             .do(v => modules.map.createPoint(v))
@@ -308,15 +308,9 @@ function createCommonRoutines(modules, settings) {
             })
         ,
 
-        /*
-         * Listen to all events that cause to load a new tour
-         * Load the tour model and apply the view related settings from the tour specification
-         * */
-        Rx.Observable.fromEvent(document.querySelector('#import-tour'), 'click')
-            .filter(f => f instanceof file && f.isType(file.prototype.JSON))
-              .mergeMap(loadTour),
 
-        // search for tours
+
+        // initial search for tours
         Rx.Observable.of(true)
             .mergeMap(() => {
                 if (config.tour && Object.entries(config.tour).length) // check config file
@@ -354,6 +348,7 @@ function createCommonRoutines(modules, settings) {
             })
             .catch(() => {
                 return modules.filesys.request({ // ask to specify workspace
+                    workspace: true,
                     filter: {
                         folders: true,
                         files: false
@@ -365,12 +360,79 @@ function createCommonRoutines(modules, settings) {
                         return dir.searchFile("tour.json")
                             .mergeMap(f => {
                                 return loadTour(f, dir);
-                            }); 
+                            });
                     });
             })
             .catch(() => Rx.Observable.empty())
-     ];
+    ];
 
+    /*
+   * Listen to all events that cause to load a new tour
+   * Load the tour model and apply the view related settings from the tour specification
+   * */
+    if (document.querySelector('#import-tour'))
+        obs.push(Rx.Observable.fromEvent(document.querySelector('#import-tour'), 'click')
+            .mergeMap(() => modules.filesys.request({
+                parent: modules.filesys.getWorkspace(),
+                multi: false,
+                filter: {
+                    files: true,
+                    folders: false
+                }
+            }))
+            .filter(f => f instanceof file && f.isType(file.prototype.JSON))
+            .mergeMap(f => loadTour(f))
+        );
 
+    if (document.querySelector('#import-workspace'))
+        obs.push(Rx.Observable.fromEvent(document.querySelector('#import-workspace'), 'click')
+            .mergeMap(() => modules.filesys.request({
+                parent: modules.filesys.getWorkspace(),
+                workspace: true,
+                multi: false,
+                filter: {
+                    files: false,
+                    folders: true
+                }
+            })
+                .mergeMap(dir => dir.searchFile("tour.json")
+                    .filter(f => f instanceof file && f.isType(file.prototype.JSON))
+                    .mergeMap(f => loadTour(f, dir))
+                )
+            )
+        );
+
+    if (document.querySelector('#switch-workspace'))
+        obs.push(Rx.Observable.fromEvent(document.querySelector('#switch-workspace'), 'click')
+            .mergeMap(() => modules.filesys.request({
+                parent: modules.filesys.getWorkspace(),
+                workspace: true,
+                multi: false,
+                filter: {
+                    files: false,
+                    folders: true
+                }
+            }))
+            .mergeMap(dir => dir.searchFile("tour.json")
+                .filter(f => f instanceof file && f.isType(file.prototype.JSON))
+                .do(() => {
+                    if (modules.hist)
+                        modules.hist.commit();
+
+                    var temporalGroups = Array.from(modules.model.temporalGroups.values());
+                    for (var tg of temporalGroups) {
+                        modules.model.deleteTemporalGroup(tg);
+                    }
+
+                    modules.filesys.workspace = dir;
+
+                    if (modules.hist)
+                        modules.hist.clear();
+                })
+                .mergeMap(f => loadTour(f, dir))
+            )
+        );
+
+    return obs;
 }
 

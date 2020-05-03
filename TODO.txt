@@ -2,18 +2,47 @@ bugs
 	item deselected when selecting group in editor
 	control group in map not selected when selecting item
 	when connecting single shots, consider connection radius of both ends
-abort panorama image loading in loader
-online capabilities of filesystem
-style items more radio button like
-expand range items on click
+ux
+	abort panorama image loading in loader
+	style items more radio button like
+	shadow items if no image is taken
+	expand range items on click
+	Arcgis developer plan
 
 cordova:
-	initially select working directory
 	all panoramas relative to working directory
-	import external tour files
+	save
+	saveAs
+	save Image
 	export functionality
 		select destination folder
 		tile panoramas
+	options
+		save & load	
+			switch workspace
+			import workspace
+			import tour
+			save as
+			autosave
+			load recent workspace on startup
+			request missing
+			automatically save selected items
+			
+		view
+			aggregate items
+			show group on map wen selecting it in sidebar
+			auto save selection (map, timeline)
+			configuration options
+			
+		advanced
+			create point when clicking on map
+			delete landmarks
+			copy vertices
+			track files
+			copy attributes
+			edit options for copying vertices
+			
+		
 
 add functionality
 	update yaw based on digital compass

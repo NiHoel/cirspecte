@@ -215,11 +215,11 @@ class cordovadirectory extends directory {
         return Rx.Observable.create(obs => {
             window.resolveLocalFileSystemURL(path,
                 (entry) => { obs.next(entry); obs.complete(); },
-                (err) => { obs.error(err); });
-        });
+                (err) => obs.error(new error(directory.prototype.ERROR.FILE_NOT_FOUND, path, err))
+        )});
     }
 
-     /**
+    /**
 * 
 * @param {string} path
 * @returns {Rx.Observable<file>}
@@ -300,7 +300,7 @@ class cordovadirectory extends directory {
                                 var isNew = !this.entries.has(entr.name);
 
                                 if ((options.onlyNewFiles || isNew) &&
-                                    (options.onlyUnusedFiles || !(entr instanceof file) || !file.usedFiles.has(entr.getName()) ))
+                                    (options.onlyUnusedFiles || !(entr instanceof file) || !file.usedFiles.has(entr.getName())))
                                     observer.next(entr);
 
                                 this.entries.set(entr.name, entr);
@@ -331,7 +331,7 @@ class cordovadirectory extends directory {
 
         return this.scan()
             .do(e => { this.entries.set(e.name, e); });
-            
+
     }
 
 
@@ -351,9 +351,9 @@ class cordovadirectory extends directory {
                 }
             };
         return this.node;
-}
+    }
 
-     
+
 }
 
 
@@ -513,7 +513,7 @@ class webkitdirectory extends directory {
             return reader instanceof WebKitDirectoryReader;
         else
             return reader[Symbol.toStringTag] === 'DirectoryReader' || reader[Symbol.toStringTag] === 'FileSystemDirectoryReader' || !!reader.readEntries;
-        
+
     }
 
     /**
@@ -574,7 +574,7 @@ class webkitdirectory extends directory {
     searchFile(path) {
         if (directory.isAbsolutePath(path) && !path.startsWith("file:")) {
             return remoteFile.createFile(this.path);
-        }        
+        }
 
         return this.searchParent(path)
             .map(elem => elem[0].getFile(elem[1][0]));
@@ -591,8 +591,8 @@ class webkitdirectory extends directory {
 
         if (directory.isAbsolutePath(path) && !path.startsWith("file:")) {
             return new remotedirectory(path);
-        } 
-        
+        }
+
         if (!path.endsWith('/'))
             path += '/';
         return this.searchParent(path)
@@ -675,11 +675,11 @@ class webkitdirectory extends directory {
                     return Rx.Observable.create(observer => {
                         reader.readEntries(entries => {
                             entries.forEach(e => {
-								var entr;
-								if(e.isFile)
-									entr = new webkitfile(e);
-								else
-									entr = new webkitdirectory(e.name, e);
+                                var entr;
+                                if (e.isFile)
+                                    entr = new webkitfile(e);
+                                else
+                                    entr = new webkitdirectory(e.name, e);
 
                                 var isNew = this.addEntry(entr);
                                 if (!isNew)
@@ -690,16 +690,16 @@ class webkitdirectory extends directory {
 
                                 if ((options.onlyNewFiles || isNew) &&
                                     (options.onlyUnusedFiles || !(entr instanceof file) || !entr.read || !entr.vertex))
-									observer.next(entr);								
-							});
-                            
-							if (entries.length != 0)
+                                    observer.next(entr);
+                            });
+
+                            if (entries.length != 0)
                                 observer.next(reader); // readEntries must be called iteratively since it returns at most 100 entries per call on Chrome and Edge 
-							else if (this.loading) {
-								this.scanned = true;
-								this.loading = false;
-								this.loadingCompleted.complete();
-							}
+                            else if (this.loading) {
+                                this.scanned = true;
+                                this.loading = false;
+                                this.loadingCompleted.complete();
+                            }
                             observer.complete();
                         }, err => {
                             console.log(err);
@@ -745,14 +745,14 @@ class webkitdirectory extends directory {
                 });
 
         } else if (event instanceof DragEvent) {
- 
-                /**
-        * @type {array}
-        */
+
+            /**
+    * @type {array}
+    */
             let items = event.dataTransfer.items || [];
-                /**
-                * @type {Rx.Observable}
-                */
+            /**
+            * @type {Rx.Observable}
+            */
             var entries = Rx.Observable.from(items)
                 .map(i => i.webkitGetAsEntry())
                 .map(e => {
@@ -1035,7 +1035,7 @@ class webkitfile extends file {
      * @param {webkitdirectory} parent
      */
     constructor(fileHandle) {
-       super(fileHandle.name);
+        super(fileHandle.name);
         if (fileHandle instanceof File)
             this.file = fileHandle;
         else
@@ -1257,8 +1257,8 @@ class cordovafile extends webkitfile {
         return Rx.Observable.create(obs => {
             window.resolveLocalFileSystemURL(this.path,
                 (entry) => { obs.next(entry); obs.complete(); },
-                (err) => { obs.error(err); });
-        })
+                (err) => obs.error(new error(file.prototype.ERROR.FILE_NOT_FOUND, this.path, err))
+        )})
             .mergeMap(handle => {
 
                 return Rx.Observable.create(observer => {
@@ -1274,7 +1274,7 @@ class cordovafile extends webkitfile {
             });
     }
 
- 
+
 }
 
 
@@ -1317,7 +1317,7 @@ class remotefile extends file {
                 success: () => {
                     obs.next(new remotefile(path, r.getAllResponseHeaders())); obs.complete();
                 },
-                error: obs.error.bind(obs)
+                error: (err) => obs.error(new error(file.prototype.ERROR.FILE_NOT_FOUND, path, err))
             });
         });
     }
@@ -1363,7 +1363,7 @@ class remotefile extends file {
                 success: (data) => {
                     obs.next(data); obs.complete();
                 },
-                error: obs.error.bind(obs)
+                error: (err) => obs.error(new error(file.prototype.ERROR.FILE_NOT_FOUND, this.path, err))
             });
         })
             .map(text => {
@@ -1463,7 +1463,7 @@ class diskAccessor extends observable {
         this.allowsDrop =
             browser == "Microsoft" && version >= 15 && !mobile ||
             browser == "Firefox" && version >= 4 && !mobile ||
-            //            browser == "Chrome" && version >= 4 && !mobile ||  //dropped files cannot be read for some reason
+            browser == "Chrome" && version >= 4 && !mobile && !window.location.href.startsWith("file:") ||
             browser == "Safari" && version >= 3 && !mobile ||
             browser == "Opera" && version >= 12 && !mobile ||
             browser == "Safari" && version >= 11 && mobile ||
@@ -1489,6 +1489,9 @@ class diskAccessor extends observable {
 
         this.path = ko.observable();
         this.name = ko.observable();
+        this.multi = ko.observable(false);
+        this.allowsFiles = ko.observable(true);
+        this.allowsFolders = ko.observable(true);
         this.clipboard = new ClipboardJS('.clipboard');
         this.singleFile = false;
 
@@ -1498,31 +1501,32 @@ class diskAccessor extends observable {
             e.dataTransfer.dropEffect = "none";
         });
 
-        document.getElementById('droparea').addEventListener('dragover', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.dataTransfer.dropEffect = "link";
-        });
+        if (document.querySelector('#webkit-droparea'))
+            document.getElementById('webkit-droparea').addEventListener('dragover', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = "link";
+            });
 
         this.targetSubject = new Rx.Subject();
         this.fileObservable = Rx.Observable.empty();
 
-        if (document.querySelector('#file-selector'))
+        if (document.querySelector('#webkit-file-selector'))
             this.fileObservable = this.fileObservable
-                .merge(Rx.Observable.fromEvent(document.querySelector('#file-selector'), 'change'))
+                .merge(Rx.Observable.fromEvent(document.querySelector('#webkit-file-selector'), 'change'))
                 .do(() => this.forcedFile = true);
-		
-	    if (document.querySelector('#files-selector'))
-            this.fileObservable = this.fileObservable
-                .merge(Rx.Observable.fromEvent(document.querySelector('#files-selector'), 'change'));
 
-        if (document.querySelector('#directory-selector'))
+        if (document.querySelector('#webkit-files-selector'))
             this.fileObservable = this.fileObservable
-                .merge(Rx.Observable.fromEvent(document.querySelector('#directory-selector'), 'change'));
+                .merge(Rx.Observable.fromEvent(document.querySelector('#webkit-files-selector'), 'change'));
 
-        if (document.querySelector('#droparea'))
+        if (document.querySelector('#webkit-directory-selector'))
             this.fileObservable = this.fileObservable
-                .merge(Rx.Observable.fromEvent(document.getElementById('droparea'), 'drop'));
+                .merge(Rx.Observable.fromEvent(document.querySelector('#webkit-directory-selector'), 'change'));
+
+        if (document.querySelector('#webkit-droparea'))
+            this.fileObservable = this.fileObservable
+                .merge(Rx.Observable.fromEvent(document.getElementById('webkit-droparea'), 'drop'));
 
         this.fileObservable = this.fileObservable
             .do(e => {
@@ -1532,8 +1536,8 @@ class diskAccessor extends observable {
             })
             .subscribe();
 
-        if ($('#file-access-disk-tab')[0])
-            ko.applyBindings(this, $('#file-access-disk-tab')[0]);
+        if ($('#webkit-access-disk-tab')[0])
+            ko.applyBindings(this, $('#webkit-access-disk-tab')[0]);
     }
 
     /**
@@ -1556,6 +1560,9 @@ class diskAccessor extends observable {
 
         this.path(this.root.getPath());
         this.name(options.name);
+        this.multi(!!options.multi);
+        this.allowsFiles(!!options.filter.files);
+        this.allowsFolders(!!options.filter.folders);
 
         if (this.targetSubject)
             this.targetSubject.complete();
@@ -1570,7 +1577,119 @@ class diskAccessor extends observable {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    Class: webkitWorkspaceSelector
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
+class webkitWorkspaceSelector {
+    get [Symbol.toStringTag]() {
+        return 'Webkit Workspace Accessor';
+    }
+
+    /**
+     * @param {webkitdirectory} root
+     * @param {diskAccessor} diskAcc
+     **/
+    constructor(root, diskAcc) {
+        this.root = root;
+
+        this.allowsDrop = diskAcc.allowsDrop;
+        this.allowsDirectorySelect = diskAcc.allowsDirectorySelect;
+
+        this.dialog = $('#webkit-select-workspace-dialog');
+
+        document.getElementById('webkit-workspace-droparea').addEventListener('dragover', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = "link";
+        });
+
+        this.targetSubject = new Rx.Subject();
+
+        var observables = [];
+
+        if (document.querySelector('#webkit-workspace-files-selector'))
+            observables.push(
+                Rx.Observable.fromEvent(document.querySelector('#webkit-workspace-files-selector'), 'change')
+                    .mergeMap(ev => this.root.populate(ev, { root: this.root })
+                        .defaultIfEmpty(null)
+                        .last()
+                        .mapTo(this.root)
+                    )
+
+            );
+
+
+        if (document.querySelector('#webkit-workspace-directory-selector'))
+            observables.push(
+                Rx.Observable.fromEvent(document.querySelector('#webkit-workspace-directory-selector'), 'change')
+                    .mergeMap(ev => this.root.populate(ev, { root: this.root })
+                        .last()
+                        .map(f => {
+                            var parent = f;
+                            while (parent.getParent() && parent.getParent() != this.root)
+                                parent = parent.getParent();
+
+                            return parent;
+                        })
+                    )
+            );
+
+        if (document.querySelector('#webkit-workspace-droparea'))
+            observables.push(
+                Rx.Observable.fromEvent(document.getElementById('webkit-workspace-droparea'), 'drop')
+                    .do(e => e.preventDefault())
+                    .mergeMap(ev => this.root.populate(ev, { root: this.root })
+                        .filter(e => e instanceof directory)
+                        .first()
+                    )
+            );
+
+
+        this.subscriptions = observables.map(obs =>
+            obs.do(e => {
+                this.targetSubject.next(e);
+                $(this.dialog).modal("hide");
+            })
+                .subscribe()
+        );
+
+        Rx.Observable.fromEvent($(this.dialog), 'hide.bs.modal')
+            .subscribe(() => {
+
+                if (this.targetSubject) {
+                    this.targetSubject.complete();
+                }
+            });
+
+        if ($('#webkit-select-workspace-dialog').length)
+            ko.applyBindings(this, $('#webkit-select-workspace-dialog')[0]);
+
+    }
+
+    /**
+     * 
+     * @param {JSON} options
+     * @param {string} [options.name]
+     * @param {webkitdirectory} [options.parent]
+     * @param {boolean} [options.multi]
+     * @param {boolean} [options.filter.files]
+     * @param {boolean} [options.filter.folders]
+     * @returns {Rx.observable<webkitfile>}
+     */
+    request(options) {
+
+        this.targetSubject.complete();
+        this.targetSubject = new Rx.Subject();
+
+        this.dialog.modal("show");
+
+
+        return this.targetSubject
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -1590,7 +1709,7 @@ class fileTree {
         this.nodeIdToEntry = new Map();
         this.root = root;
 
-        $('#file-access-browser-tab-jstree').jstree({
+        $('#webkit-access-browser-tab-jstree').jstree({
             'core': {
                 'data': function (n, cb) {
                     if (n.id == '#') {
@@ -1710,8 +1829,10 @@ class fileTree {
                 self.hasSelections(self.tree.get_selected().length >= 1);
             });
 
-        this.tree = $('#file-access-browser-tab-jstree').jstree(true);
-        ko.applyBindings(this, $('#file-access-browser-tab')[0]);
+        if ($('#webkit-access-browser-tab').length) {
+            this.tree = $('#webkit-access-browser-tab-jstree').jstree(true);
+            ko.applyBindings(this, $('#webkit-access-browser-tab')[0]);
+        }
     }
 
     /**
@@ -1804,13 +1925,13 @@ class fileTree {
 
 /**************************************************************************************************
  * 
- *    Class: cordovaAccessor
+ *    Class: androidAccessor
  *    
  *    Forwards request to filebrowser plugin from cordova.
  * 
  **************************************************************************************************/
 
-class cordovaAccessor extends observable {
+class androidAccessor extends observable {
     get [Symbol.toStringTag]() {
         return 'Filebrowser Accessor';
     }
@@ -1821,12 +1942,7 @@ class cordovaAccessor extends observable {
         this.root = filesys;
     }
 
-    /**
- * @returns {Boolean} - Pass that webkitfile even if it does not match the criteria
- * */
-    isForcedFile() {
-        return this.forcedFile;
-    }
+
 
     /**
      * 
@@ -1846,7 +1962,7 @@ class cordovaAccessor extends observable {
         this.targetSubject = new Rx.Subject();
 
         var picker;
-        this.forcedFile = false;
+
         if (myOptions.filter && !myOptions.filter.folders) {
             picker = window.OurCodeWorld.Filebrowser.filePicker;
             if (myOptions.multi)
@@ -1860,10 +1976,9 @@ class cordovaAccessor extends observable {
                 picker = picker.multi;
             else {
                 picker = picker.single;
-                this.forcedFile = true;
             }
         }
-        else 
+        else
             picker = window.OurCodeWorld.Filebrowser.mixedPicker;
 
         picker({
@@ -1873,12 +1988,12 @@ class cordovaAccessor extends observable {
                 }
 
                 this.targetSubject.complete();
-       
+
             },
             error: err => {
                 this.targetSubject.error(err);
             },
-            startupPath : options.parent ? options.parent.getPath() : null
+            //startupPath: options.parent ? options.parent.getPath() : null
         });
 
         return this.targetSubject
@@ -1903,13 +2018,33 @@ class electronAccessor extends observable {
         super();
 
         this.root = filesys;
-    }
+        this.dialog = $('#select-directory-dialog');
+        this.workspace = ko.observable(true);
 
-    /**
- * @returns {Boolean} - Pass that webkitfile even if it does not match the criteria
- * */
-    isForcedFile() {
-        return this.forcedFile;
+        this.dialogResponse = Rx.Observable.create(obs => {
+            window.electron.ipcRenderer.on("fs-response", (emitter, paths) => {
+                for (var path of (paths || []))
+                    obs.next(path);
+
+                obs.complete();
+            });
+        });
+
+        if ($('#select-directory-dialog').length) {
+            if (document.querySelector('#workspace-directory-selector'))
+                Rx.Observable.fromEvent(document.querySelector('#workspace-directory-selector'), 'click')
+                    .subscribe(() => window.electron.ipcRenderer.send("fs-request", $.extend(true, {
+                        filter: { files: false, folders: true }
+                    }, this.options)));
+
+            document.getElementById('workspace-droparea').addEventListener('dragover', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = "link";
+            });
+
+            ko.applyBindings(this, $('#select-directory-dialog')[0]);
+        }
     }
 
     /**
@@ -1923,37 +2058,49 @@ class electronAccessor extends observable {
      * @returns {Rx.observable<webkitfile>}
      */
     request(options) {
-        var myOptions = $.extend({}, options, {parent: options.parent ? options.parent.getPath() : null});
+        this.workspace(options.workspace);
+        this.options = $.extend({}, options, { parent: options.parent ? options.parent.getPath() : null });
 
         if (this.targetSubject)
             this.targetSubject.complete();
         this.targetSubject = new Rx.Subject();
 
-        this.forcedFile = false;
+        if (options.workspace && $('#select-directory-dialog').length) {
+            if (this.subscription)
+                this.subscription.unsubscribe();
+
+            this.subscription = Rx.Observable.fromEvent(document.getElementById('workspace-droparea'), 'drop')
+                .do(e => e.preventDefault())
+                .mergeMap(ev => Rx.Observable.from(ev.dataTransfer.files))
+                .map(f => f.path)
+                .merge(this.dialogResponse)
+                .mergeMap(path => cordovadirectory.resolve(path).map(handle => cordovadirectory.handleToEntry(handle, path)))
+                .filter(e => e instanceof directory)
+                .first()
+                .subscribe(this.targetSubject);
+
+            $(this.dialog).modal("show");
+
+            return this.targetSubject.do(() => $(this.dialog).modal("hide"));
+        }
+
 
         if (window.electron && window.electron.ipcRenderer) {
 
             if (this.subscription)
                 this.subscription.unsubscribe();
 
-            this.subscription = Rx.Observable.create(obs => {
-                window.electron.ipcRenderer.on("fs-response", (emitter, paths) => {
-                    for (var path of paths)
-                        obs.next(path);
-
-                    obs.complete();
-                });
-            })
+            this.subscription = this.dialogResponse
                 .subscribe(this.targetSubject);
 
 
-            window.electron.ipcRenderer.send("fs-request", myOptions);
+            window.electron.ipcRenderer.send("fs-request", this.options);
 
         } else {
             this.targetSubject.error(new error(cordovadirectory.prototype.ERROR.UNSUPPORTED_OPERATION, "window.electron not available"));
         }
 
-        
+
 
         return this.targetSubject
             .mergeMap(path => cordovadirectory.resolve(path).map(handle => cordovadirectory.handleToEntry(handle, path)));
@@ -1979,18 +2126,23 @@ class webkitAccessor {
         this.filesys = filesys;
 
         this.accessors = [new diskAccessor(filesys)];
-        if ($('#file-access-browser-tab')[0])
+        if ($('#webkit-access-browser-tab')[0])
             this.accessors.push(new fileTree(filesys));
 
+        this.workspaceSelector = new webkitWorkspaceSelector(filesys, this.accessors[0]);
 
-        this.dialog = $('#file-access-dialog');
+        this.allowsFiles = ko.observable(false);
+        this.allowsFolders = ko.observable(false);
+        this.multi = ko.observable(false);
+
+        this.dialog = $('#webkit-access-dialog');
         this.hasEntries = ko.observable(false);
         filesys.observe(webkitfile, filesys.CREATE)
             .merge(filesys.observe(webkitdirectory, filesys.CREATE))
             .subscribe(() => this.hasEntries(true));
 
-        if ($('#file-access-dialog-header')[0])
-            ko.applyBindings(this, $('#file-access-dialog-header')[0]);
+        if ($('#webkit-access-dialog-header')[0])
+            ko.applyBindings(this, $('#webkit-access-dialog-header')[0]);
 
         Rx.Observable.fromEvent($(this.dialog), 'hide.bs.modal')
             .subscribe(() => {
@@ -2014,6 +2166,9 @@ class webkitAccessor {
      * @returns {Rx.observable<webkitfile>}
      */
     request(options) {
+        if (options.workspace)
+            return this.workspaceSelector.request(options);
+
         var opt = $.extend(true, {
             parent: this.filesys,
             multi: true,
@@ -2027,11 +2182,15 @@ class webkitAccessor {
             this.subscriptions.forEach(sub => sub.unsubscribe());
         }
 
+        this.allowsFiles(options.filter.files);
+        this.allowsFolders(options.filter.folders);
+        this.multi(options.multi);
+
         this.filter = opt.filter;
         this.targetSubject = new Rx.Subject();
 
         let complete = () => {
-            $('#file-access-dialog').modal("hide");
+            $('#webkit-access-dialog').modal("hide");
         }
 
         let next = (e) => this.targetSubject.next(e);
@@ -2111,10 +2270,11 @@ class filesystem extends observable {
             this.acc = new electronAccessor(this);
         } else if (window.OurCodeWorld && window.OurCodeWorld.Filebrowser && platform.name === "Android Browser") {
             console.log("Accessor: Android");
-            this.acc = new cordovaAccessor(this);
+            this.acc = new androidAccessor(this);
         } else {
             console.log("Accessor: Web");
             this.root = new webkitdirectory("");
+            this.root.node = this.toNode();
             this.acc = new webkitAccessor(this.root);
         }
         this.requestMissingFiles = false;
@@ -2270,7 +2430,7 @@ class filesystem extends observable {
     /**
      * checks specified files for existence
      * and provides handles via file attribute in v.image and v.thumbnail
-     * @param {vertex} v
+     * @param {vertex|background} v
      * @returns {Rx.observable<vertex>}
      */
     prepareFileAccess(v) {
@@ -2349,7 +2509,7 @@ class filesystem extends observable {
      */
     request(options) {
 
-	
+
         return this.acc.request(options);
     }
 

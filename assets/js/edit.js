@@ -4,7 +4,7 @@ Rx.Observable.fromEvent(document, 'drop')
     .do(e => e.preventDefault());
 
 function readyFunction() {
-    if (platform.name !== "Electron" && platform.name !== "Cordova") {
+    if (platform.name !== "Electron" && platform.name !== "Android Browser") {
         $(window).bind('beforeunload', function () {
             return 'Are you sure you want to leave? All unsaved changes will be lost!';
         });

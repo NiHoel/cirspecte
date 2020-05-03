@@ -1,13 +1,15 @@
 'use strict';
 
 Rx.Observable.fromEvent(document, 'drop')
-    .do(e => e.preventDefault()),
+    .do(e => e.preventDefault());
 
-    $(window).bind('beforeunload', function () {
-        return 'Are you sure you want to leave? All unsaved changes will be lost!';
-    });
+function readyFunction() {
+    if (platform.name !== "Electron" && platform.name !== "Android Browser") {
+        $(window).bind('beforeunload', function () {
+            return 'Are you sure you want to leave? All unsaved changes will be lost!';
+        });
+    }
 
-$(document).ready(function () {
     let settings = new configurator(config.settings);
 
     let modules = {
@@ -26,7 +28,7 @@ $(document).ready(function () {
         groupEdit: new groupEditor(settings, modules)
     };
 
-
+    window.modules = modules;
 
     /********************/
     /* layout animation */
@@ -131,11 +133,12 @@ $(document).ready(function () {
             return caught;
         }).subscribe();
     }
-});
+};
 
-
-
-
-
+if (window._cordovaNative) {
+    document.addEventListener('deviceready', readyFunction, false);
+} else {
+    $(document).ready(readyFunction);
+}
 
 

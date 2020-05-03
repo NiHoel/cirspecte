@@ -945,7 +945,7 @@ class mapViewer extends observable {
             .catch((err, caught) => {
                 console.log(err);
                 this.modules.logger.log(err);
-                return caught;
+                return Rx.Observable.empty();
             }).subscribe();
 
         this.backgrounds.set(b.label, b);

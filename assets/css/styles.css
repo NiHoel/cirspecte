@@ -82,10 +82,28 @@ section {
     border: 0;
 }
 
+.btn-center-spaced {
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+    -webkit-justify-content: center;
+    -moz-justify-content: center;
+    -ms-justify-content: center;
+    -o-justify-content: center;
+    justify-content: center;
+    -webkit-align-items: center;
+    -moz-align-items: center;
+    -ms-align-items: center;
+    -o-align-items: center;
+    align-items: center;
+    margin-top: 2em;
+}
+
 /*************************/
 /*** modified defaults ***/
 /*************************/
-
 .navbar {
     margin-bottom: 0;
 }

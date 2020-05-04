@@ -162,7 +162,12 @@ class groupEditor extends observable {
                         multi: false,
                         filter: { files: true, folders: false }
                     })
-                        .filter(f => f.isType([file.prototype.JPG, file.prototype.PNG]))
+                        .do(f => {
+                            if (!f.isType([file.prototype.JPG, file.prototype.PNG]))
+                                throw new error(this.ERROR.UNSUPPORTED_IMAGE_TYPE, "", f.name);
+                            if (!f.getParent().isAncestor(v.spatialGroup.images.directory))
+                                throw new error(this.ERROR.INVALID_PATH, f.getPath() + " is not contained in " + v.spatialGroup.images.directory.getPath(), f.getPath()); 
+                        })
                         .map(f => {
                             var vert = modules.model.createVertex(Object.assign({}, v.toJSON(), {
                                 type: vertex.prototype.PANORAMA,
@@ -435,6 +440,11 @@ class groupEditor extends observable {
      */
     createVertex(g, f) {
 
+        if (f && !f.isType([file.prototype.JPG, file.prototype.PNG]))
+            throw new error(this.ERROR.UNSUPPORTED_IMAGE_TYPE, "", f.name);
+        if (f && !f.getParent().isAncestor(g.images.directory))
+            throw new error(this.ERROR.INVALID_PATH, f.getPath() + " is not contained in " + g.images.directory.getPath(), f.getPath());
+
         if (f instanceof file && f.isType([file.prototype.JPG, file.prototype.PNG])) {
             var jsonVertex = {
                 coordinates: this.modules.alg.extractCoordinates(f.name) || this.modules.map.getCenter(),
@@ -572,7 +582,7 @@ class groupEditor extends observable {
         })
             .mergeMap(entry => this.createVertex(g, entry))
             .defaultIfEmpty(null)
-            .first() // filesys might not complete
+            //.first() // filesys might not complete
             .filter(v => v instanceof vertex && this.settings.autoDisplayPanorama())
             .mergeMap(v => this.modules.panorama.loadScene(v))
             .subscribe();

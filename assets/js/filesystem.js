@@ -64,6 +64,15 @@ class directory extends observable {
         return directory.toRelativePath(rootDirectory.getPath(), this.path);
     }
 
+    /**
+     * 
+     * 
+     * @param {directory} dir
+     * @returns {boolean} dir is ancestor of this
+     */
+    isAncestor(dir) {
+        return this.getPath().startsWith(dir.getPath());
+    }
 
     /**
 * 
@@ -231,7 +240,7 @@ class cordovadirectory extends directory {
         return Rx.Observable.create(obs => {
             window.resolveLocalFileSystemURL(path,
                 (entry) => { obs.next(entry); obs.complete(); },
-                (err) => cordovadirectory.toError(err, path)
+                (err) => { obs.error(cordovadirectory.toError(err, path)) }
             )
         });
     }
@@ -269,7 +278,8 @@ class cordovadirectory extends directory {
                 return Rx.Observable.create(obs => {
                     handle.getFile(name, { create: true, exclusive: false },
                         (entry) => { obs.next(entry); obs.complete(); },
-                        (err) => cordovadirectory.toError(err, path));
+                        (err) => { obs.error(cordovadirectory.toError(err, path)) }
+                        );
                 });
         }).last();
     }
@@ -1429,7 +1439,7 @@ class cordovafile extends webkitfile {
         return Rx.Observable.create(obs => {
             window.resolveLocalFileSystemURL(this.path,
                 (entry) => { obs.next(entry); obs.complete(); },
-                (err) => cordovadirectory.toError(err, this.path)
+                (err) => { obs.error(cordovadirectory.toError(err, this.path)) }
             )
         })
             .mergeMap(handle => {

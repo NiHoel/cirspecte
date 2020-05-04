@@ -660,6 +660,11 @@ class panoramaViewer extends observable {
         if (!v.data.panorama && !v.image && !v.image.file)
             throw new error(this.ERROR.NO_IMAGE, "", v);
 
+        if (this.loading)
+            return Rx.Observable.empty();
+
+        this.loading = true;
+
         var obs = this.modules.filesys.prepareFileAccess(v);
         if (this.config.tileResolution && (v.data.type == "equirectangular" || !v.data.type))
             obs = obs.mergeMap(() => this.autoTile(v, config));
@@ -733,6 +738,8 @@ class panoramaViewer extends observable {
                 }
             }
             this.setNorthOffset(newScene.northOffset); // scene and viewer northOffset differ in sign
+
+            this.loading = false;
 
             if (!config.reload)
                 this.emit(newScene, this.CREATE);

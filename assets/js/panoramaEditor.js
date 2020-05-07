@@ -9,12 +9,10 @@ class panoramaEditor extends observable {
     }
 
 	/**
-     * @param {configurator} settings
      * @param {JSON} modules
      */
-    constructor(settings, modules) {
+    constructor(modules) {
         super();
-        this.settings = settings;
         this.modules = modules;
 
         this.currentVertex = ko.observable();
@@ -79,7 +77,7 @@ class panoramaEditor extends observable {
                 .filter(() => this.isShown() && modules.panorama.getScene() != null)
                 .inhibitBy(modules.map.observe(point, modules.map.CLICK), 100)
                 .inhibitBy(modules.map.observe(line, modules.map.CLICK), 100)
-                .filter(() => this.settings.createVertexOnMapClick())
+                .filter(() => this.modules.settings.createVertexOnMapClick())
                 .do(() => modules.hist.commit())
                 .map(c => modules.model.createVertex({ coordinates: c, type: vertex.prototype.LANDMARK, spatialGroup: this.landmarkGroup() }))
                 .do(v => modules.model.createEdge({ from: modules.panorama.getVertex(), to: v, bidirectional: true })),
@@ -207,7 +205,7 @@ class panoramaEditor extends observable {
         let v = this.currentVertex();
         v = v || modules.panorama.getVertex();
         $('#coord-text').text(v.coordinates[0].toFixed(6) + ", " + v.coordinates[1].toFixed(6));
-        $('#file-text').text(v.image.file.name || v.path);
+        $('#file-text').text((v.image.file ? v.image.file.name : null)|| v.path);
         var imgConf = v.getImageConfig();
         if (imgConf.width && imgConf.height)
             $('#image-display-resolution-text').text(imgConf.width + " × " + imgConf.height + " Pixel");

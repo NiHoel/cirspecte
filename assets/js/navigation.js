@@ -5,6 +5,7 @@
  * switch to the panorama that was shot before or after the current one.
  * 
  * Listen to events: this.observe(edge, this.CLICK).subscribe(elem => / do something here /)
+ * this.observe(vertex, this.LOCATIONUPDATE).subscribe(elem => / do something here /)
  * or: this.observe(this.VALUE, this.HEIGHTUPDATE).subscribe(elem => / do something here /)
  * */
 class navigationViewer extends observable {
@@ -22,7 +23,48 @@ class navigationViewer extends observable {
         super();
         this.modules = modules;
         this.height = $('#navigation-header').height();
+        this.visibleSpatialGroups = new Set();
+
+        var complete = () => {
+            delete this.subscription;
+            this.modules.settings.enableGPS(false);
+            this.modules.settings.currentGPSAccuracy(0);
+        };
+
+        var subscribeGPS = () => this.getGeolocationObservable()
+            .filter(pos => {
+                this.modules.settings.currentGPSAccuracy(pos.coords.accuracy);
+
+                if (pos.coords.accuracy > this.modules.settings.requiredGPSAccuracy())
+                    return false;
+
+                var v = this.modules.panorama.getVertex()
+                if (v && algorithms.getDistance(v, [pos.coords.latitude, pos.coords.longitude]) < pos.coords.accuracy)
+                    return false;
+                return true;
+            })
+            .sampleTime(5000)
+            .subscribe(pos => this.updateClosestVertex(pos),
+                err => {
+                    this.modules.logger.log(err);
+                    complete();
+                },
+                complete);
+
+        if (this.modules.settings.enableGPS())
+            this.subscription = subscribeGPS();
+
+        this.modules.settings.enableGPS.subscribe(enabled => {
+            if (enabled)
+                this.subscription = subscribeGPS();
+            else if (this.subscription) {
+                this.subscription.unsubscribe();
+                complete();
+            }
+        })
     }
+
+
 
     /**
      * If the height of the HTML element changed, emit.
@@ -188,8 +230,73 @@ class navigationViewer extends observable {
             this.setVertex(this.currentVertex);
     }
 
+    notifySpatialGroupShown(sg) {
+        this.visibleSpatialGroups.add(sg);
+    }
+
+    notifySpatialGroupHidden(sg) {
+        this.visibleSpatialGroups.delete(sg);
+    }
+
+
+    getGeolocationObservable() {
+        return Rx.Observable.create((obs) => {
+            var locationWatchId =
+                navigator.geolocation.watchPosition(pos => obs.next(pos),
+                    err => {
+                        if (err.code === 1)
+                            obs.error(new error(this.ERROR.PERMISSION_DENIED, "", err));
+                        else if (err.code === 2)
+                            obs.error(new error(this.ERROR.NO_POSTION, "", err));
+                        else
+                            obs.error(err);
+                    }, {
+                    enableHighAccuracy: true
+                });
+
+            return () => {
+                navigator.geolocation.clearWatch(locationWatchId);
+            }
+        });
+    }
+
+    /**
+     * 
+     * @param { GeolocationPosition} pos
+     */
+    updateClosestVertex(pos) {
+        var closest;
+        var distance = Infinity;
+        var current = this.modules.panorama.getVertex();
+        var coords = [pos.coords.latitude, pos.coords.longitude];
+        var distCurrent = current ? algorithms.getDistance(current, coords) : null;
+
+        for (var sg of this.visibleSpatialGroups.values())
+            sg.forEach(v => {
+                if (v.type !== vertex.prototype.PANORAMA || v === current)
+                    return;
+
+                var dist = algorithms.getDistance(v, coords);
+
+                if (dist > distance || dist > (sg.superGroup.getColocatedRadius() || this.modules.settings.requiredGPSAccuracy()))
+                    return;
+
+                // avoid permantent swichting in the middle between two vertices
+                if (distCurrent != null && distCurrent < 2 * dist)
+                    return;
+
+                closest = v;
+                distance = dist;
+            });
+
+        if (closest)
+            this.emit(closest, this.LOCATIONUPDATE);
+    }
 }
 
 navigationViewer.prototype.CLICK = "click";
 navigationViewer.prototype.HEIGHTUPDATE = 'update height';
 navigationViewer.prototype.VALUE = 'value';
+navigationViewer.prototype.LOCATIONUPDATE = 'update location';
+navigationViewer.prototype.ERROR.PERMISSION_DENIED = 'permission denied';
+navigationViewer.prototype.ERROR.NO_POSTION = 'position unavailable';

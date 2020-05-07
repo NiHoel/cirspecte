@@ -14,11 +14,10 @@ class algorithms {
      * @param {logger} modules.logger
      * @param {panoramaViewer} modules.panorama
      * @param {filesystem} modules.filesys
-     * @param {configurator} settings
+     * @param {configurator} modules.settings
      */
-    constructor(modules, settings) {
+    constructor(modules) {
         this.modules = modules;
-        this.settings = settings;
         this.filenamePattern = /([+-]?\d+(?:\.\d+)?),\s+([+-]?\d+(?:\.\d+)?)\.jpg/;
     }
 
@@ -146,13 +145,37 @@ class algorithms {
         return successful;
     }
 
+    /**
+     * Extracts model, settings and map (backgrounds)
+     * */
     stateToJson() {
-        var json = this.modules.model.toJSON({ persistLandmarks: this.settings.persistLandmarks() });
-        json.settings = this.settings.toJSON();
-        if (this.settings.autoSaveSelectedItems())
+        if (this.modules.settings.autoSaveStartupView())
+            this.saveCurrentView();
+
+        var json = this.modules.model.toJSON({ persistLandmarks: this.modules.settings.persistLandmarks() });
+        json.settings = this.modules.settings.toJSON();
+        if (this.modules.settings.autoSaveSelectedItems())
             json.settings.timeline.selections = this.modules.timeline.getSelectionsIds();
         json.map = this.modules.map.toJSON();
         return json;
+    }
+
+    /**
+     * Sets initial view parameters to current view 
+     * */
+    saveCurrentView() {
+        this.modules.settings.map.center(this.modules.map.getCenter());
+        this.modules.settings.map.zoom(this.modules.map.getZoom());
+        this.modules.settings.timeline.start(this.modules.timeline.getStart());
+        this.modules.settings.timeline.end(this.modules.timeline.getEnd());
+        this.modules.settings.timeline.selections(this.modules.timeline.getSelectionsIds());
+
+        if (this.modules.panorama.getVertex() && this.modules.model.hasVertex(this.modules.panorama.getVertex().id)) {
+            this.modules.settings.panorama.scene(this.modules.panorama.getVertex() ? this.modules.panorama.getVertex().id : undefined);
+            this.modules.settings.panorama.yaw(this.modules.panorama.getYaw());
+            this.modules.settings.panorama.pitch(this.modules.panorama.getPitch());
+            this.modules.settings.panorama.hfov(this.modules.panorama.getHfov());
+        }
     }
 
     /**
@@ -261,7 +284,7 @@ class algorithms {
                 }
 
                 let angles = edges.filter(e => e.data.yaw != null)
-                                  .map(e => normalize(e.data.yaw - algorithms.getAzimuth(e.from, coordinates)));
+                    .map(e => normalize(e.data.yaw - algorithms.getAzimuth(e.from, coordinates)));
                 let sum = angles.map(a => sqr(a)).reduce((a, b) => a + b);
 
                 if (!Number.isFinite(sum)) {
@@ -290,7 +313,7 @@ class algorithms {
      * @param {number} [distanceThreshold]
      * @returns {vertex | null} - vertex from sg closest to coordinates and within distanceThreshold
      */
-    getColocated(sg, coordinates, distanceThreshold) {
+    getColocated(sg, coordinates, distanceThreshold = null) {
         var vMin = null;
         var minDist = distanceThreshold;
         if (distanceThreshold == null)
@@ -326,7 +349,7 @@ class algorithms {
         });
 
         var groupsToTest = [];
-        for(var sg of this.modules.model.getSpatialGroups()) {
+        for (var sg of this.modules.model.getSpatialGroups()) {
             if (established.get(sg.id) != null || sg.type == spatialGroup.prototype.LANDMARK)
                 continue;
 
@@ -334,17 +357,116 @@ class algorithms {
                 groupsToTest.push(sg);
         }
 
-        groupsToTest.map(sg => this.getColocated(sg, v.coordinates))
-            .filter(v => !!v)
-            .map(vMin => edges.push(this.modules.model.createEdge({
+        for (var sg of groupsToTest) {
+            var vMin = this.getColocated(sg, v.coordinates, Math.min(sg.superGroup.getColocatedRadius(), v.spatialGroup.superGroup.getColocatedRadius()));
+
+            if (!vMin)
+                continue;
+
+            if (vMin.outgoingEdges.find(e => e.type === edge.prototype.TEMPORAL && e.to.spatialGroup == v.spatialGroup))
+                continue;
+
+            edges.push(this.modules.model.createEdge({
                 from: v,
                 to: vMin,
                 type: edge.prototype.TEMPORAL,
                 bidirectional: true
-            })));
-       
+            }));
+        }
+
+
         return edges;
     }
+
+    /**
+     * Unlike running connectColocated for all vertices (which can deliver different output
+     * when the order of vertices it is performed on changes),
+     * the output of this function is always the same.
+     * 
+     * */
+    connectAllColocated() {
+        var pairQueue = new PriorityQueue({
+            comparator: (a, b) => a.distance - b.distance
+        });
+        var pairSet = new Set();
+
+        /**
+         * @type {vertex} first
+         * @type {vertex} second
+         * */
+        var addPair = (first, second, distance) => {
+            if (first.id > second.id) {
+                var tmp = first;
+                first = second;
+                second = tmp;
+            }
+
+            var edgeId = first.id + " to " + second.id;
+            if (pairSet.has(edgeId))
+                return;
+
+            pairQueue.queue({
+                first: first,
+                second: second,
+                distance: distance
+            });
+
+            pairSet.add(edgeId);
+        }
+
+        // generate all vertex pairs to the queue that are candidate for a temporal edge
+        for (var v of Array.from(this.modules.model.vertices.values())) {
+            if (v.spatialGroup.type === spatialGroup.prototype.SINGLESHOT)
+                var spatialGroups = Array.from(this.modules.model.spatialGroups.values());
+            else {
+                var spatialGroups = [];
+                v.spatialGroup.superGroup.forEach(g => {
+                    if (g instanceof spatialGroup && g != v.spatialGroup)
+                        spatialGroups.push(g);
+                });
+            }
+
+            for (var sg of spatialGroups) {
+                if (sg == v.spatialGroup)
+                    continue;
+
+                var distanceThreshold = Math.min(sg.superGroup.getColocatedRadius(), v.spatialGroup.superGroup.getColocatedRadius());
+                sg.forEach(otherV => {
+                    var distance = algorithms.getDistance(v, otherV);
+
+                    if (distance <= distanceThreshold)
+                        addPair(v, otherV, distance);
+                });
+            }
+        }
+
+        var isConnectedTo = (v, sg) => {
+            for (var e of v.outgoingEdges.values()) {
+                if (e.to.spatialGroup == sg)
+                    return true;
+            }
+
+            return false;
+        }
+
+        var edges = [];
+        while (pairQueue.length) {
+            var { first, second } = pairQueue.dequeue();
+
+            if (isConnectedTo(first, second.spatialGroup) || isConnectedTo(second, first.spatialGroup))
+                continue;
+
+            edges.push(this.modules.model.createEdge({
+                from: first,
+                to: second,
+                type: edge.prototype.TEMPORAL,
+                bidirectional: true
+            }))
+        }
+
+        return edges;
+    }
+
 
     /**
      * Tries to parse coordinates from filename
@@ -372,8 +494,12 @@ class algorithms {
      *  - undefined if the return value would otherwise be empty
      */
     static extractAtomicProperties(obj) {
+        if (obj == null)
+            return undefined;
+
         var res = {};
         var count = 0;
+
         for (let attr in obj) {
             let type = typeof obj[attr];
             if (type === 'number' || type === 'boolean' || type === 'symbol') {
@@ -391,22 +517,35 @@ class algorithms {
 
     /**
      * 
-     * @param {function} fn
+     * @param {function} main
+     * @param {[function]} calledFunctions functions or classes invoked by main
      * @returns {Worker} - runs fn
      */
-    static createInlineWorker(fn) {
+    static createInlineWorker(main, calledFunctions = []) {
+        var content = calledFunctions.map(f => {
+            var fstr = f.toString();
+            if (fstr.startsWith('('))
+                return f.name + fstr;
+            else
+                return fstr;
+        });
+        content.push(
+            'self.main = ', main.toString(), ';',
+            'self.onmessage = function (e) { self.main(e.data) };'
+        );
         let blob = new Blob(
-            [
-                'self.cb = ', fn.toString(), ';',
-                'self.onmessage = function (e) { self.cb(e.data) }'
-            ], {
-                type: 'text/javascript'
-            }
+            content, {
+            type: 'text/javascript'
+        }
         )
 
-        let url = URL.createObjectURL(blob)
+        let url = URL.createObjectURL(blob);
 
-        return new Worker(url)
+        var worker = new Worker(url);
+        worker.release = () => {
+            URL.revokeObjectURL(url);
+        }
+        return worker;
     }
 
     /**

@@ -37,6 +37,7 @@ class item {
         this.title = g.description;
         this.content = g.name;
         this.start = g.timeslot;
+        this.active = true;
 
         this.spatialGroup = g;
         g.item = this;
@@ -139,7 +140,7 @@ class group {
 
 /**
  * Listen to events: this.observe(<class>, <action>).subscribe(elem => / do something with element here /)
- * where <class> in {item, group}
+ * where <class> in {item, rangeItem, group}
  * <action> in {this.CREATE, this.DELETE, this.SELECT, this.DESELECT, this.CLICK}
  * special combinations (this.VALUE, this.HEIGHTUPDATE)
  * */
@@ -151,20 +152,23 @@ class timelineViewer extends observable {
     /**
      * 
      * @param {HTMLElement | string} domElement
+     * @param {JSON} modules
      * @param {JSON} config
      */
-    constructor(domElement, config = {}, settings) {
+    constructor(domElement, modules, config = {}) {
         super();
         // DOM element where the Timeline will be attached
         this.domElement = typeof domElement === 'string' ? document.getElementById(domElement) : domElement;
 
-        this.settings = settings;
+        this.modules = modules;
+        var settings = modules.settings;
 
         this.items = new Map();
         this.groups = new Map();
         this.start = new Date();
         this.end = new Date();
         this.width = 0; 
+        this.itemWidth = 160;
 
         this.selections = new Map();
 
@@ -199,10 +203,11 @@ class timelineViewer extends observable {
             //    this.emit( it, this.SELECT);
             //}
             //this.refreshItems();
-            let item = this.getItem(i);
-            if (item) {
-                this.toggleSelection(item);
-                this.emit(item, this.CLICK);
+            let it = this.getItem(i);
+            if (it) {
+                if (it instanceof item)
+                    this.toggleSelection(it);
+                this.emit(it, this.CLICK);
             }
         }));
 
@@ -280,7 +285,12 @@ class timelineViewer extends observable {
  * @returns {item}
  */
     getItem(i) {
-        return this.items.get(i);
+        var it = this.items.get(i);
+        if (it == null && this.modules.settings.aggregateItems() && this.rangeItems) {
+            it = this.rangeItems.get(i);
+        }
+
+        return it;
     }
 
     /**
@@ -326,9 +336,17 @@ class timelineViewer extends observable {
 
         this.emit(it, this.CREATE);
 
-        var selections = new Set(this.settings.getTimelineOptions().selections);
+        var selections = new Set(this.modules.settings.getTimelineOptions().selections);
         if (selections.has(it.id))
             this.toggleSelection(it, true);
+
+        if (!this.refreshScheduled) {
+            this.refreshScheduled = true;
+            setTimeout(() => {
+                this.refreshItems(true);
+                delete this.refreshScheduled;
+            }, 100);
+        }
     }
 
     /**
@@ -379,17 +397,23 @@ class timelineViewer extends observable {
                 // deselect others
                 if (i.spatialGroup.superGroup && !i.spatialGroup.isMultiselect())
                     i.spatialGroup.superGroup.forEach(sg => {
-                        if (sg.item && this.selections.has(sg.item.id)) {
-                            this.selections.delete(sg.item.id);
-                            this.emit(sg.item, this.DESELECT);
-                        }
+                        this.toggleSelection(sg.item, false);
                     });
 
+                if (i.className) {// overwrites inactive style, but keep active value
+                    delete i.className;
+                    this.refreshItems(true);
+                }
                 this.selections.set(i.id, i);
                 update = true;
                 this.emit(i, this.SELECT);
             }
         } else {
+            if (!i.active) {
+                i.className = 'timeline-inactive';
+                this.refreshItems(true);
+            }
+
             update = this.selections.delete(i.id);
             if (update)
                 this.emit(i, this.DESELECT);
@@ -410,6 +434,101 @@ class timelineViewer extends observable {
         if (i == null)
             return false;
         return this.selections.has(i.id);
+    }
+
+    /**
+     * @param {item | spatialGroup | string}
+     * @param {boolean} active
+     */
+    setActive(elem, active) {
+        if (elem instanceof item)
+            var it = elem;
+        else if (elem instanceof spatialGroup)
+            var it = elem.item;
+        else
+            var it = this.items.get(elem);
+
+        if (!it || it.active === active)
+            return;
+
+        it.active = active;
+
+        if (this.isSelected(it))
+            return;
+
+        if (active)
+            delete it.className;
+        else
+            it.className = "timeline-inactive";
+
+        this.refreshItems(true);
+    }
+
+    /**
+     * @param {item | spatialGroup | string}
+     * @param {boolean} active
+     */
+    setAllActive(active) {
+        for (var it of this.items.values()) {
+            it.active = active;
+
+            if (this.isSelected(it) && !active)
+                continue;
+
+            if (active)
+                delete it.className;
+            else
+                it.className = "timeline-inactive";
+        }
+
+        this.refreshItems(true);
+    }
+
+    /**
+     * 
+     * @param {rangeItem} range
+     */
+    expandRange(range) {
+        let width = $(this.timeline.body.dom.backgroundVertical).width();
+
+        var prevDist = Infinity; // between i - 2 and i - 1
+        var relevantDist = Infinity;
+        var latestStart = null; // time point of i - 1 
+        for (var i of range.items) {
+            if (latestStart) {
+                var dist = i.start - latestStart;
+                relevantDist = Math.min(relevantDist, Math.max(prevDist, dist));
+                prevDist = dist;
+                latestStart = i.start;
+            } else {
+                latestStart = i.start;
+            }
+        }
+
+        var centerTime = range.items[Math.ceil(range.items.length / 2)].spatialGroup.timeslot.valueOf();
+        var extend = relevantDist / this.itemWidth * width * 0.9;
+        this.timeline.setWindow(centerTime - extend, centerTime + extend);
+    }
+
+    /**
+     * Centers timeline at given element
+     * @param {item | spatialGroup | string}
+     */
+    center(elem) {
+
+        if (elem instanceof item)
+            var it = elem;
+        else if (elem instanceof spatialGroup)
+            var it = elem.item;
+        else
+            var it = this.items.get(elem);
+
+        if (!it)
+            return;
+
+        try {
+            this.timeline.moveTo(it.start);
+        } catch (e) { }
     }
 
     /**
@@ -461,29 +580,28 @@ class timelineViewer extends observable {
         
         let width = $(this.timeline.body.dom.backgroundVertical).width();
         let window = this.timeline.getWindow();
-        let millisecondsPerPixel = this.timeline.range.millisecondsPerPixelCache
-            || (window.end - window.start) / width;
-        let itemWidth = 160;
-        let criticalDuration = millisecondsPerPixel * itemWidth / 2;
+        let millisecondsPerPixel = /*this.timeline.range.millisecondsPerPixelCache
+            || */(window.end - window.start) / width;
+        let criticalDuration = millisecondsPerPixel * this.itemWidth / 2;
         
-        let start = new Date(window.start - (itemWidth * millisecondsPerPixel));
+        let start = new Date(window.start - (this.itemWidth * millisecondsPerPixel));
         let end = window.end;
 
-        if (!force && width == this.width
-            && moment(start).isSame(moment(this.start))
-            && moment(end).isSame(moment(this.end)))
+        if (!force && Math.abs(this.millisecondsPerPixel - millisecondsPerPixel) < 0.1 * Math.min(this.millisecondsPerPixel, millisecondsPerPixel))
             return;
 
         this.width = width;
         this.start = start;
         this.end = end;
+        this.millisecondsPerPixel = millisecondsPerPixel;
 
-        if (this.settings.aggregateItems()) {
+        if (this.modules.settings.aggregateItems()) {
             var visibleItems = new Set();
             var items = [];
+            this.rangeItems = new Map();
 
             for (var item of this.items.values()) {
-                if (item && start <= item.start && item.start <= end)
+                if (item/* && start <= item.start && item.start <= end*/)
                     visibleItems.add(item);
             }
 
@@ -497,8 +615,9 @@ class timelineViewer extends observable {
                     items.push(itemArray[0]);
                     items.push(itemArray[1]);
                 } else {
-                    items.push(new rangeItem(itemArray));
-
+                    var range = new rangeItem(itemArray);
+                    items.push(range);
+                    this.rangeItems.set(range.id, range);
                 }
             }
 

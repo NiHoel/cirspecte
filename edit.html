@@ -38,7 +38,7 @@
 
     <script type="text/javascript" src="cordova.js"></script>
     <script type="text/javascript" src="assets/js/lib/platform.js"></script>
-    
+
     <!-- <script src="https://maps.googleapis.com/maps/api/js" async defer></script> -->
 
     <script type="text/javascript" src="assets/js/init.js"></script>
@@ -107,11 +107,12 @@
     <script type="text/javascript" src="assets/js/mapEditor.js"></script>
     <script type="text/javascript" src="assets/js/panoramaEditor.js"></script>
     <script type="text/javascript" src="assets/js/navigation.js"></script>
+    <script type="text/javascript" src="assets/js/exporter.js"></script>
 
     <script type="text/javascript" src="assets/js/common.js"></script>
     <script type="text/javascript" src="assets/js/edit.js"></script>
     <script type="text/javascript" src="assets/js/commandHistory.js"></script>
-
+    <script type="text/javascript" src="assets/js/persistence.js"></script>
 
 </head>
 <body>
@@ -126,7 +127,7 @@
         </a>
 
         <ul class="nav nav-tabs">
-            <li class="active"><a data-toggle="tab" href="#group-editor" title="Show group editor">Groups</a></li>
+            <li class="active"><a data-toggle="tab" href="#group-editor" title="Show tour editor">Groups</a></li>
             <li><a data-toggle="tab" href="#map-editor" title="Edit base layers and backgrounds on the map">Map</a></li>
             <li><a data-toggle="tab" href="#panorama-editor" data-bind="css:{'not-active': currentVertex() == null}" title="Show panorama editor (a panorama must be loaded)">Panorama</a></li>
         </ul>
@@ -137,11 +138,11 @@
                 <ul class="sidebar-nav">
                     <li>
                         <div class="form" id="temporal-group-selector">
-                            <label for="temporalGroupSelector" title="Aggregates spatial groups where each spatial group refers to a different point in time. Forms a tour through time by connecting several classical tours each shot at a different point in time.">Temporal Group</label><br />
+                            <label for="temporalGroupSelector" title="Forms a tour through time by connecting the shots from several timepoint tours.">Time Travel Tour</label><br />
 
                             <!-- .js-example-responsive must be initialized in javascript -->
                             <select type="select" class="form-control" id="temporalGroupSelector" data-live-search="true" data-show-subtext="true" name="temporalGroups"
-                                    data-bind="options: temporalGroups, optionsCaption: 'Select a temporal group ...', optionsText: g => {return g.name;}, value: current.temporalGroup"></select>
+                                    data-bind="options: temporalGroups, optionsCaption: 'Select a time travel tour ...', optionsText: g => {return g.name;}, value: current.temporalGroup"></select>
                         </div>
                     </li>
                     <li>
@@ -149,7 +150,7 @@
                             <span class="glyphicon glyphicon-plus"></span>
                         </button>
                         <span>
-                            Create Group
+                            Create Tour
                         </span>
                     </li>
                     <li>
@@ -157,7 +158,7 @@
                             <span class="glyphicon glyphicon-trash"></span>
                         </button>
                         <span>
-                            Delete Group
+                            Delete Tour
                         </span>
                     </li>
                     <li>
@@ -170,11 +171,11 @@
                     </li>
                     <li>
                         <div class="form" id="spatial-group-selector">
-                            <label for="spatialGroupSelector" title="A spatial group aggregates several panoramas shot approximately at the same time. Forms a &quot;classical&quot; panorama tour.">Spatial Group</label><br />
+                            <label for="spatialGroupSelector" title="A timepoint tour aggregates several panoramas shot approximately at the same time. Forms a &quot;classical&quot; panorama tour.">Timepoint Tour</label><br />
 
                             <!-- .js-example-responsive must be initialized in javascript -->
                             <select type="select" class="form-control" id="spatialGroupSelector" data-live-search="true" data-show-subtext="true" name="spatialGroups"
-                                    data-bind="options: spatialGroups, optionsCaption: 'Select a spatial group ...', optionsText: g => {return g.superGroup.name + ': ' + g.name;}, value: current.spatialGroup, disable: $root.disabled"></select>
+                                    data-bind="options: spatialGroups, optionsCaption: 'Select a timepoint tour ...', optionsText: g => {return g.superGroup.name + ': ' + g.name;}, value: current.spatialGroup, disable: $root.disabled"></select>
 
 
                         </div>
@@ -184,7 +185,7 @@
                             <span class="glyphicon glyphicon-plus"></span>
                         </button>
                         <span>
-                            Create Group
+                            Create Tour
                         </span>
                     </li>
                     <li>
@@ -192,7 +193,7 @@
                             <span class="glyphicon glyphicon-trash"></span>
                         </button>
                         <span>
-                            Delete Group
+                            Delete Tour
                         </span>
                     </li>
                     <li>
@@ -211,15 +212,15 @@
                             Add GPS Location
                         </span>
                     </li>
-                    <li>
-                        <button id="template-application" class="btn btn-default" data-bind="enable: $root.current.spatialGroup" data-toggle="modal" data-target="#template-application-dialog">
+                    <li data-bind="visible: $root.modules.settings.enableBatchCopying">
+                        <button id="template-application" class="btn btn-default" data-bind="enable: $root.current.spatialGroup " data-toggle="modal" data-target="#template-application-dialog">
                             <span class="glyphicon glyphicon-transfer"></span>
                         </button>
-                        <span title="Advanced feature to create a template from an existing group, fuse groups and more">
+                        <span title="Advanced feature to create a template from an existing tour, fuse groups and more">
                             Copy Vertices
                         </span>
                     </li>
-                    <li>
+                    <li data-bind="visible: $root.modules.settings.trackChanges">
                         <button class="btn btn-default" data-bind="click: reload, enable: scannable">
                             <span class="glyphicon glyphicon-refresh"></span>
                         </button>
@@ -318,7 +319,7 @@
                 <ul class="sidebar-nav">
                     <li>
                         <div class="form" id="background-selector">
-                            <label for="backgroundSelector" title="Adds a background image for spatial groups.">Background</label><br />
+                            <label for="backgroundSelector" title="Adds a background image for timepoint tours.">Background</label><br />
 
                             <select type="select" class="form-control" id="backgroundSelector" data-live-search="true" data-show-subtext="true" name="backgrounds"
                                     data-bind="options: backgrounds, optionsCaption: 'Select a background ...', optionsText: b => {return b.label;}, value: currentBackground"></select>
@@ -383,7 +384,7 @@
                         <ul class="nav nav-pills">
                             <li title="Show sidebar" id="sidebar-expander" style="display:none;"><a href="#" class="btn topbar-nav-item" onclick="$('#sidebar-wrapper').removeClass('collapsed'); $('#sidebar-expander').hide()"><span class="glyphicon glyphicon-chevron-right"></span></a></li>
                             <li title="Save tour.json"><a href="#" id="save-workspace-as" class="btn topbar-nav-item"><span class="glyphicon glyphicon-save-file"></span></a></li>
-                            <li title="Save workspace" ><a href="#" id="save-workspace" class="btn topbar-nav-item" style="display:none"><span class="glyphicon glyphicon-save"></span></a></li>
+                            <li title="Save workspace"><a href="#" id="save-workspace" class="btn topbar-nav-item" style="display:none"><span class="glyphicon glyphicon-save"></span></a></li>
                             <li title="Undo (Ctrl + Z)" id="undo-button" data-bind="css: { 'not-active': undoStackCount() == 0 }, click: undo"><a href="#" class="btn topbar-nav-item"><span class="glyphicon glyphicon-share-alt" style="transform:matrix(-0.9397,0.342,0.342,0.9397,0,0)"></span></a></li>
                             <li title="Redo (Ctrl + Y)" id="redo-button" data-bind="css: { 'not-active': redoStackCount() == 0 }, click: redo"><a href="#" class="btn topbar-nav-item"><span class="glyphicon glyphicon-share-alt" style="transform:rotate(20deg)"></span></a></li>
                             <li title="Open Settings"><a href="#" class="btn topbar-nav-item" data-toggle="modal" data-target="#settings-dialog"><span class="glyphicon glyphicon-cog"></span></a></li>
@@ -445,21 +446,21 @@
 
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
                     <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
-                    <h3 id="addDialogLabel">Spatial Group Editor</h3>
+                    <h3 id="addDialogLabel">Timepoint Tour Editor</h3>
                 </div>
                 <div class="modal-body" style="overflow-y: unset">
                     <!-- style required for datetime widget to be properly displayed -->
 
                     <form class="form-horizontal" style="width: 100%" data-bind="with: $root.editable.spatialGroup">
                         <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="name">Name</label>
-                            <input class="form-control" data-bind="value: name" type="text" id="name" placeholder="Group name">
+                            <label class="control-label" for="spatial-group-name">Name</label>
+                            <input class="form-control" data-bind="value: name" type="text" id="spatial-group-name" placeholder="Group name">
                         </div>
 
                         <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="timeslot" title="The time the panoramas were shot. This determines the position on the timeline.">Timeslot</label>
+                            <label class="control-label" for="spatial-group-timeslot" title="The time the panoramas were shot. This determines the position on the timeline.">Timeslot</label>
                             <div class="controls">
-                                <div class='input-group date' id='timeslot' data-bind="dateTimePicker: timeslot" data-target-input="nearest">
+                                <div class='input-group date' id='spatial-group-timeslot' data-bind="dateTimePicker: timeslot" data-target-input="nearest">
                                     <input type='text' class="form-control datetimepicker-input" data-target="#timeslot" />
                                     <span class="input-group-addon" data-target="#timeslot" data-toggle="datetimepicker">
                                         <span class="glyphicon glyphicon-calendar"></span>
@@ -469,9 +470,9 @@
                         </div>
 
                         <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="superGroup" title="A temporal group that aggregates several spatial groups">Super group</label>
-                            <select class="form-control" id="superGroup" data-live-search="true" data-show-subtext="true" name="superGroup" placeholder="Select a super group ..."
-                                    data-bind="options: $root.temporalGroups, optionsCaption: 'Select a super group ...', optionsText: g => {return g.name;}, value: superGroup"></select>
+                            <label class="control-label" for="spatial-group-superGroup" title="A time travel tour that aggregates several timepoint tours">Super tour</label>
+                            <select class="form-control" id="spatial-group-superGroup" data-live-search="true" data-show-subtext="true" name="superGroup" placeholder="Select a super tour ..."
+                                    data-bind="options: $root.temporalGroups, optionsCaption: 'Select a super tour ...', optionsText: g => {return g.name;}, value: superGroup"></select>
 
                         </div>
 
@@ -488,29 +489,39 @@
                         <div class="collapse" id="advanced-settings-spatial-group">
 
                             <div class="control-group" style="width: 100%">
-                                <label class="control-label" for="type" title="The type of group determines which type of vertices can be placed in it">Type</label>
-                                <select class="form-control" id="type" data-live-search="true" data-show-subtext="true" name="type"
+                                <label class="control-label" for="spatial-group-type" title="The type of tour determines which type of vertices can be placed in it">Type</label>
+                                <select class="form-control" id="spatial-group-type" data-live-search="true" data-show-subtext="true" name="type"
                                         data-bind="options: $root.spatialGroupTypes, optionsText: t => {return t;}, value: type"></select>
 
                             </div>
 
                             <div class="control-group" style="width: 100%">
-                                <label class="control-label" for="name" title="Unique identifier used to reference this group">Identifier</label>
-                                <input class="form-control" data-bind="value: id" type="text" id="id" placeholder="<Automatically generate>">
+                                <label class="control-label" for="spatial-group-id" title="Unique identifier used to reference this tour">Identifier</label>
+                                <input class="form-control" data-bind="value: id" type="text" id="spatial-group-id" placeholder="<Automatically generate>">
                             </div>
 
                             <div class="control-group" style="width: 100%">
-                                <label class="control-label" for="name" title="[Optional]">Description</label>
-                                <input class="form-control" data-bind="value: description" type="text" id="description" placeholder="Group description">
+                                <label class="control-label" for="spatial-group-description" title="[Optional]">Description</label>
+                                <input class="form-control" data-bind="value: description" type="text" id="spatial-group-description" placeholder="Group description">
                             </div>
 
                             <div class="control-group" style="width: 100%">
-                                <label class="control-label" for="path" title="[Optional] Specify the folder containing the images. Use slashes (/) to separate folders. Each vertex in the group will store the path to the image relative to the folder specified here. Note: You cannot specify an absolute path here. The specified path is always relative to the folder you imported in the beginning.">Path</label>
-                                <input class="form-control" data-bind="value: path" type="text" id="path" placeholder="Folder containing images">
+                                <label class="control-label" for="spatial-group-path" title="[Optional] Specify the folder containing the images. Use slashes (/) to separate folders. Each vertex in the tour will store the path to the image relative to the folder specified here. Note: You cannot specify an absolute path here. The specified path is always relative to the folder you imported in the beginning.">Path</label>
+                                <div class="controls">
+                                    <div class='input-group'>
+                                        <input class="form-control" data-bind="value: path" type="text" id="spatial-group-path" placeholder="Folder containing images">
+                                        <div class="input-group-addon" data-bind="click: () => $root.selectPath()" id="spatial-group-path-selector" style="cursor:pointer">
+                                            <span class="glyphicon glyphicon-folder-open"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="invalid-input" data-bind="visible: $root.errors.path() && $root.errors.path() != '', text: $root.errors.path">
+
+                                </div>
                             </div>
 
                             <div class="control-group" style="width: 100%">
-                                <label class="control-label" for="background" title="[Optional] The image displayed on the map behind the points and edges forming this spatial group">Background</label>
+                                <label class="control-label" for="background" title="[Optional] The image displayed on the map behind the points and edges forming this timepoint tour">Background</label>
                                 <select class="form-control" id="background" data-live-search="true" data-show-subtext="true" name="background" placeholder="Select a background ..."
                                         data-bind="options: $root.backgrounds, optionsCaption: 'Select a background ...', optionsText: g => {return g.label;}, value: background"></select>
 
@@ -532,32 +543,31 @@
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
                     <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
-                    <h3 id="addDialogLabel">Temporal Group Editor</h3>
+                    <h3 id="addDialogLabel">Time Travel Tour Editor</h3>
                 </div>
                 <div class="modal-body">
 
                     <form class="form-horizontal" data-bind="with: editable.temporalGroup">
                         <div class="control-group" style="width: 100%">
-                            <label class="control-label" for="name">Name</label>
-                            <input class="form-control" data-bind="value: name" type="text" id="name" placeholder="Group name">
+                            <label class="control-label" for="temporal-group-name">Name</label>
+                            <input class="form-control" data-bind="value: name" type="text" id="temporal-group-name" placeholder="Group name">
                         </div>
 
                         <div class="control-group" style="width: 100%">
-                            <div class="controls">
-                                <label for="autoConnectColocate" title="Enables tolerance regarding the position of panoramas. If two panorams are not more than radius apart they are treated as shot at the same location. Then switching between them by using the timeline is possible.">Auto-connect colocated vertices among spatial groups</label>
-                                <div class="form-inline">
-                                    <input data-bind="checked: autoConnectColocated" type="checkbox" id="autoConnectColocated" />
-                                    <label for="colocatedRadius">Radius</label>
-                                    <input type='number' class="form-control" id="colocatedRadius" data-bind="value: colocatedRadius, enable: autoConnectColocated" />
+                            <label class="control-label" for="autoConnectColocated">Panorama linking</label>
+                            <div class="input-group">
+                                <div class="input-group-addon">
+                                    <input data-bind="checked: autoConnectColocated" type="checkbox" id="autoConnectColocated">
+                                </div>
+                                <div class="input-group-addon">
+                                    <label for="autoConnectColocate" title="Enables tolerance regarding the position of panoramas. If two panorams are not more than radius apart they are treated as shot at the same location. Then switching between them by using the timeline is possible.">Link panoramas in time within</label>
+                                </div>
+                                <input type="number" class="form-control" id="colocatedRadius" data-bind="value: colocatedRadius, enable: autoConnectColocated">
+                                <div class="input-group-addon">
                                     <label for="colocatedRadius">meter(s)</label>
                                 </div>
                             </div>
                         </div>
-                        <div class="control-group" style="width: 100%">
-                            <label for="multiselect" title="If unchecked, selecting a spatial group leads to deselecting all other spatial groups that are direct children of the same temporal group.">Multiple spatial groups can be displayed at the same time</label>
-                            <input data-bind="checked: multiselect" type="checkbox" id="multiselect" />
-                        </div>
-
 
                         <h4 class="collapser collapsed" data-toggle="collapse" data-target="#advanced-settings-temporal-group">
                             <small>
@@ -569,32 +579,38 @@
 
                         <div class="collapse" id="advanced-settings-temporal-group">
                             <div class="control-group" style="width: 100%">
-                                <label class="control-label" for="type" title="The type of group determines how the selection of subgroups is handled">Type</label>
+                                <label class="control-label" for="temporal-group-type" title="The type of tour determines how the selection of subgroups is handled">Type</label>
                                 <select class="form-control" id="type" data-live-search="true" data-show-subtext="true" name="type"
                                         data-bind="options: $root.temporalGroupTypes, optionsText: t => {return t;}, value: type"></select>
 
                             </div>
 
                             <div class="control-group" style="width: 100%">
-                                <label class="control-label" for="name" title="Unique identifier used to reference this group">Identifier</label>
-                                <input class="form-control" data-bind="value: id" type="text" id="id" placeholder="<Automatically generate>">
+                                <label class="control-label" for="temporal-group-id" title="Unique identifier used to reference this tour">Identifier</label>
+                                <input class="form-control" data-bind="value: id" type="text" id="temporal-group-id" placeholder="<Automatically generate>">
                             </div>
 
                             <div class="control-group" style="width: 100%">
-                                <label class="control-label" for="name" title="[Optional]">Description</label>
-                                <input class="form-control" data-bind="value: description" type="text" id="description" placeholder="Group description">
+                                <label class="control-label" for="temporal-group-description" title="[Optional]">Description</label>
+                                <input class="form-control" data-bind="value: description" type="text" id="temporal-group-description" placeholder="Group description">
                             </div>
 
                             <div class="control-group" style="width: 100%">
-                                <label class="control-label" for="superGroup" title="[Optional] The new group will be a child of the selected one.">Super group</label>
-                                <select class="form-control" id="superGroup" data-live-search="true" data-show-subtext="true" name="superGroup" placeholder="Select a super group ..."
-                                        data-bind="options: $root.temporalGroups, optionsCaption: 'Select a super group ...', optionsText: g => {return g.name;}, value: superGroup"></select>
+                                <label class="control-label" for="temporal-group-superGroup" title="[Optional] The new tour will be a child of the selected one.">Super tour</label>
+                                <select class="form-control" id="temporal-group-superGroup" data-live-search="true" data-show-subtext="true" name="superGroup" placeholder="Select a super tour ..."
+                                        data-bind="options: $root.temporalGroups, optionsCaption: 'Select a super tour ...', optionsText: g => {return g.name;}, value: superGroup"></select>
                             </div>
 
-                            <div class="custom-control custom-checkbox" style="width: 100%">
-                                <input class="custom-control-input" data-bind="checked: exclusiveTemporalSubgroups" type="checkbox" id="exclusiveTemporalSubgroups" />
-                                <label class="custom-control-label" for="exclusiveTemporalSubgroups" title="If checked, selecting a spatial group in one temporal subgroup will deselect all spatial groups in all other temporal subgroups.">Selection exclusiveness of temporal subgroups</label>
-
+                            <div class="control-group" style="width: 100%">
+                                <label for="multiselect">Selection options</label>
+                                <div class="input-group">
+                                    <input data-bind="checked: multiselect" type="checkbox" id="multiselect" />
+                                    <label for="multiselect" title="If unchecked, selecting a timepoint tour leads to deselecting all other timepoint tours that are direct children of the same time travel tour.">Enable multiselect</label>
+                                </div>
+                                <div class="input-group">
+                                    <input class="custom-control-input" data-bind="checked: exclusiveTemporalSubgroups" type="checkbox" id="exclusiveTemporalSubgroups" />
+                                    <label class="custom-control-label" for="exclusiveTemporalSubgroups" title="If checked, selecting a timepoint tour in one temporal subgroup will deselect all timepoint tours in all other temporal subgroups.">Enable exclusiveness of subgroups</label>
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -613,7 +629,7 @@
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
                     <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
-                    <h3 id="addDialogLabel">Apply Group Template</h3>
+                    <h3 id="addDialogLabel">Apply Tour Template</h3>
                 </div>
                 <div class="modal-body">
                     <div class="form-horizontal">
@@ -629,7 +645,7 @@
                             <label class="control-label col-sm-8" for="spatial-group-template">Select the <mark>source</mark> of the copy process:</label>
                             <div class="col-sm-4">
                                 <select type="select" class="form-control" id="spatialGroupTemplate" data-live-search="true" data-show-subtext="true" name="spatialGroups"
-                                        data-bind="options: spatialGroups, optionsCaption: 'Select a spatial group ...', optionsText: g => {return g.superGroup.name + ': ' + g.name;}, value: spatialGroupTemplate"></select>
+                                        data-bind="options: spatialGroups, optionsCaption: 'Select a timepoint tour ...', optionsText: g => {return g.superGroup.name + ': ' + g.name;}, value: spatialGroupTemplate"></select>
                             </div>
                         </div>
                     </div>
@@ -641,6 +657,590 @@
         </div>
     </div>
     <!-- /#template-application-dialog -->
+    <!-- #settings-dialog -->
+    <div id="settings-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div id="settings-dialog-header" class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h4>Settings</h4>
+                    <ul class="nav nav-tabs">
+                        <li class="active"><a data-toggle="tab" href="#settings-file-tab">File</a></li>
+                        <li><a data-toggle="tab" href="#settings-view-tab">View</a></li>
+                        <li><a data-toggle="tab" href="#settings-advanced-tab">Advanced</a></li>
+                    </ul>
+                </div>
+                <div class="modal-body">
+                    <div class="tab-content">
+                        <!-- #settings-file-tab -->
+                        <div id="settings-file-tab" class="tab-pane fade in active">
+                            <div class="form-horizontal">
+                                <div class="container-fluid">
+                                    <div class="row">
+                                        <div class="col-md-6" data-bind="with: map">
+                                            <h4 class="text-center">Import</h4>
+                                            <table class="table table-responsiv table-responsive-sm table-sm">
+                                                <tbody>
+                                                    <tr>
+                                                        <td>
+                                                            <div>
+                                                                <button id="switch-workspace" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
+                                                                    <span class="glyphicon glyphicon-refresh"></span>
+                                                                </button>
+                                                                <label class="control-label" for="switch-workspace">Switch workspace</label>
+                                                            </div>
+
+
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>
+                                                            <div>
+                                                                <button id="import-workspace" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
+                                                                    <span class="glyphicon glyphicon-import"></span>
+                                                                </button>
+                                                                <label class="control-label" for="import-workspace">Import workspace</label>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+
+                                                        <td>
+                                                            <div>
+                                                                <button id="import-tour" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
+                                                                    <span class="glyphicon glyphicon-import"></span>
+                                                                </button>
+                                                                <label class="control-label" for="import-tour">Import external tour file</label>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6" data-bind="with: timeline">
+                                            <h4 class="text-center">Export</h4>
+                                            <table class="table">
+                                                <tbody>
+                                                    <tr>
+                                                        <td>
+                                                            <div>
+                                                                <button id="backup-tour" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
+                                                                    <span class="glyphicon glyphicon-export"></span>
+                                                                </button>
+                                                                <label class="control-label" for="export-tour">Save backup copy of tour file</label>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>
+                                                            <div data-bind="visible: !platform.isBrowser">
+                                                                <button id="export-project" class="btn btn-default" data-toggle="modal" data-target="#export-dialog" data-dismiss="modal">
+                                                                    <span class="glyphicon glyphicon-export"></span>
+                                                                </button>
+                                                                <label class="control-label" for="export-tour">Export project</label>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+
+                                <div>
+
+                                    <div class="checkbox">
+                                        <label title="Equivalent to clicking the &quot;Set&quot; button next to selected items whenever (de-)selecting one." class="control-label" for="auto-save-selected-items-checkbox">
+                                            <input type="checkbox" data-bind="checked: autoSaveSelectedItems" id="auto-save-selected-items-checkbox">
+                                            Automatically save selected items
+                                        </label>
+                                    </div>
+
+
+                                    <div class="checkbox" data-bind="visible: !platform.isBrowser">
+                                        <label title="Load workspace which was open when the program was closed the last time." class="control-label" for="load-recent-workspace-checkbox">
+                                            <input type="checkbox" data-bind="checked: loadRecentWorkspace" id="load-recent-workspace-checkbox">
+                                            Load recent workspace
+                                        </label>
+                                    </div>
+
+                                    <div class="control-group" style="width: 100%" data-bind="if: !platform.isBrowser">
+                                        <div class="input-group">
+                                            <div class="input-group-addon">
+                                                <input type="checkbox" data-bind="checked: autoSave" id="autoSave-checkbox">
+                                            </div>
+                                            <div class="input-group-addon">
+                                                <label for="tilePanoramas-checkbox">Save workspace every</label>
+                                            </div>
+                                            <input class="form-control" type="number" min="1" max="60" data-bind="value: autoSaveInterval, enable: autoSave" id="autoSaveInterval-input">
+                                            <div class="input-group-addon">
+                                                <label for="autoSaveInterval-input">minutes</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                        <!-- /#settings-file-tab -->
+                        <!-- #settings-view-tab -->
+                        <div id="settings-view-tab" class="tab-pane fade">
+                            <div class="form-horizontal">
+                                <div>
+                                    <div class="checkbox" data-bind="visible: platform.isBrowser">
+                                        <label class="control-label" for="fullscreen-checkbox">
+                                            <input type="checkbox" data-bind="checked: fullscreen" id="fullscreen-checkbox">
+                                            Fullscreen
+                                        </label>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label class="control-label" for="aggregateItems-checkbox">
+                                            <input type="checkbox" data-bind="checked: aggregateItems" id="aggregateItems-checkbox">
+                                            Aggregate a stack of items in the timeline into one (range item).
+                                        </label>
+                                    </div>
+
+                                    <div class="checkbox">
+                                        <label title="If a new panorama is added, display it." class="control-label" for="auto-display-panorama-checkbox">
+                                            <input type="checkbox" data-bind="checked: autoDisplayPanorama" id="auto-display-panorama-checkbox">
+                                            Automatically load panorama when adding a file
+                                        </label>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label title="Selecting a timepoint tour on the sidebar has the same effect as clicking the corresponding item in the timeline." class="control-label" for="show-group-on-editor-selection-checkbox">
+                                            <input type="checkbox" data-bind="checked: showGroupOnEditorSelection" id="show-group-on-editor-selection-checkbox">
+                                            Show tour on map when selecting it on the sidebar
+                                        </label>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label class="control-label" for="autosave-startup-view-checkbox">
+                                            <input type="checkbox" data-bind="checked: autoSaveStartupView" id="autosave-startup-view-checkbox">
+                                            Update all initial view parameters when saving
+                                        </label>
+                                    </div>
+                                    <div class="checkbox" data-bind="visible: platform.hasGPSSensor">
+                                        <label title="Panoramas are loaded based on your position" class="control-label" for="enable-gps-checkbox">
+                                            <input type="checkbox" data-bind="checked: enableGPS" id="enable-gps-checkbox">
+                                            Use GPS sensor
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <div class="container-fluid">
+                                    <span>Pan and zoom and then click to save the following values.</span>
+                                    <div class="row">
+                                        <div class="col-md-6" data-bind="with: map">
+                                            <h4 class="text-center">Map</h4>
+                                            <table class="table table-responsiv table-responsive-sm table-sm">
+                                                <tbody>
+                                                    <tr>
+                                                        <th scope="row">Initial center</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-center-map-settings-button" data-bind="enable: !$root.autoSaveStartupView()">Set</button>
+                                                            <button class="btn btn-primary" id="unset-center-map-settings-button" data-bind="enable: !!center() && !$root.autoSaveStartupView()">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Initial zoom level</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-zoom-map-settings-button" data-bind="enable: !$root.autoSaveStartupView()">Set</button>
+                                                            <button class="btn btn-primary" id="unset-zoom-map-settings-button" data-bind="enable: !!zoom() && !$root.autoSaveStartupView()">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Farthest zoom level</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-minZoom-map-settings-button">Set</button>
+                                                            <button class="btn btn-primary" id="unset-minZoom-map-settings-button" data-bind="enable: minZoom">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Closest zoom level</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-maxZoom-map-settings-button">Set</button>
+                                                            <button class="btn btn-primary" id="unset-maxZoom-map-settings-button" data-bind="enable: maxZoom">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Outer bounds of view</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-maxBounds-map-settings-button">Set</button>
+                                                            <button class="btn btn-primary" id="unset-maxBounds-map-settings-button" data-bind="enable: maxBounds">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6" data-bind="with: timeline">
+                                            <h4 class="text-center">Timeline</h4>
+                                            <table class="table">
+                                                <tbody>
+                                                    <tr>
+                                                        <th scope="row">Initial start date</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-start-timeline-settings-button" data-bind="enable: !$root.autoSaveStartupView()">Set</button>
+                                                            <button class="btn btn-primary" id="unset-start-timeline-settings-button" data-bind="enable: !!start() && !$root.autoSaveStartupView()">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Initial end date</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-end-timeline-settings-button" data-bind="enable: !$root.autoSaveStartupView()">Set</button>
+                                                            <button class="btn btn-primary" id="unset-end-timeline-settings-button" data-bind="enable: !!end() && !$root.autoSaveStartupView()">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Minimum start date</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-min-timeline-settings-button">Set</button>
+                                                            <button class="btn btn-primary" id="unset-min-timeline-settings-button" data-bind="enable: min">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Maximum end date</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-max-timeline-settings-button">Set</button>
+                                                            <button class="btn btn-primary" id="unset-max-timeline-settings-button" data-bind="enable: max">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Selected items</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-selections-timeline-settings-button" data-bind="enable: !$root.autoSaveStartupView()">Set</button>
+                                                            <button class="btn btn-primary" id="unset-selections-timeline-settings-button" data-bind="enable: !!selections() && !$root.autoSaveStartupView() && !$root.autoSaveSelectedItems">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6" data-bind="with: panorama">
+                                            <h4 class="text-center">Panorama</h4>
+                                            <table class="table">
+                                                <tbody>
+                                                    <tr>
+                                                        <th scope="row">Panorama initially displayed</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-scene-panorama-settings-button" data-bind="enable: !$root.autoSaveStartupView()">Set</button>
+                                                            <button class="btn btn-primary" id="unset-scene-panorama-settings-button" data-bind="enable: !!scene() && !$root.autoSaveStartupView()">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Initial yaw</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-yaw-panorama-settings-button" data-bind="enable: !$root.autoSaveStartupView()">Set</button>
+                                                            <button class="btn btn-primary" id="unset-yaw-panorama-settings-button" data-bind="enable: !!yaw() && !$root.autoSaveStartupView()">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Initial pitch</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-pitch-panorama-settings-button" data-bind="enable: !$root.autoSaveStartupView()">Set</button>
+                                                            <button class="btn btn-primary" id="unset-pitch-panorama-settings-button" data-bind="enable: !!pitch() && !$root.autoSaveStartupView()">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Initial horizontal field of view</th>
+                                                        <td>
+                                                            <button class="btn btn-primary" id="set-hfov-panorama-settings-button" data-bind="enable: !$root.autoSaveStartupView()">Set</button>
+                                                            <button class="btn btn-primary" id="unset-hfov-panorama-settings-button" data-bind="enable: !!hfov() && !$root.autoSaveStartupView()">Unset</button>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <!-- /#settings-view-tab -->
+                        <!-- #settings-advanced-tab -->
+                        <div id="settings-advanced-tab" class="tab-pane fade">
+                            <div class="form-horizontal">
+                                <div>
+                                    <button id="vertex-template-settings" class="btn btn-default" data-toggle="modal" data-target="#vertex-template-settings-dialog">
+                                        <span class="glyphicon glyphicon-pencil"></span>
+                                    </button>
+                                    <label class="control-label" for="vertex-template-settings">Edit options for batch copying and panorama import when attributes of current panorama are copied.</label>
+                                </div>
+                                <div class="checkbox">
+                                    <label title="Shows button to batch copy vertices into a tour." class="control-label" for="enable-batch-copy-checkbox">
+                                        <input type="checkbox" data-bind="checked: enableBatchCopying" id="enable-batch-copy-checkbox">
+                                        Enable batch copying of vertices
+                                    </label>
+                                </div>
+                                <div class="checkbox">
+                                    <label title="Applies the copy vertex options with currently shown panorama as source and new panorama as destination. Triggered by &quot;Add Panoramas&quot;" class="control-label" for="copy-scene-attributes-checkbox">
+                                        <input type="checkbox" data-bind="checked: copySceneAttributes" id="copy-scene-attributes-checkbox">
+                                        Copy attributes of current panorama when importing files
+                                    </label>
+                                </div>
+
+                                <div class="checkbox">
+                                    <label class="control-label" for="create-placeholders-checkbox">
+                                        <input type="checkbox" data-bind="checked: createVertexOnMapClick" id="create-placeholders-checkbox">
+                                        Create point when clicking on the map (type depends on editor opened in the left panel)
+                                    </label>
+                                </div>
+                                <div class="checkbox">
+                                    <label title="Landmark vertices are saved to tour.json. Moreover they are not deleted, when switching the panorama." class="control-label" for="persist-landmarks-checkbox">
+                                        <input type="checkbox" data-bind="checked: persistLandmarks" id="persist-landmarks-checkbox">
+                                        Persist landmarks
+                                    </label>
+                                </div>
+                                <div class="checkbox">
+                                    <label title="Enables the rescan option which adds new images as panoramas." class="control-label" for="track-changes-checkbox">
+                                        <input type="checkbox" data-bind="checked: trackChanges" id="track-changes-checkbox">
+                                        Track changes in workspace folders (requires restart)
+                                    </label>
+                                </div>
+
+                            </div>
+
+                        </div>
+                        <!-- /#settings-advanced-tab -->
+                    </div>
+                    <!-- /.tab-content -->
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- /#settings-dialog -->
+    <!-- #export-dialog -->
+    <div id="export-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h4>Export</h4>
+                </div>
+                <div class="modal-body">
+                    <form class="form-horizontal" style="width: 100%">
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="path">Export destination</label>
+                            <div class="controls">
+                                <div class='input-group' id='export-path'>
+                                    <input class="form-control" data-bind="value: path" type="text" id="export-path" disabled="disabled">
+                                    <div class="input-group-addon" data-bind="click: selectPath" id="export-path-selector" style="cursor:pointer">
+                                        <span class="glyphicon glyphicon-folder-open"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="invalid-input" data-bind="visible: $root.errors.path() && $root.errors.path() != '', text: $root.errors.path">
+
+                            </div>
+                        </div>
+
+                        <div class="checkbox" data-bind="visible: !$root.modules.settings.autoSaveStartupView()">
+                            <label class="control-label" for="setStartup-checkbox">
+                                <input type="checkbox" data-bind="checked: setStartup" id="setStartup-checkbox">
+                                Set current view as startup view.
+                            </label>
+                        </div>
+
+                        <div class="checkbox">
+                            <label class="control-label" for="overwriteExisting-checkbox">
+                                <input type="checkbox" data-bind="checked: overwriteExisting" id="overwriteExisting-checkbox">
+                                Recreate existing panoramas at destination.
+                            </label>
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="enableTiling-checkbox">Panorama tiling</label>
+                            <div class="input-group">
+                                <div class="input-group-addon">
+                                    <input type="checkbox" data-bind="checked: enableTiling" id="enableTiling-checkbox">
+                                </div>
+                                <input class="form-control" type="number" min="4" max="4096" data-bind="value: tileResolution, enable: enableTiling">
+                                <div class="input-group-addon">
+                                    <label for="tilePanoramas-checkbox">Tile size</label>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <div class="input-group-addon">
+                                    <label for="contentType-input">Image type</label>
+                                </div>
+                                <select type="select" class="form-control" id="contentType-input"
+                                        data-bind="options: contentTypes, value: contentType, enable: enableTiling"></select>
+                                <div class="input-group-addon">
+                                    <label for="enableMaxWidth-checkbox">Quality</label>
+                                </div>
+                                <input class="form-control" type="number" min="0.1" max="1" step="0.01" data-bind="value: quality, enable: enableTiling" id="quality-input">
+                            </div>
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="tilePanoramas-checkbox">Restrict base image size</label>
+                            <div class="input-group">
+                                <div class="input-group-addon">
+                                    <input type="checkbox" data-bind="checked: enableMaxWidth" id="enableMaxWidth-checkbox">
+                                </div>
+                                <input class="form-control" type="number" min="4" data-bind="value: maxWidth, enable: enableMaxWidth">
+                                <div class="input-group-addon">
+                                    <label for="enableMaxWidth-checkbox">Maximum width in pixel</label>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <div class="input-group-addon">
+                                    <input type="checkbox" data-bind="checked: enableMaxHeight" id="enableMaxHeight-checkbox">
+                                </div>
+                                <input class="form-control" type="number" min="4" data-bind="value: maxHeight, enable: enableMaxHeight">
+                                <div class="input-group-addon">
+                                    <label for="enableMaxHeight-checkbox">Maximum height in pixel</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group" style="width: 100%" data-bind="if: canThreads">
+                            <label class="control-label" for="enableThreads-checkbox">Threading</label>
+                            <div class="input-group">
+                                <div class="input-group-addon">
+                                    <input type="checkbox" data-bind="checked: enableThreads" id="enableThreads-checkbox">
+                                </div>
+                                <input class="form-control" type="number" min="1" max="16" data-bind="value: threads, enable: enableThreads">
+                                <div class="input-group-addon">
+                                    <label for="tilePanoramas-checkbox">Number of threads</label>
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: $root.export, enable: $root.canExport" class="btn btn-primary" data-dismiss="modal">Export</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- /#export-dialog -->
+    <!-- #export-progress-dialog -->
+    <div id="export-progress-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4>Export Progress</h4>
+                </div>
+                <div class="modal-body">
+                    <form class="form-horizontal" style="width: 100%">
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="panoramas-processed-progress">Panoramas processed</label>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped active" role="progressbar"
+                                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                     data-bind="text: $root.panoramasToCreateCount() + '/' + $root.panoramasToCreateTotal(), progress: $root.panoramasToCreateCount() / $root.panoramasToCreateTotal()">
+                                    0/0
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="files-processed-progress">Files processed</label>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped active" role="progressbar"
+                                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                     data-bind="text: $root.filesToCreateCount() + '/' + $root.filesToCreateTotal(), progress: $root.filesToCreateCount() / $root.filesToCreateTotal()">
+                                    0/0
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+
+                    <div data-bind="foreach: $root.errors.log" style="max-height: 50vh;overflow-y: auto;">
+                        <div class="alert" data-bind="css:{'alert-danger' : ($data instanceof error), 'alert-warning' : ($data instanceof warning)}">
+                            <span data-bind="text: logger.errorToString($data)"></span>
+                            <a href="#" class="close" data-dismiss="alert" aria-label="close" data-bind="click: () => {$root.errors.log.remove($data)}">&times;</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: $root.revert, visible: !$root.done()" class="btn btn-primary" data-dismiss="modal">Revert</button>
+                    <button data-bind="click: $root.abort, visible: !$root.done()" class="btn btn-primary" data-dismiss="modal">Abort</button>
+                    <button data-bind="click: $root.complete, visible: $root.done" class="btn btn-primary" data-dismiss="modal">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- /#export--progress-dialog -->
+    <!-- #logs-dialog -->
+    <div id="logs-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <h4>Logs</h4>
+                </div>
+                <div class="modal-body" style="max-height: calc(100vh - 200px);  overflow-y: auto;">
+                    <div data-bind="foreach: logs">
+                        <div class="alert" data-bind="css:{'alert-danger' : ($data instanceof error), 'alert-warning' : ($data instanceof warning)}">
+                            <span data-bind="text: logger.errorToString($data)"></span>
+                            <a href="#" class="close" data-dismiss="alert" aria-label="close" data-bind="click: () => {$parent.logs.remove($data)}">&times;</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: clear, visible: hasLogs" class="btn btn-primary" data-dismiss="modal">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#logs-dialog -->
+    <!-- #vertex-template-settings-dialog -->
+    <div id="vertex-template-settings-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h4>Vertex Copy Options</h4>
+                </div>
+
+
+                <div class="modal-body">
+                    <span>The selected types filter the objects to be copied and the selected attributes what to copy when applying a template</span>
+                    <div class="container-fluid">
+                        <label>Copy options: </label>
+                        <label title="Update vertices that already exist in the destination tour." class="form-check-inline no_indent"><input id="vtemp-settings-update" data-bind="checked: update" type="checkbox"> update</label>
+                        <label title="Create vertices that do not exist in the destination tour." class="form-check-inline no_indent"><input id="vtemp-settings-create" data-bind="checked: create" type="checkbox"> create</label>
+                        <label title="Consider vertices to be identical although they are not precisely at the same location. The connection radius determines the threshold." class="form-check-inline no_indent"><input id="vtemp-settings-approximate" data-bind="checked: colocated" type="checkbox"> update colocated vertices</label>
+                        <label title="Delete those vertices that were the source for an update or create operation. All other vertices in the source tour are unaffected." class="form-check-inline no_indent"><input id="vtemp-settings-delete" data-bind="checked: deleteOriginal" type="checkbox"> delete originals</label>
+                    </div>
+                    <div class="container-fluid" data-bind="with: settings">
+                        <label>Vertex: </label>
+                        <select id="vtemp-v-type" class="js-select" data-bind="options: $root.vtypes,selectedOptions: types" data-placeholder="Filter by type ..." multiple="multiple"></select>
+                        <label class="form-check-inline no_indent"><input id="vtemp-v-path" data-bind="checked: coordinates" type="checkbox"> coordinates</label>
+                        <label title="Copies all image related attributes (e.g. path, resolution)" class="form-check-inline no_indent"><input id="vtemp-v-path" data-bind="checked: path" type="checkbox"> image attributes</label>
+                        <div class="form-check-inline" data-bind="with: outgoingEdges">
+                            <label>Edge: </label>
+                            <select id="vtemp-e-type" class="js-select" data-bind="options: $root.etypes, selectedOptions: types" data-placeholder="Filter by type ..." multiple="multiple"></select>
+                            <label title="Pitch of the hotspot that leads to the end panorama." class="form-check-inline no_indent"><input id="etemp-d-pitch" data-bind="checked: data.pitch" type="checkbox"> data.pitch</label>
+                            <label title="Yaw of the hotspot that leads to the end panorama." class="form-check-inline no_indent"><input id="etemp-d-yaw" data-bind="checked: data.yaw" type="checkbox"> data.yaw</label>
+                        </div>
+                        <div class="form-check-inline" data-bind="with: data">
+                            <label>Vertex.data: </label>
+                            <label title="The offset between geographical north and the horizontal center of the image" class="form-check-inline no_indent"><input id="vtemp-d-northOffset" data-bind="checked: northOffset" type="checkbox"> northOffset</label>
+                            <label title="The offset between the horizon and the vertical center of the image" class="form-check-inline no_indent"><input id="vtemp-d-vOffset" data-bind="checked: vOffset" type="checkbox"> vOffset</label>
+                            <label title="Vertical angle of view" class="form-check-inline no_indent"><input id="vtemp-d-vaov" data-bind="checked: vaov" type="checkbox"> vaov</label>
+                            <label title="Type of the panorama" class="form-check-inline no_indent"><input id="vtemp-d-type" data-bind="checked: type" type="checkbox"> type</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#vertex-template-settings-dialog -->
     <!-- #select-directory-dialog -->
     <div id="select-directory-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
@@ -662,7 +1262,7 @@
                         </section>
                     </div>
 
-                    <div class="btn-center-spaced" >
+                    <div class="btn-center-spaced">
                         <label class="btn btn-primary" id="workspace-directory-selector">
                             Open native file dialog
                         </label>
@@ -814,304 +1414,6 @@
         </div>
     </div>
     <!-- /#webkit-access-dialog -->
-    <!-- #settings-dialog -->
-    <div id="settings-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
-                    <h4>Settings</h4>
-                </div>
-                <div class="modal-body">
-                    <div class="form-horizontal">
-                        <div>
-                            <div>
-                                <button id="switch-workspace" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
-                                    <span class="glyphicon glyphicon-refresh"></span>
-                                </button>
-                                <label class="control-label" for="switch-workspace">Switch workspace</label>
-                            </div>
-                            <div>
-                                <button id="import-workspace" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
-                                    <span class="glyphicon glyphicon-import"></span>
-                                </button>
-                                <label class="control-label" for="import-workspace">Import workspace</label>
-                            </div>
-                            <div>
-                                <button id="import-tour" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
-                                    <span class="glyphicon glyphicon-import"></span>
-                                </button>
-                                <label class="control-label" for="import-tour">Import external tour file</label>
-                            </div>
-                            <div>
-                                <button id="backup-tour" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
-                                    <span class="glyphicon glyphicon-export"></span>
-                                </button>
-                                <label class="control-label" for="export-tour">Save backup copy of tour file</label>
-                            </div>
-                            <div>
-                                <button id="vertex-template-settings" class="btn btn-default" data-toggle="modal" data-target="#vertex-template-settings-dialog">
-                                    <span class="glyphicon glyphicon-pencil"></span>
-                                </button>
-                                <label class="control-label" for="vertex-template-settings">Edit options for copying vertices</label>
-                            </div>
-                            <div class="checkbox">
-                                <label class="control-label" for="hide-map-checkbox">
-                                    <input type="checkbox" data-bind="checked: hideMap" id="hide-map-checkbox">
-                                    Hide the map
-                                </label>
-
-                            </div>
-                            <div class="checkbox">
-                                <label class="control-label" for="fullscreen-checkbox">
-                                    <input type="checkbox" data-bind="checked: fullscreen" id="fullscreen-checkbox">
-                                    Fullscreen
-                                </label>
-                            </div>
-                            <div class="checkbox">
-                                <label class="control-label" for="aggregateItems-checkbox">
-                                    <input type="checkbox" data-bind="checked: aggregateItems" id="aggregateItems-checkbox">
-                                    Aggregate a stack of items in the timeline into one (range item).
-                                </label>
-                            </div>
-                            <div class="checkbox">
-                                <label title="Applies the copy vertex options with currently shown panorama as source and new panorama as destination. Triggered by &quot;Add Panoramas&quot;" class="control-label" for="copy-scene-attributes-checkbox">
-                                    <input type="checkbox" data-bind="checked: copySceneAttributes" id="copy-scene-attributes-checkbox">
-                                    Copy attributes of current panorama when importing files
-                                </label>
-                            </div>
-                            <div class="checkbox">
-                                <label class="control-label" for="create-placeholders-checkbox">
-                                    <input type="checkbox" data-bind="checked: createVertexOnMapClick" id="create-placeholders-checkbox">
-                                    Create point when clicking on the map (type depends on editor opened in the left panel)
-                                </label>
-                            </div>
-                            <div class="checkbox">
-                                <label title="Landmark vertices are saved to tour.json. Moreover they are not deleted, when switching the panorama." class="control-label" for="persist-landmarks-checkbox">
-                                    <input type="checkbox" data-bind="checked: persistLandmarks" id="persist-landmarks-checkbox">
-                                    Persist landmarks
-                                </label>
-                            </div>
-                            <div class="checkbox">
-                                <label title="If a new panorama is added, display it." class="control-label" for="auto-display-panorama-checkbox">
-                                    <input type="checkbox" data-bind="checked: autoDisplayPanorama" id="auto-display-panorama-checkbox">
-                                    Automatically load panorama when adding a file
-                                </label>
-                            </div>
-                            <div class="checkbox">
-                                <label title="Equivalent to clicking the &quot;Set&quot; button next to selected items whenever (de-)selecting one." class="control-label" for="auto-save-selected-items-checkbox">
-                                    <input type="checkbox" data-bind="checked: autoSaveSelectedItems" id="auto-save-selected-items-checkbox">
-                                    Automatically save selected items
-                                </label>
-                            </div>
-                            <div class="checkbox">
-                                <label title="Selecting a spatial group on the sidebar has the same effect as clicking the corresponding item in the timeline." class="control-label" for="show-group-on-editor-selection-checkbox">
-                                    <input type="checkbox" data-bind="checked: showGroupOnEditorSelection" id="show-group-on-editor-selection-checkbox">
-                                    Show group on map when selecting it on the sidebar
-                                </label>
-                            </div>
-                        </div>
-
-                        <hr>
-
-                        <div class="container-fluid">
-                            Pan and zoom and then click to save the following values.
-                            <div class="row">
-                                <div class="col-md-6" data-bind="with: map">
-                                    <h4 class="text-center">Map</h4>
-                                    <table class="table table-responsiv table-responsive-sm table-sm">
-                                        <tbody>
-                                            <tr>
-                                                <th scope="row">Initial center</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-center-map-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-center-map-settings-button" data-bind="enable: center">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Initial zoom level</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-zoom-map-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-zoom-map-settings-button" data-bind="enable: zoom">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Farthest zoom level</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-minZoom-map-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-minZoom-map-settings-button" data-bind="enable: minZoom">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Closest zoom level</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-maxZoom-map-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-maxZoom-map-settings-button" data-bind="enable: maxZoom">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Outer bounds of view</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-maxBounds-map-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-maxBounds-map-settings-button" data-bind="enable: maxBounds">Unset</button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="col-md-6" data-bind="with: timeline">
-                                    <h4 class="text-center">Timeline</h4>
-                                    <table class="table">
-                                        <tbody>
-                                            <tr>
-                                                <th scope="row">Initial start date</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-start-timeline-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-start-timeline-settings-button" data-bind="enable: start">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Initial end date</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-end-timeline-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-end-timeline-settings-button" data-bind="enable: end">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Minimum start date</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-min-timeline-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-min-timeline-settings-button" data-bind="enable: min">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Maximum end date</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-max-timeline-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-max-timeline-settings-button" data-bind="enable: max">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Selected items</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-selections-timeline-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-selections-timeline-settings-button" data-bind="enable: selections">Unset</button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="col-md-6" data-bind="with: panorama">
-                                    <h4 class="text-center">Panorama</h4>
-                                    <table class="table">
-                                        <tbody>
-                                            <tr>
-                                                <th scope="row">Panorama initially displayed</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-scene-panorama-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-scene-panorama-settings-button" data-bind="enable: scene">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Initial yaw</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-yaw-panorama-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-yaw-panorama-settings-button" data-bind="enable: yaw">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Initial pitch</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-pitch-panorama-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-pitch-panorama-settings-button" data-bind="enable: pitch">Unset</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row">Initial horizontal field of view</th>
-                                                <td>
-                                                    <button class="btn btn-primary" id="set-hfov-panorama-settings-button">Set</button>
-                                                    <button class="btn btn-primary" id="unset-hfov-panorama-settings-button" data-bind="enable: hfov">Unset</button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- /#settings-dialog -->
-    <!-- #logs-dialog -->
-    <div id="logs-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-                    <h4>Logs</h4>
-                </div>
-                <div class="modal-body" style="max-height: calc(100vh - 200px);  overflow-y: auto;">
-                    <div data-bind="foreach: logs">
-                        <div class="alert" data-bind="css:{'alert-danger' : ($data instanceof error), 'alert-warning' : ($data instanceof warning)}">
-                            <span data-bind="text: $parent.errorToString($data)"></span>
-                            <a href="#" class="close" data-dismiss="alert" aria-label="close" data-bind="click: () => {$parent.logs.remove($data)}">&times;</a>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button data-bind="click: clear, visible: hasLogs" class="btn btn-primary" data-dismiss="modal">Clear</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- /#logs-dialog -->
-    <!-- #vertex-template-settings-dialog -->
-    <div id="vertex-template-settings-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
-                    <h4>Vertex Copy Options</h4>
-                </div>
-
-
-                <div class="modal-body">
-                    <span>The selected types filter the objects to be copied and the selected attributes what to copy when applying a template</span>
-                    <div class="container-fluid">
-                        <label>Copy options: </label>
-                        <label title="Update vertices that already exist in the destination group." class="form-check-inline no_indent"><input id="vtemp-settings-update" data-bind="checked: update" type="checkbox"> update</label>
-                        <label title="Create vertices that do not exist in the destination group." class="form-check-inline no_indent"><input id="vtemp-settings-create" data-bind="checked: create" type="checkbox"> create</label>
-                        <label title="Consider vertices to be identical although they are not precisely at the same location. The connection radius determines the threshold." class="form-check-inline no_indent"><input id="vtemp-settings-approximate" data-bind="checked: colocated" type="checkbox"> update colocated vertices</label>
-                        <label title="Delete those vertices that were the source for an update or create operation. All other vertices in the source group are unaffected." class="form-check-inline no_indent"><input id="vtemp-settings-delete" data-bind="checked: deleteOriginal" type="checkbox"> delete originals</label>
-                    </div>
-                    <div class="container-fluid" data-bind="with: settings">
-                        <label>Vertex: </label>
-                        <select id="vtemp-v-type" class="js-select" data-bind="options: $root.vtypes,selectedOptions: types" data-placeholder="Filter by type ..." multiple="multiple"></select>
-                        <label class="form-check-inline no_indent"><input id="vtemp-v-path" data-bind="checked: coordinates" type="checkbox"> coordinates</label>
-                        <label title="Copies all image related attributes (e.g. path, resolution)" class="form-check-inline no_indent"><input id="vtemp-v-path" data-bind="checked: path" type="checkbox"> image attributes</label>
-                        <div class="form-check-inline" data-bind="with: outgoingEdges">
-                            <label>Edge: </label>
-                            <select id="vtemp-e-type" class="js-select" data-bind="options: $root.etypes, selectedOptions: types" data-placeholder="Filter by type ..." multiple="multiple"></select>
-                            <label title="Pitch of the hotspot that leads to the end panorama." class="form-check-inline no_indent"><input id="etemp-d-pitch" data-bind="checked: data.pitch" type="checkbox"> data.pitch</label>
-                            <label title="Yaw of the hotspot that leads to the end panorama." class="form-check-inline no_indent"><input id="etemp-d-yaw" data-bind="checked: data.yaw" type="checkbox"> data.yaw</label>
-                        </div>
-                        <div class="form-check-inline" data-bind="with: data">
-                            <label>Vertex.data: </label>
-                            <label title="The offset between geographical north and the horizontal center of the image" class="form-check-inline no_indent"><input id="vtemp-d-northOffset" data-bind="checked: northOffset" type="checkbox"> northOffset</label>
-                            <label title="The offset between the horizon and the vertical center of the image" class="form-check-inline no_indent"><input id="vtemp-d-vOffset" data-bind="checked: vOffset" type="checkbox"> vOffset</label>
-                            <label title="Vertical angle of view" class="form-check-inline no_indent"><input id="vtemp-d-vaov" data-bind="checked: vaov" type="checkbox"> vaov</label>
-                            <label title="Type of the panorama" class="form-check-inline no_indent"><input id="vtemp-d-type" data-bind="checked: type" type="checkbox"> type</label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- /#vertex-template-settings-dialog -->
     <!-- #help-dialog -->
     <div id="help-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
         <div class="modal-dialog modal-lg">
@@ -1120,21 +1422,20 @@
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
                     <h3>Content</h3>
                     <ol>
-                        <li><a href="#help-dialog-import">Importing Files</a></li>
+                        <li><a href="#help-dialog-import">Importing Project</a></li>
                         <li><a href="#help-dialog-navigation">Navigation Elements</a></li>
                         <li><a href="#help-dialog-workflow">Creating and modifying tours</a></li>
-                        <li><a href="#help-dialog-temporal-groups">Temporal Groups</a></li>
-                        <li><a href="#help-dialog-spatial-groups">Spatial Groups</a></li>
+                        <li><a href="#help-dialog-temporal-groups">Time Travel Tours</a></li>
+                        <li><a href="#help-dialog-spatial-groups">Timepoint Tours</a></li>
                         <li><a href="#help-dialog-map-editor">Map editor</a></li>
                         <li><a href="#help-dialog-settings">Settings Dialog</a></li>
                         <li><a href="#help-dialog-templates">Copy Vertices</a></li>
-                        <li><a href="#help-dialog-filesystem">Hints regarding the filesystem</a></li>
+                        <li><a href="#help-dialog-export">Exporting the project</a></li>
                     </ol>
 
                     <!-- Importing Files -->
-                    <h3 id="help-dialog-import">Importing Files</h3>
-                    <p>The first thing to do is importing the directory containing all the image files and the description file (tour.json). The latter one must be a direct child of the chosen directory. Depending on the browser and platform capabilities one can drop a folder, select one via the file chooser window or select a some files. For more information read the <a href="#help-dialog-filesystem">section "Hints regarding the filesystem"</a>.</p>
-                    <p>On <strong>mobile</strong> devices: Click on <kbd>Choose files ...</kbd> and choose <kbd>Documents</kbd>. Next, the file explorer should open. Navigate to the folder containing the panoramas and choose all files (Press on an arbitrary file for 2 seconds &rarr; top right <kbd><span class="glyphicon glyphicon-option-vertical"></span></kbd> &rarr; <kbd>Choose all</kbd> &rarr; <kbd>Open</kbd>)</p>
+                    <h3 id="help-dialog-import">Importing Project</h3>
+                    <p>The first thing to do is importing the directory containing all the image files and the description file (tour.json). The latter one must be a direct child of the chosen directory. </p>
 
                     <!-- Navigation Elements -->
                     <h3 id="help-dialog-navigation">Navigation Elements</h3>
@@ -1336,9 +1637,8 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                     <h3 id="help-dialog-workflow">Creating and modifying tours</h3>
                     <h4>Start a new project</h4>
                     <ol>
-                        <li>Reload this site.</li>
                         <li>On the pop-up: Drop the root folder on the droparea or choose it via the topmost button.</li>
-                        <li>On the left sidebar: Click "Create group" under the "Temporal Group" section.</li>
+                        <li>On the left sidebar: Click "Create tour" under the "Time Travel Tour" section.</li>
                         <li>On the pop-up: Enter a name and click "create" (keep the default value in the other fields).</li>
                         <li>Zoom the map to the location of the tour (use mouse wheel and grabbing functionality)</li>
                         <li>Open the settings dialog (cogwheel left on the topbar).</li>
@@ -1348,7 +1648,7 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                     </ol>
                     <h4>Add a panorama</h4>
                     <ol>
-                        <li>On the left sidebar: Click "Add Panoramas" under the "Temporal Group" section.</li>
+                        <li>On the left sidebar: Click "Add Panoramas" under the "Time Travel Tour" section.</li>
                         <li>On the pop-up: Click the "Browser" tab.</li>
                         <li>On the directory tree: Use the triangle on the left hand side of a folder to expand it.</li>
                         <li>On the directory tree: Click on the image file</li>
@@ -1375,82 +1675,76 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                     <h4>Connect individual panoramas</h4>
                     <ol>
                         <li>On the left sidebar: Click the "Groups" tab.</li>
-                        <li>On the left sidebar: Select a spatial group from the dropdown.</li>
+                        <li>On the left sidebar: Select a timepoint tour from the dropdown.</li>
                         <li>On the left sidebar: Select "Draw Line" as "Editing mode" from the dropdown (select "Load Panorama" to get the default behavior when clicking on points on the map).</li>
                         <li>On the map: Click two red points. A blue line will appear.</li>
                     </ol>
                     <h4>Modify the tour</h4>
                     <ul>
                         <li>On the topbar: The arrow pointing to the left is an undo button.</li>
-                        <li>On the left sidebar: Select a spatial group to add and remove connections between panoramas.</li>
+                        <li>On the left sidebar: Select a timepoint tour to add and remove connections between panoramas.</li>
                         <li>On the map: Delete lines by clicking on them (only works for blue and green ones).</li>
                         <li>On the left sidebar: Select "Delete point" and click on a point on the map to delete it (and the associated panorama; the actual image file will be unaffected). Immediately select "Load Panorama" afterwards to prevent deleting other points by mistake.</li>
                     </ul>
 
-                    <!-- Temporal Groups -->
-                    <h4 id="help-dialog-temporal-groups">Temporal Groups</h4>
-                    <p>A temporal groups consists of several spatial groups. The temporal groups makes the navigation in time possible. If two panoramas are taken at the same location but at different times, they end up in different spatial groups. The temporal group searches all containing spatial groups and forms a connection between those two panoramas. The result is one can switch between them using the topbar navigation.</p>
-                    <p>A temporal group only requires a name and a type. The type determines the subgroups that can be added to the group. All the other values are optional. The description will be used as a tooltip. The super group dropdown exists that one can build a hierarchy of tours.</p>
-                    <p>The connections for navigating in time cannot be created manually. Instead the temporal group automatically takes care of it. Two vertices are navigable in time (there are arrows in the top bar) if they are colocated. To be colocated, they must be within the distance determined by the parameter colocated radius. Moreover their spatial groups must be of type &quot;singleshot&quot; OR belong to the same temporal group. One can deny the first condition by choosing the type &quot;route&quot; for the spatial group and the second condition by unchecking the &quot;auto-connect&quot; option when creating a group.</p>
-                    <p>&quot;Add Panoramas&quot; will automatically create a spatial group derived from timestamp of the specified image. Create a spatial group manually to exploit all customization options.</p>
-                    <p>There is no possibility to directly modify groups. The workaround is to create a new one and copy the spatial groups, see <a href="#help-dialog-spatial-groups">Spatial Groups</a>.</p>
+                    <!-- Time Travel Tours -->
+                    <h4 id="help-dialog-temporal-groups">Time Travel Tours</h4>
+                    <p>A time travel tour consists of several timepoint tours. The time travel tour makes the navigation in time possible. If two panoramas are taken at the same location but at different times, they end up in different timepoint tours. The time travel tour searches all containing timepoint tours and forms a connection between those two panoramas. The result is one can switch between them using the topbar navigation.</p>
+                    <p>A time travel tour only requires a name and a type. The type determines the subgroups that can be added to the tour. All the other values are optional. The description will be used as a tooltip. The super tour dropdown exists that one can build a hierarchy of tours.</p>
+                    <p>The connections for navigating in time cannot be created manually. Instead the time travel tour automatically takes care of it. Two vertices are navigable in time (there are arrows in the top bar) if they are colocated. To be colocated, they must be within the distance determined by the parameter colocated radius. Moreover their timepoint tours must be of type &quot;singleshot&quot; OR belong to the same time travel tour. One can deny the first condition by choosing the type &quot;route&quot; for the timepoint tour and the second condition by unchecking the &quot;auto-connect&quot; option when creating a tour.</p>
+                    <p>&quot;Add Panoramas&quot; will automatically create a timepoint tour derived from timestamp of the specified image. Create a timepoint tour manually to exploit all customization options.</p>
+                    <p>There is no possibility to directly modify groups. The workaround is to create a new one and copy the timepoint tours, see <a href="#help-dialog-spatial-groups">Timepoint Tours</a>.</p>
 
-                    <!-- Spatial Groups -->
-                    <h4 id="help-dialog-spatial-groups">Spatial Groups</h4>
-                    <p>A spatial group consists of several panoramas. All of them are shot roughly at the same time. The purpose is to have a common timeslot and name that can be displayed on the timeline.</p>
-                    <p>A spatial group requires a name, a timeslot, a super group and a type. The type determines the type of vertices that can be added to the group. See the third paragraph in <a href="#help-dialog-spatial-groups">Temporal Groups</a> for the purpose of &quot;route&quot; and &quot;singleshot&quot; Path and description are optional. The description will be used as a tooltip. The path is used to specify a parent folder so that the path saved for the vertices only contains the filename.</p>
+                    <!-- Timepoint Tours -->
+                    <h4 id="help-dialog-spatial-groups">Timepoint Tours</h4>
+                    <p>A timepoint tour consists of several panoramas. All of them are shot roughly at the same time. The purpose is to have a common timeslot and name that can be displayed on the timeline.</p>
+                    <p>A timepoint tour requires a name, a timeslot, a super tour and a type. The type determines the type of vertices that can be added to the tour. See the third paragraph in <a href="#help-dialog-spatial-groups">Time Travel Tours</a> for the purpose of &quot;route&quot; and &quot;singleshot&quot; Path and description are optional. The description will be used as a tooltip. The path is used to specify a parent folder so that the path saved for the vertices only contains the filename.</p>
                     <p>There is no possibility to directly modify groups. The workaround is to create a new one and copy the vertices. To do so, do the following:</p>
                     <ol>
-                        <li>On the sidebar: Click &quot;Create Group&quot; under the Spatial Group section.</li>
-                        <li>On &quot;Spatial Group Editor&quot;: Enter the modified values and click &quot;create&quot;.</li>
-                        <li>On the sidebar: The new group should now be selected in the dropdown.</li>
+                        <li>On the sidebar: Click &quot;Create Tour&quot; under the Timepoint Tour section.</li>
+                        <li>On &quot;Timepoint Tour Editor&quot;: Enter the modified values and click &quot;create&quot;.</li>
+                        <li>On the sidebar: The new tour should now be selected in the dropdown.</li>
                         <li>On the sidebar: Click &quot;Copy Vertices&quot;</li>
-                        <li>On &quot;Apply Group Template&quot;: Select the old group as the destination.</li>
-                        <li>On &quot;Apply Group Template&quot;: Click &quot;Edit options for copying vertices&quot;.</li>
+                        <li>On &quot;Apply Tour Template&quot;: Select the old tour as the destination.</li>
+                        <li>On &quot;Apply Tour Template&quot;: Click &quot;Edit options for copying vertices&quot;.</li>
                         <li>On &quot;Vertex Copy Options&quot;: Ensure that all options are checked and all types selected. The functionality is explained in the <a href="#help-dialog-templates">Copy Vertices</a> section.</li>
                         <li>Close the &quot;Vertex Copy Options&quot; pop-up</li>
-                        <li>On &quot;Apply Group Template&quot;: Click &quot;Apply Template&quot;.</li>
+                        <li>On &quot;Apply Tour Template&quot;: Click &quot;Apply Template&quot;.</li>
                     </ol>
 
                     <!-- Map Editor -->
                     <h4 id="help-dialog-map-editor">Map Editor</h4>
                     <p>The map editor can be found in between the &quot;Groups&quot; and &quot;Panorama&quot; editors. The map editor allows adding custom overlays to the map, here called backgrounds. The purpose is to show plans of buildings, paths, etc. To create such a background one has to click &quot;Create Background&quot; and choose an image file - just like for adding a panorama. Its name is automatically derived from the name of the file.</p>
                     <p>Use the upper left marker (the anchor) to bring the background to the correct position. The other two markers change scale (horizontal and vertical separately) and rotate around the anchor. If one selects &quot;Edit Skew&quot; the markers can be moved without interdependencies. This means the other two markers stay at the same position and the image will be skewed.</p>
-                    <p>Afterwards, the background should be assigned to a spatial group. Therefore, create a new spatial group and choose &quot;Advanced Settings&quot; &rarr; &quot;Background&quot;. A background can be assigned to multiple spatial groups. Whenever one of these groups is selected in the timeline, the background is displayed. On can hide all backgrounds via the layer control in the upper right corner of the map.</p>
+                    <p>Afterwards, the background should be assigned to a timepoint tour. Therefore, create a new timepoint tour and choose &quot;Advanced Settings&quot; &rarr; &quot;Background&quot;. A background can be assigned to multiple timepoint tours. Whenever one of these groups is selected in the timeline, the background is displayed. On can hide all backgrounds via the layer control in the upper right corner of the map.</p>
 
 
                     <!-- Settings Dialog -->
                     <h4 id="help-dialog-settings">Settings Dialog</h4>
-                    <p>The settings are subdivided into three sections. The two buttons at the top form the upper section. They open separate pop-up dialogs. The "Import additional tour files" button allows to load tour.json files from outside the source folder. All the groups, vertices and edges specified in the file will be merged into the current tour. Elements that already exist remain untouched (they do not get updated). This is useful when you want to merge tours from several working directories into one. Keep in mind that you manually have to copy the image files to the correct location. Another use case is reusing landmarks.</p>
-                    <p>The checkboxes form the middle section. They only affect the view and shall ease the workflow. Those settings will be reset to default when you reload the page.</p>
-                    <p>The tables at the bottom form the last section. These options are a subset of the options in the configuration file but they are stored in the tour.json file. They are read and applied when you load a tour file. The current pan and zoom values of the map / panorama view / timeline determine the values when clicking "Set". "Unset" is clickable when there is a value specified. To overwrite the value click "Set" again.</p>
-                    <p>To change the default selection of the settings go to &lt;Location of this website on the filesystem&gt;/assets/js/config.js. Change the corresponding settings at the bottom of the file. Many more settings can be changed there, for instance the displayed maps and appearance of the timeline.</p>
+                    <p>The settings are subdivided into three tabs.</p> 
+                    <ul>
+                        <li>Files: The "Import additional tour files" button allows to load tour.json files from outside the source folder. All the groups, vertices and edges specified in the file will be merged into the current tour. Elements that already exist remain untouched (they do not get updated). This is useful when you want to merge tours from several working directories into one. Keep in mind that you manually have to copy the image files to the correct location. Another use case is reusing landmarks. When saving selected items is selected, the currently selected tiempoint tour will be saved. This affects which points are shown on the map at startup.</li>
 
+                        <li>View: In the lower section, one can limit to which extend the map and timeline can be paned and zoomed. Moreover one can specify which part of the map, timeline and panorama is shown on startup. All the settings are stored in the tour file of the workspace. They are read and applied when you load a tour file. The current pan and zoom values of the map / panorama view / timeline determine the values when clicking "Set". "Unset" is clickable when there is a value specified. To overwrite the value click "Set" again. Enabling &quot;Update all initial view parameters when saving &quot; will set the initial view to the current view when saving the workspace.</li>
+                        <li>Advanced: Here, one can unlock more powerful tools like copying the vertices of timepoint tours (see <a href="#help-dialog-templates">Copy Vertices</a>) or rescanning the workspace for new files which will then be added as panoramas.</li>
+                    </ul>
+            
                     <!-- Copy Vertices -->
                     <h4 id="help-dialog-templates">Copy Vertices</h4>
-                    <p>This section describes the internal procedure for copying vertices. See the end of the <a href="#help-dialog-spatial-groups">Spatial Groups</a> section on how to apply it.</p>
-                    <p>We iterate over all the vertices of the source group. We check whether there is a corresponding vertex in the destination group. If "update colocated" is checked all vertices within the connection radius are considered "corresponding". The closest one is chosen. If unchecked, the coordinates must be identical.</p>
+                    <p>To unlock this option, go to setting, advanced and check &quot;Enable batch copying of vertices&quot;</p>
+                    <p>This section describes the internal procedure for copying vertices. See the end of the <a href="#help-dialog-spatial-groups">Timepoint Tours</a> section on how to apply it.</p>
+                    <p>We iterate over all the vertices of the source tour. We check whether there is a corresponding vertex in the destination tour. If "update colocated" is checked all vertices within the connection radius are considered "corresponding". The closest one is chosen. If unchecked, the coordinates must be identical.</p>
                     <p>A new vertex is created if "create" is checked, there is no corresponding vertex and the type of the vertex is one of the selected types.</p>
                     <p>An existing vertex is updated, if "update is checked, there is a corresponding vertex and the type of the vertex is one of the selected types.</p>
                     <p>Only the selected values (via the checkboxes "coordinates", "image attributes", vertex.data."northOffset", vertex.data."vOffset", vertex.data."vaov", and vertex.data."type") are used for creation or update.</p>
                     <p>Afterwards, the edges are handled. The procedure is merely the same. Searching for corresponding vertices is also performed, for start and end of the edge. Based on start and end the corresponding edge is determined.</p>
                     <p>The type of the vertex / edge cannot be copied since it is derived (for instance a vertex of type "panorama" becomes "placeholder" when the image attributes are not copied).</p>
 
-                    <!-- Hints regarding the filesystem -->
-                    <h3 id="help-dialog-filesystem">Hints regarding the filesystem</h3>
-                    <ul>
-                        <li>In the beginning, select one single folder.</li>
-                        <li>Save the tour.json file into the above selected folder. Do not change the name. This download option is the only way to write something on your computer's filesystem.</li>
-                        <li>Save regularly. All unsaved data is lost when the browser closes or freezes.</li>
-                        <li>When choosing the image for an panorama, use the "Browser" and not the "Disk" tab.</li>
-                        <li>When specifying paths, you cannot use absolute paths or navigate upwards.</li>
-                        <li>There is no write access to the filesystem. Whatever you do in the browser window, it will never modify your computer's filesystem.</li>
-                    </ul>
-                    <p>Background: The browser offers a sandboxed filesystem. Files and folders only become available when the user issues some upload action. Then, the browser can read but not write those files. Moreover, the path of the files is truncat. Folders are the only exception since they can be scanned recursively. This can be used to get access to a subtree of the filesystem.</p>
-                    <p>When importing additional files, there is no way to tell (unless loading and comparing all of them) whether they are identical or different to already imported ones. Anyway, the new files are placed at the top most position of the local directory tree. If you import tour.json files from different parts of the computer's filesystem, you will only see one tour.json file under root since the latter import will override the first one. The second import will overwrite the first one since it thinks this is the same file.</p>
-                    <p>Conclusion: When editing tours spanning several folders, check that all the paths in tour.json are correct and the file itself is placed in the correct destination.</p>
-
-
+                    <!-- Exporting Project -->
+                    <h3 id="help-dialog-export">Exporting the project</h3>
+                    <p>Open settings, file and click &quot;Export Project&quot;. The export dialog is not available when run in browser.</p>
+                    <p>The main purpose of the export dialog is to tile the panorama image into samller ones. The advantage is that panoramas are loaded much faster and require less bandwidth to be displayed. To speed up the export process, increse the number of threads. But keep in mind that this requires more main memory. When maximum width or maximum height is set, the base image is resized (but aspect ratio kept) in memory before tiling.</p>
+                    <p>Once the export is started, one can abort it any time. The processed panoramas are then kept and one can resume by starting a new export to the same destination. If the progress window is closed while the export is running, opening the export dialog will open the progress dialog.</p>
                 </div>
             </div>
         </div>
@@ -1471,5 +1765,28 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
         </div>
     </div>
     <!-- /#save-tiles-dialog -->
+    <!-- #leave-confirmation-dialog -->
+    <div id="leave-confirmation-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <span data-bind="visible: !saveError()">There are unsaved changes. Do you want to save them before closing?</span>
+                    <div data-bind="visible: !!saveError()">
+                        <span>An error occured while saving.</span>
+                        <div class="alert alert-danger">
+                            <span data-bind="text: saveError()"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: save, visible: !saveError()" class="btn btn-primary" data-dismiss="modal">Yes</button>
+                    <button data-bind="click: forceClose" class="btn btn-secondary" data-dismiss="modal">No</button>
+                    <button class="btn btn-secondary" data-dismiss="modal">Back</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /#leave-confirmation-dialog -->
 </body>
 </html>

@@ -46,10 +46,14 @@
             return $(this.getContainer().parentElement).hasClass('widget-minimap');
         },
 
+        isInTransition: function () {
+            return this._inTransition;
+        },
+
         toggleMinimap: function (options) {
+            this._inTransition = true;
             $(this.getContainer().parentElement).toggleClass('widget-minimap');
             this.fire('mapsizechange');
-            this.invalidateSize();
         },
     });
 
@@ -62,6 +66,7 @@
             this.minimapControl = new L.Control.Minimap(this.options.minimapControl);
             this.addControl(this.minimapControl);
         }
+        $(this.getContainer().parentElement).on('transitionend', () => { this._inTransition = false; })
     });
 
     L.control.minimap = function (options) {

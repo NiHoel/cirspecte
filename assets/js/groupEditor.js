@@ -14,14 +14,13 @@ class groupEditor extends observable {
 
     /**
      *
-     * @param {configurator} settings
+     * @param {configurator} modules.settings
      * @param {graph} modules.model
      * @param {filesystem} modules.filesys
      * @param {algorithms} modules.alg
      */
-    constructor(settings, modules) {
+    constructor(modules) {
         super();
-        this.settings = settings;
         this.modules = modules;
 
         this.prev = {
@@ -41,7 +40,7 @@ class groupEditor extends observable {
                 id: '', name: '', description: '', type: temporalGroup.prototype.TOUR, superGroup: '', autoConnectColocated: true, colocatedRadius: 3, multiselect: false, exclusiveTemporalSubgroups: false
             },
             spatialGroup: {
-                id: '', name: '', description: '', type: spatialGroup.prototype.ROUTE, background: null, superGroup: '', path: '', timeslot: ko.observable(moment())
+                id: '', name: '', description: '', type: spatialGroup.prototype.ROUTE, background: null, superGroup: '', path: ko.observable(''), timeslot: ko.observable(moment())
             }
         };
 
@@ -49,6 +48,10 @@ class groupEditor extends observable {
             temporalGroup: ko.observable(Object.assign({}, this.default.temporalGroup)),
             spatialGroup: ko.observable(Object.assign({}, this.default.spatialGroup))
         };
+
+        this.errors = {
+            path: ko.observable("")
+        }
 
         this.spatialGroupTemplate = ko.observable();
 
@@ -165,8 +168,9 @@ class groupEditor extends observable {
                         .do(f => {
                             if (!f.isType([file.prototype.JPG, file.prototype.PNG]))
                                 throw new error(this.ERROR.UNSUPPORTED_IMAGE_TYPE, "", f.name);
-                            if (!f.getParent().isAncestor(v.spatialGroup.images.directory))
-                                throw new error(this.ERROR.INVALID_PATH, f.getPath() + " is not contained in " + v.spatialGroup.images.directory.getPath(), f.getPath()); 
+                            var parentDir = v.spatialGroup.images.directory || v.spatialGroup.directory || (this.current.spatialGroup() ? this.current.spatialGroup().images.directory : modules.filesys.getWorkspace());
+                            if (!f.getParent().isAncestor(parentDir))
+                                throw new error(this.ERROR.INVALID_PATH, f.getPath() + " is not contained in " + parentDir.getPath(), f.getPath()); 
                         })
                         .map(f => {
                             var vert = modules.model.createVertex(Object.assign({}, v.toJSON(), {
@@ -186,7 +190,7 @@ class groupEditor extends observable {
                             return vert;
                         })
                 )
-                .filter(() => this.settings.autoDisplayPanorama())
+                .filter(() => this.modules.settings.autoDisplayPanorama())
                 .do(v => vertexSelector.next(v))
             ,
 
@@ -207,7 +211,7 @@ class groupEditor extends observable {
                 .filter(() => this.isShown())
                 .inhibitBy(modules.map.observe(point, modules.map.CLICK), 100)
                 .inhibitBy(modules.map.observe(line, modules.map.CLICK), 100)
-                .filter(() => this.settings.createVertexOnMapClick())
+                .filter(() => this.modules.settings.createVertexOnMapClick())
                 .filter(() => this.current.spatialGroup() != null)
                 .do(() => modules.hist.commit())
                 .map(c => modules.model.createVertex({ coordinates: c, type: vertex.prototype.PLACEHOLDER, spatialGroup: this.current.spatialGroup() }))
@@ -227,11 +231,9 @@ class groupEditor extends observable {
 						modules.map.setEditable(s.vertex);
 					
 					this.current.vertex = s.vertex;
-				}),
+                }),
         ];
 		
-		
-
         this.current.spatialGroup.subscribe(sg => {
             if (this.prev.spatialGroup)
                 this.unsetEditable(this.prev.spatialGroup).subscribe();
@@ -361,7 +363,7 @@ class groupEditor extends observable {
     createSpatialGroup() {
         this.modules.hist.commit();
         try {
-            var sg = this.modules.model.createSpatialGroup(Object.assign({}, this.editable.spatialGroup(), { timeslot: this.editable.spatialGroup().timeslot() }));
+            var sg = this.modules.model.createSpatialGroup(Object.assign({}, this.editable.spatialGroup(), { timeslot: this.editable.spatialGroup().timeslot(), path: this.editable.spatialGroup().path() }));
             setTimeout(() => {
                 this.current.spatialGroup(sg);
                 this.modules.timeline.toggleSelection(sg.item, true);
@@ -439,11 +441,11 @@ class groupEditor extends observable {
      * @returns {Rx.Observable<vertex>}
      */
     createVertex(g, f) {
-
+        var parentDir = this.current.spatialGroup() ? this.current.spatialGroup().images.directory : modules.filesys.getWorkspace();
         if (f && !f.isType([file.prototype.JPG, file.prototype.PNG]))
             throw new error(this.ERROR.UNSUPPORTED_IMAGE_TYPE, "", f.name);
-        if (f && !f.getParent().isAncestor(g.images.directory))
-            throw new error(this.ERROR.INVALID_PATH, f.getPath() + " is not contained in " + g.images.directory.getPath(), f.getPath());
+        if (f && !f.getParent().isAncestor(parentDir))
+            throw new error(this.ERROR.INVALID_PATH, f.getPath() + " is not contained in " + parentDir.getPath(), f.getPath());
 
         if (f instanceof file && f.isType([file.prototype.JPG, file.prototype.PNG])) {
             var jsonVertex = {
@@ -492,10 +494,17 @@ class groupEditor extends observable {
                 jsonVertex.spatialGroup = g;
                 var v;
 
-                if (this.settings.copySceneAttributes() && this.modules.panorama.getScene()) {
+                if (this.modules.settings.copySceneAttributes() && this.modules.panorama.getScene()) {
                     v = this.createVertexFromTemplate(this.modules.panorama.getVertex(), jsonVertex);
-                    if (this.settings.getTemplateOptions().deleteOriginal)
+
+                    if (f) {
+                        delete v.image.file; // ensure a relink with the new file
+                        this.modules.filesys.link(v, f);
+                    }
+
+                    if (this.modules.settings.getTemplateOptions().deleteOriginal)
                         this.modules.model.deleteVertex(this.modules.panorama.getVertex());
+
                 } else {
                     v = this.modules.model.createVertex(jsonVertex);
                 }
@@ -514,10 +523,10 @@ class groupEditor extends observable {
      * @returns {vertex}
      */
     createVertexFromTemplate(template, defaultConfig = {}) {
-        var mask = this.settings.getTemplateMask();
+        var mask = this.modules.settings.getTemplateMask();
         mask.type = true;
         if (defaultConfig.file) delete mask.path;
-        var distanceThreshold = this.settings.getTemplateOptions().colocated ? this.current.spatialGroup().superGroup.colocatedRadius : 0;
+
         defaultConfig = this.assign(defaultConfig, template, mask);
         var v = this.modules.model.createVertex(defaultConfig);
         this.createEdgesFromTemplate(template, v);
@@ -531,8 +540,8 @@ class groupEditor extends observable {
      * @param {vertex} target
      */
     createEdgesFromTemplate(template, target) {
-        var distanceThreshold = this.settings.getTemplateOptions().colocated ? this.current.spatialGroup().superGroup.colocatedRadius : 0;
-        var mask = this.settings.getTemplateMask().outgoingEdges;
+        var distanceThreshold = this.modules.settings.getTemplateOptions().colocated ? this.current.spatialGroup().superGroup.colocatedRadius : 0;
+        var mask = this.modules.settings.getTemplateMask().outgoingEdges;
         template.forEach(e => {
             if (mask.types.indexOf(e.type) !== -1) {
                 //if 'to' is in the template group, choose corresponding vertex of the group of 'v' to recreate the graph, otherwise ('to' is in a different group) just use 'to'
@@ -565,7 +574,13 @@ class groupEditor extends observable {
             .last()
             .mergeMap(() => g.images.directory.scan({ enforce: true, onlyNewFiles: true }))
             .mergeMap(entry => this.createVertex(this.current.spatialGroup(), entry))
-            .subscribe();
+            .defaultIfEmpty(null)
+            .last()
+            .filter(v => v instanceof vertex && this.modules.settings.autoDisplayPanorama())
+            .mergeMap(v => this.modules.panorama.loadScene(v))
+            .subscribe({
+                error: err => this.modules.logger.log(err)
+            });
     }
 
     /**
@@ -583,7 +598,7 @@ class groupEditor extends observable {
             .mergeMap(entry => this.createVertex(g, entry))
             .defaultIfEmpty(null)
             //.first() // filesys might not complete
-            .filter(v => v instanceof vertex && this.settings.autoDisplayPanorama())
+            .filter(v => v instanceof vertex && this.modules.settings.autoDisplayPanorama())
             .mergeMap(v => this.modules.panorama.loadScene(v))
             .subscribe();
     }
@@ -606,12 +621,33 @@ class groupEditor extends observable {
     }
 
     /**
+     * Opens the directory selector to choose a path that is associated to the current spatial group
+     * */
+    selectPath() {
+        modules.filesys.request({
+            parent: modules.filesys.getWorkspace(),
+            multi: false,
+            filter: { folders: true, files: false }
+        })
+            .subscribe(dir => {
+                if (!dir.isAncestor(modules.filesys.getWorkspace())) {
+                    this.errors.path(dir.getPath() + " is not contained in " + modules.filesys.getWorkspace().getPath());
+                } else {
+                    this.errors.path("");
+                    this.editable.spatialGroup().path(dir.getPath(modules.filesys.getWorkspace()));
+                    this.editable.spatialGroup().directory = modules.filesys.getWorkspace();
+                }
+                return null;
+            });
+    }
+
+    /**
      * Copies vertices from spatialGroupTemplate to current.spatialGroup applying the copy vertex options.
      * */
     applyTemplate() {
         this.modules.hist.commit();
-        var options = this.settings.getTemplateOptions();
-        var mask = this.settings.getTemplateMask();
+        var options = this.modules.settings.getTemplateOptions();
+        var mask = this.modules.settings.getTemplateMask();
         var distanceThreshold = options.colocated ? this.current.spatialGroup().superGroup.colocatedRadius : 0;
         var verticesToDelete = [];
         this.spatialGroupTemplate().forEach(src => {
@@ -627,12 +663,12 @@ class groupEditor extends observable {
                     if (mask.data)
                         this.modules.model.updateData(targ, this.assign(targ.data, src.data, mask.data));
                     if (mask.path)
-                        this.modules.model.updatePath(targ, src.path);
+                        this.modules.model.updatePath(targ, src.path); // TODO method does not exist
                     this.createEdgesFromTemplate(src, targ);
                     copied = true;
                 }
 
-                if (copied && this.settings.getTemplateOptions().deleteOriginal)
+                if (copied && this.modules.settings.getTemplateOptions().deleteOriginal)
                     verticesToDelete.push(src);
             }
         });

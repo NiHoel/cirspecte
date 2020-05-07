@@ -173,8 +173,19 @@ class panoramaViewer extends observable {
 
         this.scene = null;
 
+        this.modules.settings.enableOrientation.subscribe(val => {
+            if (this.viewer) {
+                this.viewer.setOrientationOnByDefault(val);
+                if (val)
+                    this.viewer.startOrientation();
+                else
+                    this.viewer.stopOrientation();
+            }
+        })
+
         // the settings from the tour file are applied in common.js after reading the file
-        // therefore no listeners to the configurator are established
+
+
     }
 
     /**
@@ -236,6 +247,13 @@ class panoramaViewer extends observable {
         var cfg = Object.assign({}, v.data, config);
         delete cfg.reload;
         let width = v.getImageConfig().width;
+        if (!width) {
+            if (v.data.multiRes) {
+                width = v.data.multiRes.originalWidth || 4 * v.data.multiRes.cubeResolution;
+            } else {
+                width = 4096;
+            }
+        }
         cfg.northOffset = cfg.northOffset || 0;
         cfg.vOffset = cfg.vOffset || 0;
         cfg.pitch = cfg.pitch || (this.scene ? this.viewer.getPitch() : 0);
@@ -445,7 +463,7 @@ class panoramaViewer extends observable {
         if (!base.file)
             throw new error(panoramaViewer.prototype.ERROR.NO_IMAGE, "", v);
 
-        return base.file.load()
+        return base.file.readAsBlob()
             .mergeMap(file => Rx.Observable.create(observer => {
                 //if (config.xmp)
                 //    EXIF.enableXmp();
@@ -472,7 +490,10 @@ class panoramaViewer extends observable {
                 if (file.exifdata.PixelXDimension && file.exifdata.PixelXDimension) {
                     v.image.width = file.exifdata.PixelXDimension;
                     v.image.height = file.exifdata.PixelYDimension;
+                } else if (config.forceResolution) {
+                    throw "Exif data does not contain height or width";
                 }
+
                 if (config.xmp) {
                     return algorithms.parseGPanoXMP(base.file);
                 } else {
@@ -626,7 +647,7 @@ class panoramaViewer extends observable {
         });
     }
 
-   
+
 
     /**
      * Center view in the direction the hotspot points to.
@@ -668,6 +689,12 @@ class panoramaViewer extends observable {
         var obs = this.modules.filesys.prepareFileAccess(v);
         if (this.config.tileResolution && (v.data.type == "equirectangular" || !v.data.type))
             obs = obs.mergeMap(() => this.autoTile(v, config));
+        else if (v.data.type.startsWith('multires'))
+            obs = obs.map(v => {
+                var s = new scene(v, this.generatePanoramaConfig(v, config));
+                s.multiRes.loader = this.createMultiresLoader(s);
+                return s;
+            })
         else
             obs = obs.mergeMap(v => this.modules.filesys.loadImage(v))
                 .mergeMap(v => panoramaViewer.resize(v))
@@ -684,6 +711,12 @@ class panoramaViewer extends observable {
                 Object.assign(cfg.default, this.config.default);
                 cfg['scenes'][newScene.id] = newScene;
                 cfg['default']['firstScene'] = newScene.id;
+                cfg['default']['orientationOnByDefault'] = this.modules.settings.enableOrientation();
+
+                if (this.config.default.interpolateBetweenTiles == null) {
+                    cfg['default']['interpolateBetweenTiles'] = !platform.isMobile;
+                }
+
 
                 /** @type {pannellum.Viewer} */
                 this.viewer = pannellum.viewer(this.domElement, cfg);
@@ -698,8 +731,8 @@ class panoramaViewer extends observable {
                     });
 
                     if (this.scene.vertex !== newScene.vertex) {
-						if(this.scene.vertex.image.file)
-							delete this.scene.vertex.image.file.img;
+                        if (this.scene.vertex.image.file)
+                            delete this.scene.vertex.image.file.img;
                         delete this.scene.vertex.scene;
                         delete this.scene.base;
                         delete this.scene.thumb;
@@ -818,7 +851,7 @@ class panoramaViewer extends observable {
     /**
      * 
      * @param {scene} s
-     * @returns {function(object, Image) : Promise<ImageData>} - A function that returns the specified tile from a hierarchy of tiles that is created on the file from the image.
+     * @returns {Rx.Observable<function(object, Image) : Promise<ImageData>>} - A function that returns the specified tile from a hierarchy of tiles that is created on the file from the image.
      */
     createLoader(s) {
         let v = s.vertex;
@@ -836,9 +869,9 @@ class panoramaViewer extends observable {
                 if (!s.base.img) {
                     s.base.file.readAsImage()
                         .catch(err => {
-				this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.base.file.getPath(), err));
-				return Rx.Observable.empty();
-			})
+                            this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.base.file.getPath(), err));
+                            return Rx.Observable.empty();
+                        })
                         .subscribe(img => s.base.imgObs.next(img));
                 }
             }
@@ -847,14 +880,14 @@ class panoramaViewer extends observable {
         s.thumb = v.getThumbConfig();
 
 
-        if (s.thumb.file && s.thumb.file != s.base.file) {
+        if (s.thumb.file && !s.thumb.file.equals(s.base.file)) {
             s.thumb.imgObs = new Rx.ReplaySubject(1, null /* unlimited time buffer */,
                 Rx.Scheduler.queue);
             s.thumb.file.readAsImage()
                 .catch(err => {
-			this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.thumb.file.getPath(), err));
-			return Rx.Observable.empty();
-		})
+                    this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.thumb.file.getPath(), err));
+                    return Rx.Observable.empty();
+                })
                 .subscribe(img => s.thumb.imgObs.next(img));
             s.thumb.imgObs.subscribe(img => s.thumb.img = img);
         } else {
@@ -902,7 +935,7 @@ class panoramaViewer extends observable {
                 }
                 try {
                     this.loaderContext.drawImage(img, -tileResolution * node.x, -tileResolution * node.y, Math.ceil(width * f), Math.ceil(height * f));
-                    resolve(this.loaderContext.getImageData(0, 0, this.loaderCanvas.width, this.loaderCanvas.height));
+                    createImageBitmap(this.loaderCanvas).then(resolve);
                 } catch (e) {
                     reject(e);
                 }
@@ -971,12 +1004,218 @@ class panoramaViewer extends observable {
                 };
             }
 
-            return this.createLoader(newScene)
+            var obs;
+            if (typeof OffscreenCanvas !== 'undefined')
+                obs = this.createWebworkerLoader(newScene);
+            else
+                obs = this.createLoader(newScene);
+
+            return obs
                 .do(loader => newScene.multiRes.loader = loader)
                 .mapTo(newScene);
         });
     }
 
+
+
+    /**
+   * 
+   * @param {scene} s
+   * @returns {Rx.Observable<function(object, Image) : Promise<ImageData>>} - A function that returns the specified tile from a hierarchy of tiles that is created on the file from the image.
+   */
+    createWebworkerLoader(s) {
+        let v = s.vertex;
+
+        s.base = v.getImageConfig();
+        s.thumb = v.getThumbConfig();
+
+        var init = {
+            width: s.multiRes.originalWidth,
+            height: s.multiRes.originalHeight,
+            tileResolution: s.multiRes.tileResolution,
+            maxLevel: s.multiRes.maxLevel,
+            type: "init"
+        }
+
+
+        if (init.width * init.height > 200000000) {
+            // Otherwise Firefox shows a black image
+            this.modules.logger.log(new warning(this.ERROR.IMAGE_TOO_BIG, "Resolution should be less than 200 megapixel."));
+            console.warn(this.ERROR.IMAGE_TOO_BIG, s);
+        }
+
+        if (this.promises) {
+            for (var promise of this.promises.values())
+                promise.reject();
+
+            delete this.promises;
+        }
+
+        if (!this.worker)
+            this.worker = algorithms.createInlineWorker(async function (node) {
+                var processRequest = async node => {
+                    let f = Math.pow(2, node.level - this.maxLevel);
+                    var img;
+                    if (this.thumb && (node.level == 1 || width * f <= this.thumb.width))
+                        img = this.thumb;
+                    else {
+                        img = this.img;
+                    }
+
+                    if (!img) {
+                        this.requestQueue.push(node);
+                        return;
+                    }
+
+                    this.canvas.width = Math.min(this.tileResolution, Math.ceil(this.width * f) - this.tileResolution * node.x);
+                    this.canvas.height = Math.min(this.tileResolution, Math.ceil(this.height * f) - this.tileResolution * node.y);
+                    if (!this.canvas.width || !this.canvas.height) {
+                        node.error = "tile width: " + this.canvas.width + ", height: " + this.canvas.height;
+                        self.postMessage(node);
+                        return;
+                    }
+                    try {
+                        this.ctx.drawImage(img, -this.tileResolution * node.x, -this.tileResolution * node.y, Math.ceil(this.width * f), Math.ceil(this.height * f));
+                        node.img = await createImageBitmap(canvas);
+                        self.postMessage(node);
+                    } catch (e) {
+                        node.error = e;
+                        delete node.img;
+                        self.postMessage(node);
+                    }
+                }
+
+                if (node.type === "init") {
+                    this.maxLevel = node.maxLevel;
+                    this.width = node.width;
+                    this.height = node.height;
+                    this.tileResolution = node.tileResolution;
+                    this.canvas = new OffscreenCanvas(100, 100);
+                    this.ctx = this.canvas.getContext('2d');
+                    this.requestQueue = [];
+                    delete this.thumb;
+                    delete this.creatingThumb;
+                    delete this.img;
+                } else if (node.type === "thumb") {
+                    if (this.thumb || this.creatingThumb)
+                        return;
+
+                    this.creatingThumb = true;
+                    this.thumb = await createImageBitmap(node.thumb);
+                    this.creatingThumb = false;
+                    self.postMessage("init");
+                } else if (node.type === "img") {
+                    if (this.img)
+                        return;
+
+                    this.img = await createImageBitmap(node.img);
+
+                    if (!this.thumb && !this.creatingThumb) {
+                        this.creatingThumb = true;
+                        var thumb = new OffscreenCanvas(100, 100);
+                        thumb.width = Math.ceil(4 * this.tileResolution);
+                        thumb.height = Math.ceil(4 * this.tileResolution / this.width * this.height);
+                        thumb.getContext('2d').drawImage(this.img, 0, 0, Math.ceil(4 * this.tileResolution), Math.ceil(4 * this.tileResolution / this.width * this.height));
+                        this.thumb = thumb;
+                        this.creatingThumb = false;
+
+                        self.postMessage("init");
+                    }
+
+                    this.requestQueue.forEach(n => processRequest(n));
+                    this.requestQueue = [];
+
+                } else {
+                    processRequest(node);
+                }
+
+            }, [algorithms]);
+
+        this.worker.postMessage(init);
+
+
+
+
+
+        let loader = (node, img) => new Promise((resolve, reject) => {
+            if (!this.promises || node.level > init.maxLevel || node.level < 0) {
+                reject();
+                return;
+            }
+
+            if (this.promises.has(node.path))
+                this.promises.get(node.path).reject();
+
+            this.promises.set(node.path, { resolve: resolve, reject: reject });
+
+            this.worker.postMessage(node);
+        });
+
+        var subject = new Rx.Subject();
+
+        this.worker.onmessage = e => {
+            var node = e.data;
+            if (node === "init") {
+                this.promises = new Map();
+                subject.next(true);
+                subject.complete();
+                return;
+            }
+            if (this.promises && this.promises.get(node.path)) {
+                var prom = this.promises.get(node.path);
+                if (node.img) {
+                    prom.resolve(node.img);
+                } else {
+                    prom.reject();
+                    console.log(node.error);
+                }
+                this.promises.delete(node.path);
+            }
+        }
+
+
+
+        if (s.thumb.file && !s.thumb.file.equals(s.base.file)) {
+            s.thumb.file.readAsBlob()
+                .catch(err => {
+                    this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.thumb.file.getPath(), err));
+                    return Rx.Observable.empty();
+                })
+                .subscribe(blob => this.worker.postMessage({ thumb: blob, type: "thumb" }));
+        }
+
+        s.base.file.readAsBlob()
+            .catch(err => {
+                this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.base.file.getPath(), err));
+                return Rx.Observable.empty();
+            })
+            .subscribe(blob => this.worker.postMessage({ img: blob, type: "img" }));
+
+
+        return subject.mapTo(loader);
+
+
+    }
+
+    /**
+ * 
+ * @param {scene} s
+ * @returns {function(object, Image) : Promise<Image>} - A function that returns the specified tile from a hierarchy of tiles that is created on the file from the image.
+ */
+    createMultiresLoader(s) {
+        return (node, img) => new Promise((resolve, reject) => {
+            if (s.vertex && s.vertex.image.directory)
+                s.vertex.image.directory.searchFile(node.uri)
+                    .mergeMap(f => f.readAsImage())
+                    .subscribe({
+                        next: img => resolve(img),
+                        error: () => reject(),
+                        complete: () => reject()
+                    });
+            else
+                reject();
+        });
+    }
 }
 
 panoramaViewer.prototype.CLICK = 'click';

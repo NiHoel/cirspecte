@@ -37,6 +37,7 @@ class commandHistory extends observable {
         this.undoStackCount = ko.observable(0);
         this.redoStackCount = ko.observable(0);
         this.mode = this.MODES.NORMAL;
+        this.dirty = false;
 
         this.initialize();
         ko.applyBindings(this, $('#undo-button')[0]);
@@ -50,6 +51,9 @@ class commandHistory extends observable {
      * @param {Function} command
      */
     add(command) {
+        if (this.undoStack.length || this.redoStack.length) // ignore loading model from file
+            this.dirty = true;
+
         if (this.mode === this.MODES.NORMAL) {
             this.undoRoutine.push(command);
             this.redoRoutine = [];
@@ -95,6 +99,7 @@ class commandHistory extends observable {
             throw new error(this.ERROR.EMPTY_STACK);
 
         this.mode = this.MODES.UNDOING;
+        this.dirty = true;
         var command;
         while (command = routine.pop()) {
             try {
@@ -119,6 +124,7 @@ class commandHistory extends observable {
             throw new error(this.ERROR.EMPTY_STACK);
 
         this.mode = this.MODES.REDOING;
+        this.dirty = true;
         var command;
         while (command = routine.pop()) {
             try {
@@ -140,6 +146,7 @@ class commandHistory extends observable {
         this.undoRoutine = [];
         this.redoRoutine = [];
         this.mode = this.MODES.NORMAL;
+        this.dirty = false;
 
         this.computeCounters();
     }

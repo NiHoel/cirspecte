@@ -15,47 +15,91 @@ class configurator {
 
     constructor(config = {}) {
 
-        this.vtempConfigurator = {
-            vtypes: [vertex.prototype.PANORAMA, vertex.prototype.LANDMARK, vertex.prototype.PLACEHOLDER],
-            etypes: [edge.prototype.ROUTE, edge.prototype.SPATIAL, edge.prototype.LANDMARK],
+        this.vtempConfigurator = ko.mapping.fromJS({
 
-            update: ko.observable(false),
-            create: ko.observable(false),
-            colocated: ko.observable(),
-            deleteOriginal: ko.observable(false),
+            update: false,
+            create: false,
+            colocated: false,
+            deleteOriginal: false,
 
             settings: {
-                types: ko.observableArray([]),
-                coordinates: ko.observable(false),
-                path: ko.observable(false),
-                file: ko.observable(false), // never copy file handle
+                types: [],
+                coordinates: false,
+                path: false,
+                file: false, // never copy file handle
                 outgoingEdges: {
-                    types: ko.observableArray([]),
+                    types: [],
                     data: {
-                        pitch: ko.observable(false),
-                        yaw: ko.observable(false)
+                        pitch: false,
+                        yaw: false
                     }
                 },
                 data: {
-                    northOffset: ko.observable(false),
-                    vOffset: ko.observable(false),
-                    vaov: ko.observable(false),
-                    type: ko.observable(false),
+                    northOffset: false,
+                    vOffset: false,
+                    vaov: false,
+                    type: false,
                 }
             }
+        });
+
+        this.vtempConfigurator.vtypes = [vertex.prototype.PANORAMA, vertex.prototype.LANDMARK, vertex.prototype.PLACEHOLDER];
+        this.vtempConfigurator.etypes = [edge.prototype.ROUTE, edge.prototype.SPATIAL, edge.prototype.LANDMARK];
+
+
+        var subscribeRecursive = (obj, subscription) => {
+            for (var attr in obj) {
+                if (obj[attr].subscribe)
+                    obj[attr].subscribe(subscription);
+                else if (typeof obj[attr] === 'object')
+                    subscribeRecursive(obj[attr], subscription);
+
+            }
+        };
+
+        subscribeRecursive(this.vtempConfigurator, () => {
+            localStorage.setItem("vtempConfigurator", ko.mapping.toJSON(this.vtempConfigurator));
+        });
+
+        this.localOptions = {
+            hideMap: false,
+            fullscreen: false,
+            aggregateItems: true,
+            persistLandmarks: false,
+            copySceneAttributes: false,
+            createVertexOnMapClick: true,
+            autoDisplayPanorama: true,
+            autoSave: true,
+            autoSaveInterval: 5,
+            autoSaveSelectedItems: true,
+            autoSaveStartupView: false,
+            showGroupOnEditorSelection: true,
+            loadRecentWorkspace: false,
+            trackChanges: false,
+            enableBatchCopying: false,
+            enableOrientation: true,
+            enableGPS: false,
+            requiredGPSAccuracy: 10,
+            currentGPSAccuracy: 0,
+            recentWorkspace: null
         }
 
-        this.hideMap = ko.observable(false);
-        this.fullscreen = ko.observable(false);
-        this.aggregateItems = ko.observable(false);
-        this.persistLandmarks = ko.observable(false);
-        this.copySceneAttributes = ko.observable(false);
-        this.createVertexOnMapClick = ko.observable(false);
-        this.autoDisplayPanorama = ko.observable(false);
-        this.autoSaveSelectedItems = ko.observable(false);
-        this.showGroupOnEditorSelection = ko.observable(false);
+        ko.mapping.fromJS(this.localOptions, {}, this);
 
-        ko.mapping.fromJS(config, {}, this);
+        if (localStorage.getItem("settings") || localStorage.getItem("vtempConfigurator")) {
+            ko.mapping.fromJSON(localStorage.getItem("settings"), {}, this);
+            ko.mapping.fromJSON(localStorage.getItem("vtempConfigurator"), {}, this.vtempConfigurator);
+        }
+        else
+            ko.mapping.fromJS(config, {}, this);
+
+        this.fullscreen(false);
+
+        for (var attr in this.localOptions) {
+            this[attr].subscribe(() => {
+                localStorage.setItem("settings", JSON.stringify(this.getLocalOptions()));
+            })
+        }
 
         this.timeline = ko.mapping.fromJS({
             max: undefined,
@@ -90,6 +134,14 @@ class configurator {
             $('.js-select').select2({
                 dropdownAutoWidth: true
             });
+    }
+
+    getLocalOptions() {
+        var settings = {};
+        for (var attr in this.localOptions) {
+            settings[attr] = this[attr]();
+        }
+        return settings;
     }
 
     getTemplateMask() {

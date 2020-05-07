@@ -32,7 +32,7 @@ class logger extends observable {
         else if (typeof message !== 'object')
             this.logs.push(new error(null, message));
         else
-            this.logs.push(new error(null, message.description || "unknown error"));
+            this.logs.push(new error(null, message.description || "unknown error", error));
     }
 
     /**
@@ -40,14 +40,17 @@ class logger extends observable {
      * @param {error} err
      * @returns {string}
      */
-    errorToString(err) {
+    static errorToString(err) {
         var res = "";
         if (err.type)
             res += err.type + ": ";
         if (err.message) {
             res += err.message;
             if (err.data)
-                res += '(' + err.data + ')';
+                if (typeof err.data === 'object')
+                    res += JSON.stringify(err.data, null, 4);
+                else
+                    res += '(' + err.data + ')';
         } else {
             res += err.data;
         }

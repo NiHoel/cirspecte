@@ -80,6 +80,7 @@ section {
     cursor: pointer;
     background: 0 0;
     border: 0;
+    padding: 0px 12px;
 }
 
 .btn-center-spaced {
@@ -99,6 +100,13 @@ section {
     -o-align-items: center;
     align-items: center;
     margin-top: 2em;
+}
+
+.invalid-input {
+    width: 100%;
+    margin-top: .25rem;
+    font-size: 80%;
+    color: #dc3545;
 }
 
 /*************************/
@@ -195,18 +203,19 @@ div.hotspot-container:hover div.preview-tooltip:after {
 
 .pnlm-hotspot.pnlm-landmark {
     background-position: 0 0px;
-    background-color: #41db0c99;
+    background-color: rgba(65, 219, 12, 0.6);
+    ;
 }
 
 .pnlm-hotspot.pnlm-north {
     background-position: 0 0px;
-    background-color: #61b4e999;
+    background-color: rgba(97, 180, 233, 0.6);
 }
 
 .pnlm-hotspot.pnlm-edit {
     /*    background-position: 0 -156px */
     background-position: 0 0px;
-    background-color: #ffffff99;
+    background-color: rgba(255,255,255,0.6);
 }
 
 
@@ -228,11 +237,14 @@ div.hotspot-container:hover div.preview-tooltip:after {
 
 .timeline-item-content {
     color: white;
+    text-shadow: 1px 1px 1px #979797;
 }
 
 .timeline-item.timeline-range {
     background-color: #2E3A5E;
     border-color: #2E3A5E;
+    text-shadow: none;
+    cursor:pointer;
 }
 
 .timeline-item.timeline-selected, .timeline-item.timeline-point.timeline-selected, .timeline-nested-group {
@@ -245,29 +257,46 @@ div.hotspot-container:hover div.preview-tooltip:after {
     background-color: unset;
 }
 
-.timeline-item.timeline-dot {
-    border-width: 8px;
-    border-radius: 8px;
-}
- 
-.timeline-item.timeline-dot.timeline-selected {
-    border-color: #235dff;
-    background-color: #2386ff;
+.timeline-item.timeline-point {
+    cursor:pointer;
 }
 
-.timeline-item.timeline-selected .timeline-dot {
-    box-shadow: 0px 0px 8px 3px #fff785;
+.timeline-item.timeline-dot {
+    border-width: 3px;
+    border-radius: 8px;
+    width: 16px;
+    height: 16px;
+    border-color: white;
+    background-color: white;
+}
+
+.timeline-item.timeline-dot.timeline-selected {
+    border-color: #fff;
+    background-color: #555;
 }
 
 .timeline-item.timeline-selected .timeline-item-content {
-    text-shadow: 2px 2px 2px #fff785;
+    font-weight: bold;
 }
 
-/****************/
-/***  modals  ***/
-/****************/
+.timeline-item.timeline-dot.timeline-inactive {
+    border-color: #555;
+    background-color: #555;
+}
 
-.collapser  .glyphicon {
+.timeline-item.timeline-item-content.timeline-inactive {
+    color: #555;
+}
+
+.timeline-item.timeline-inactive .timeline-item-content {
+    color: #555;
+    text-shadow: 1px 1px 1px #fff;
+}
+
+    /****************/
+    /***  modals  ***/
+    /****************/
+    .collapser .glyphicon {
     display: none;
 }
 
@@ -283,4 +312,6 @@ div.hotspot-container:hover div.preview-tooltip:after {
     display: inline;
 }
 
-
+#sidebar-wrapper a {
+    color: #d5d5d5;
+}

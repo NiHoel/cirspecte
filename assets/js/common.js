@@ -15,15 +15,30 @@
 * @param {timelineViewer} modules.timeline
  * @param {navigationViewer} modules.nav
 */
-function animateLayout(settings, modules, startIndicators = Rx.Observable.empty(), endIndicators = Rx.Observable.empty()) {
+function animateLayout(settings, modules, responsiveElements = []) {
     window.requestAnimationFrame = window.requestAnimationFrame
         || window.mozRequestAnimationFrame
         || window.webkitRequestAnimationFrame
         || window.msRequestAnimationFrame
         || function (f) { return setTimeout(f, 1000 / 60); };
 
-    var animation = true;
-    var animationEnded = function () { animation = false; };
+    responsiveElements = responsiveElements.concat(
+        "#right-pane-wrapper",
+        "#topbar-wrapper",
+        "#bottombar-wrapper",
+        "#timeline",
+        ".widget-map"
+    )
+
+    var containers = [];
+    var bottombarCollapsed = $("#bottombar-wrapper").hasClass("collapsed");
+    for (var elem of responsiveElements) {
+        containers.push({
+            element: $(elem),
+            width: $(elem).width(),
+            height: $(elem).height()
+        });
+    }
 
     function isFullscreen() {
         return !!(document.fullscreen || document.mozFullScreen || document.webkitIsFullScreen || document.msFullscreenElement);
@@ -39,35 +54,36 @@ function animateLayout(settings, modules, startIndicators = Rx.Observable.empty(
         $('#content').height(height - $('#topbar-wrapper').height() - $('#bottombar-wrapper').height());
         $('#panorama').height($('#content').height());
 
-        modules.map.invalidateSize();
         modules.panorama.invalidateSize();
-        modules.timeline.invalidateSize();
+        modules.map.invalidateSize();
     };
 
 
     function animate() {
-        invalidateSize();
+        var changed = false;
+        for (var con of containers) {
+            var width = con.element.width();
+            var height = con.element.height();
 
-        if (animation)
-            window.requestAnimationFrame(animate);
+            if (width !== con.width || height !== con.height)
+                changed = true;
+
+            con.width = width;
+            con.height = height;
+        }
+
+        if (bottombarCollapsed !== $("#bottombar-wrapper").hasClass("collapsed")) {
+            bottombarCollapsed = $("#bottombar-wrapper").hasClass("collapsed");
+            changed = true;
+        }
+
+        if (changed)
+            invalidateSize();
+
+        window.requestAnimationFrame(animate);
     }
 
-    Rx.Observable.fromEvent($(window), 'resize')
-        .subscribe(ev => invalidateSize());
-
-    Rx.Observable.fromEvent($("#bottombar-expander"), 'click')
-        .merge(Rx.Observable.fromEvent($("#bottombar-collapser"), 'click'))
-        .merge(Rx.Observable.fromEvent($("#bottombar-expander"), 'touchend'))
-        .merge(Rx.Observable.fromEvent($("#bottombar-collapser"), 'touchend'))
-        .merge(Rx.Observable.fromEvent($(".widget-map"), 'transitionstart'))
-        .merge(modules.timeline.observe(modules.timeline.VALUE, modules.timeline.HEIGHTUPDATE))
-        .merge(startIndicators)
-        .subscribe(() => {
-            animation = true;
-            clearTimeout(animationEnded);
-            setTimeout(animationEnded, 1000); //timeout if there is no transitionend signal
-            animate();
-        });
+    animate();
 
     modules.panorama.observe(scene, modules.panorama.CREATE)
         .subscribe(() => {
@@ -75,14 +91,9 @@ function animateLayout(settings, modules, startIndicators = Rx.Observable.empty(
             invalidateSize();
         });
 
-    Rx.Observable.fromEvent($("#bottombar-wrapper"), 'transitionend')
-        .merge(Rx.Observable.fromEvent($(".widget-map"), 'transitionend'))
-        .merge(endIndicators)
-        .subscribe(() => {
-            animationEnded();
-        });
 
-    settings.hideMap.subscribe(hide => hide ? $('.widget-map').hide() : $('.widget-map').show()); //KoObservable
+
+
     settings.fullscreen.subscribe(fullscreen => {
         if (fullscreen == isFullscreen())
             return;
@@ -114,7 +125,6 @@ function animateLayout(settings, modules, startIndicators = Rx.Observable.empty(
         }
 
         $('#settings-dialog').modal('hide');
-        setTimeout(invalidateSize, 500);
     }); //KoObservable
 
     Rx.Observable.fromEvent($('#settings-dialog'), 'show.bs.modal')
@@ -184,6 +194,51 @@ function createCommonRoutines(modules, settings) {
                         .filter(v => v.id == initialScene);
                 }
             })
+            .do(() => {
+                try {
+                    var applicationDir = window.location.href;
+                    var lastSlash = applicationDir.lastIndexOf('/');
+                    var lastPoint = applicationDir.lastIndexOf('.');
+                    if (lastSlash >= 0 && lastPoint > lastSlash)
+                        applicationDir = applicationDir.substring(0, lastSlash);
+
+                    var scripts = ["dms.js", "vector3d.js", "latlon-ellipsoidal.js", "latlon-vincenty.js"]
+                        .map(s => "geodesy/" + s)
+                        .concat(["priority-queue.min.js"])
+                        .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
+                        .join(",");
+
+                    var worker = algorithms.createInlineWorker(json => {
+                        var model = new graph();
+                        var alg = new algorithms({
+                            model: model,
+                            logger: { log: console.log },
+                            map: { getBackground: () => { return null; } }
+                        });
+
+                        alg.loadGraph(json, new directory(""));
+                        var edges = alg.connectAllColocated();
+                        self.postMessage(edges.map(e => e.toJSON()));
+                    }, ["self.window = self;",
+                        "importScripts(" + scripts + ");",
+                        algorithms,
+                        "class observable{constructor(){}emit(){}}",
+                        graph, edge, vertex, spatialGroup, temporalGroup, directory]);
+
+                    worker.onmessage = msg => {
+                        for (var edge of msg.data)
+                            try {
+                                modules.model.createEdge(edge);
+                            } catch (e) { }
+
+                        worker.terminate();
+                    };
+
+                    worker.postMessage(modules.model.toJSON());
+                } catch (e) {
+                    console.log(e);
+                }
+            })
             .delay(1000)  // give filesystem enough time to register all files
             .mergeMap(v => modules.panorama.loadScene(v, settings.getPanoramaOptions()));
     }
@@ -209,7 +264,13 @@ function createCommonRoutines(modules, settings) {
         modules.model.observe(spatialGroup, modules.model.CREATE)
             .do(g => {
                 if (g.background && !(g.background instanceof background))
-                    g.background = modules.map.getBackground(g.background);
+                    try {
+                        g.background = modules.map.getBackground(g.background);
+                    } catch (e) {
+                        delete g.background;
+                        throw e;
+                    }
+
                 modules.map.createLayerGroup(g)
             }),
 
@@ -226,7 +287,13 @@ function createCommonRoutines(modules, settings) {
 
         modules.model.observe(spatialGroup, modules.model.CREATE)
             .filter(g => g.type !== spatialGroup.prototype.LANDMARK)
-            .mergeMap(g => modules.filesys.prepareDirectoryAccess(g))
+            .mergeMap(g => modules.filesys.prepareDirectoryAccess(g)
+                .catch(err => {
+                    modules.logger.log(err);
+                    modules.model.deleteSpatialGroup(g);
+                    return Rx.Observable.empty();
+                })
+            )
         ,
 
 
@@ -242,6 +309,9 @@ function createCommonRoutines(modules, settings) {
 
         modules.timeline.observe(item, modules.timeline.DESELECT)
             .do(i => modules.map.hideLayerGroup(i.spatialGroup)),
+
+        modules.timeline.observe(rangeItem, modules.timeline.CLICK)
+            .do(i => modules.timeline.expandRange(i)),
 
         // exclusive groups
         modules.timeline.observe(item, modules.timeline.SELECT)
@@ -279,12 +349,14 @@ function createCommonRoutines(modules, settings) {
 
         modules.map.observe(layerGroup, modules.map.SHOW)
             .map(l => l.spatialGroup)
+            .do(sg => modules.nav.notifySpatialGroupShown(sg))
             .filter(sg => sg.background)
             .do(sg => sg.background.addSpatialGroup(sg))
             .do(sg => modules.map.showBackground(sg.background)),
 
         modules.map.observe(layerGroup, modules.map.HIDE)
             .map(l => l.spatialGroup)
+            .do(sg => modules.nav.notifySpatialGroupHidden(sg))
             .filter(sg => sg.background)
             .do(sg => sg.background.removeSpatialGroup(sg))
             .filter(sg => !sg.background.hasShownSpatialGroups() && !sg.background.editable)
@@ -308,43 +380,48 @@ function createCommonRoutines(modules, settings) {
             })
         ,
 
+        modules.nav.observe(vertex, modules.nav.LOCATIONUPDATE)
+            .mergeMap(v => {
+                return modules.filesys.prepareFileAccess(v)
+                    .mergeMap(v => modules.panorama.loadScene(v))
+            }),
+
+        modules.filesys.observe(modules.filesys.DIRECTORY, modules.filesys.WORKSPACE)
+            .filter(() => modules.settings.loadRecentWorkspace())
+            .do(d => modules.settings.recentWorkspace(d.getPath())),
 
 
         // initial search for tours
         Rx.Observable.of(true)
             .mergeMap(() => {
                 if (config.tour && Object.entries(config.tour).length) // check config file
-                    return modules.filesys.getApplicationInternalDirectory()
+                    return modules.filesys.getApplicationDirectory()
+                        .map(dir => [config.tour, dir]);
+                else
+                    return Rx.Observable.throw();
+            })
+            .catch(() => {
+                var tourParam = new URLSearchParams(window.location.search).get("tour");
+                if (tourParam) // check query parameter
+                    return modules.filesys.getApplicationDirectory()
                         .mergeMap(dir => {
-                            modules.filesys.setWorkspace(dir);
-                            return loadTour(config.tour, dir)
+                            return dir.searchFile(tourParam)
+                                .map(f => [f, f.getParent()]);
                         });
                 else
                     return Rx.Observable.throw();
             })
-            .catch(() => Rx.Observable.of(true))
-            .mergeMap(() => {
-                var tourParam = new URLSearchParams(window.location.search).get("tour");
-                if (tourParam) // check query parameter
-                    return modules.filesys.getApplicationExternalDirectory()
+            .catch(() => {
+                if (modules.settings.recentWorkspace()) // check recent workspace
+                    return modules.filesys.getApplicationDirectory()
+                        .mergeMap(d => d.searchDirectory(modules.settings.recentWorkspace()))
                         .mergeMap(dir => {
-                            return dir.searchFile(tourParam)
-                                .mergeMap(f => {
-                                    modules.filesys.setWorkspace(dir);
-                                    return loadTour(f, f.getParent())
-                                })
+                            modules.filesys.setWorkspace(dir);
+                            return dir.searchFile("tour.json")
+                                .map(f => [f, dir]);
                         });
                 else
-                    return Rx.Observable.error();
-            })
-            .catch(() => {
-                return modules.filesys.getApplicationExternalDirectory() // check application directory
-                    .mergeMap(dir => dir.searchFile("files/tour.json")
-                        .mergeMap(f => {
-                            modules.filesys.setWorkspace(dir);
-                            return loadTour(f, dir)
-                        })
-                    );
+                    return Rx.Observable.throw();
             })
             .catch(() => {
                 return modules.filesys.request({ // ask to specify workspace
@@ -354,16 +431,20 @@ function createCommonRoutines(modules, settings) {
                         files: false
                     }
                 })
-                    .first()
                     .mergeMap(dir => {
                         modules.filesys.setWorkspace(dir);
                         return dir.searchFile("tour.json")
-                            .mergeMap(f => {
-                                return loadTour(f, dir);
-                            });
+                            .map(f => [f, dir]);
                     });
             })
-            .catch(() => Rx.Observable.empty())
+            .mergeMap(arr => {
+                return loadTour(arr[0], arr[1]);
+            })
+            .catch((err, caught) => {
+                console.log(err);
+                modules.logger.log(err);
+                return Rx.Observable.empty(); // avoid re-subscription
+            })
     ];
 
     /*
@@ -424,6 +505,10 @@ function createCommonRoutines(modules, settings) {
                         modules.model.deleteTemporalGroup(tg);
                     }
 
+                    for (var b of Array.from(modules.map.backgrounds.values())) {
+                        modules.map.deleteBackground(b);
+                    }
+
                     modules.filesys.setWorkspace(dir);
 
                     if (modules.hist)
@@ -433,32 +518,13 @@ function createCommonRoutines(modules, settings) {
             )
         );
 
-    // logic for save buttons
-    if (document.querySelector('#save-workspace'))
-        obs.push(Rx.Observable.fromEvent(document.querySelector('#save-workspace'), 'click')
-            .mergeMap(() => modules.filesys.saveWorkspace(modules.alg.stateToJson()))
-        );
-
-    if (document.querySelector('#save-workspace-as'))
-        obs.push(Rx.Observable.fromEvent(document.querySelector('#save-workspace-as'), 'click')
-            .mergeMap(() => modules.filesys.saveWorkspaceAs(modules.alg.stateToJson()))
-        );
-
-    if (document.querySelector('#backup-tour'))
-        obs.push(Rx.Observable.fromEvent(document.querySelector('#backup-tour'), 'click')
-            .mergeMap(() => modules.filesys.saveWorkspaceAs(modules.alg.stateToJson()))
-        );
-
-    if (document.querySelector('#save-workspace') && (document.querySelector('#save-workspace-as')))
-        obs.push(modules.filesys.observe(cordovadirectory, modules.filesys.WORKSPACE)
-            .do(workspace => {
-                if (workspace.canWrite()) {
-                    $('#save-workspace-as').hide();
-                    $('#save-workspace').show();
-                }
-            })
-        );
-        
+    modules.settings.loadRecentWorkspace.subscribe(enabled => {
+        var workspace = modules.filesys.getWorkspace();
+        if (enabled && workspace)
+            modules.settings.recentWorkspace(workspace.getPath())
+        else
+            modules.settings.recentWorkspace(null);
+    });
 
     return obs;
 }

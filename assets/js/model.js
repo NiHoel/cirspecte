@@ -270,8 +270,19 @@ class temporalGroup {
 
     constructor(config = {}) {
         Object.assign(this, config);
+
+        this.id = config.id;
+        this.name = config.name;
+        this.type = config.type || this.TOUR;
+        this.description = config.description;
+        this.superGroup = config.superGroup;
+        this.autoConnectColocated = config.autoConnectColocated;
+        this.colocatedRadius = config.colocatedRadius;
+        this.multiselect = config.multiselect;
+        this.exclusiveTemporalSubgroups = config.exclusiveTemporalSubgroups;
+
+
         this.id = this.id || this.name || this.description;
-        this.type = this.type || this.TOUR;
         this.subGroups = new Map();
 
         if (this.colocatedRadius && !(this.colocatedRadius instanceof Number)) {
@@ -424,8 +435,16 @@ class spatialGroup {
      * @param {string} description
      */
     constructor(config = {}) {
-        Object.assign(this, config);
-        this.type = this.type || this.superGroup.type || this.ROUTE;
+        this.name = config.name;
+        this.type = config.type || this.superGroup.type || this.ROUTE;   
+        this.timeslot = config.timeslot;
+        this.description = config.description;
+        this.superGroup = config.superGroup;
+        this.path = config.path;
+        this.images = Object.assign({}, config.images);
+        this.thumbnails = Object.assign({}, config.thumbnails);
+        this.background = config.background;
+        
         if (typeof this.timeslot === 'string')
             this.timeslot = new Date(this.timeslot);
         if (this.timeslot == null)
@@ -441,7 +460,7 @@ class spatialGroup {
             this.thumbnails = this.thumbnails || {};
         }
 
-        this.id = this.id || this.name + ' ' + this.superGroup.id;
+        this.id = config.id || this.name + ' ' + this.superGroup.id;
 
         this.images = this.images || {};
         this.thumbnails = this.thumbnails || {};
@@ -567,14 +586,18 @@ class vertex {
 * 
  */
     constructor(config) {
-        Object.assign(this, config);
+        this.id = config.id;
+        this.type = config.type;
+        this.name = config.name;
+        this.spatialGroup = config.spatialGroup;
+        this.timeslot = config.timeslot;
+        this.coordinates = config.coordinates;
+        this.path = config.path;
+        this.data = Object.assign({}, config.data);
+        this.image = Object.assign({}, config.image);
+        this.thumbnail = Object.assign({}, config.thumbnail);
+        this.outgoingEdges = [];
 
-        this.image = this.image || {};
-        this.thumbnail = this.thumbnail || {};
-
-        if (!this.data) {
-            this.data = {};
-        }
         for (var prop of ["vaov", "northOffset", "vOffset"]) {
             if (this[prop]) {
                 if (!this.data[prop])
@@ -584,9 +607,6 @@ class vertex {
         }
         if (typeof this.timeslot === 'string')
             this.timeslot = new Date(this.timeslot);
-
-        if (config.outgoingEdges == null)
-            this.outgoingEdges = [];
 
         if (this.image.file) {
             if (this.path == null && this.image.path == null) {
@@ -714,7 +734,7 @@ class vertex {
             path: this.path,
             image: algorithms.extractAtomicProperties(this.image),
             thumbnail: algorithms.extractAtomicProperties(this.thumbnail),
-            data: this.hasData() ? this.data : undefined,
+            data: this.hasData() ? Object.assign({}, this.data) : undefined,
             outgoingEdges: edges,
         };
     }
@@ -757,8 +777,13 @@ class edge {
     }
 
     constructor(config) {
-        Object.assign(this, config);
-        this.type = this.deriveType();
+        this.id = config.id;
+        this.from = config.from;
+        this.to = config.to;
+        this.type = config.type;
+        this.type = this.deriveType(); // derive type if not set
+        this.data = Object.assign({}, config.data);
+        this.opposite = config.opposite;
 
         if (config.id == null)
             this.id = this.from.id + " to " + this.to.id + ' ' + this.type;
@@ -826,7 +851,7 @@ class edge {
             from: !config.ignoreFrom ? this.from.id : undefined,
             to: this.to.id,
             type: this.type,
-            data: this.hasData() ? this.data : undefined,
+            data: this.hasData() ? Object.assign({}, this.data) : undefined,
             bidirectional: this.opposite != null,
             oppositeData: this.opposite && this.opposite.hasData() ? this.opposite.data : undefined
         };
@@ -865,6 +890,43 @@ class graph extends observable {
         this.edges = new Map();
         this.temporalGroups = new Map();
         this.spatialGroups = new Map();
+    }
+
+
+    /**
+ * 
+ * @param {string} id
+ * @returns {boolean}
+ */
+    hasVertex(id) {
+        return this.vertices.has(id);
+    }
+
+/**
+*
+* @param {string} id
+* @returns {boolean}
+*/
+    hasEdge(id) {
+        return this.edges.has(id);
+    }
+
+/**
+*
+* @param {string} id
+* @returns {boolean}
+*/
+    hasSpatialGroup(id) {
+        return this.spatialGroups.has(id);
+    }
+
+/**
+*
+* @param {string} id
+* @returns {boolean}
+*/
+    hasTemporalGroup(id) {
+        return this.temporalGroups.has(id);
     }
 
     /**

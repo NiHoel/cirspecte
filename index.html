@@ -249,19 +249,13 @@
                 </div>
                 <div class="modal-body">
                     <div class="form-horizontal">
-                        <div>
-                            <button id="import-tour" class="btn btn-default" data-toggle="modal" data-target="#settings-dialog">
-                                <span class="glyphicon glyphicon-import"></span>
-                            </button>
-                            <label class="control-label" for="import-tour">Import additional tour files</label>
-                        </div>
                         <div class="checkbox">
                             <label class="control-label" for="hide-map-checkbox">
                                 <input type="checkbox" data-bind="checked: hideMap" id="hide-map-checkbox">
                                 Hide the map
                             </label>
                         </div>
-                        <div class="checkbox">
+                        <div class="checkbox" data-bind="visible: platform.isBrowser">
                             <label class="control-label" for="fullscreen-checkbox">
                                 <input type="checkbox" data-bind="checked: fullscreen" id="fullscreen-checkbox">
                                 Fullscreen
@@ -271,6 +265,18 @@
                             <label class="control-label" for="aggregateItems-checkbox">
                                 <input type="checkbox" data-bind="checked: aggregateItems" id="aggregateItems-checkbox">
                                 Aggregate a stack of items in the timeline into one (range item).
+                            </label>
+                        </div>
+                        <div class="checkbox" data-bind="visible: platform.hasOrientationSensor">
+                            <label title="The viewport of the panorama follows the movement of your device" class="control-label" for="enable-orientation-checkbox">
+                                <input type="checkbox" data-bind="checked: enableOrientation" id="enable-orientation-checkbox">
+                                Use orientation sensor
+                            </label>
+                        </div>
+                        <div class="checkbox" data-bind="visible: platform.hasGPSSensor">
+                            <label title="Panoramas are loaded based on your position" class="control-label" for="enable-gps-checkbox">
+                                <input type="checkbox" data-bind="checked: enableGPS" id="enable-gps-checkbox">
+                                Use GPS sensor
                             </label>
                         </div>
                     </div>
@@ -417,13 +423,16 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                             </tr>
                             <tr class="row">
                                 <td>
-                                    <div class="timeline-item timeline-point timeline-readonly" style="background-color: black;"><div class="timeline-item-content" style="margin-left: 32px;">2019</div><div class="timeline-item timeline-dot timeline-readonly" style="top: 7px; transform: translateX(8px);"></div></div>
-                                </td>
+                                    <div class="timeline-item timeline-point timeline-readonly" style="background-color: black;position: relative;"><div class="timeline-item-content" style="margin-left: 32px;">2019</div><div class="timeline-item timeline-dot timeline-readonly" style="top: 7px; transform: translateX(8px);"></div></div>
+
+                                    <div class="timeline-item timeline-point timeline-readonly timeline-inactive" style="background-color: black;position: relative;margin-top: 4px;"><div class="timeline-item-content timeline-inactive" style="margin-left: 32px;">2018</div><div style="top: 7px; transform: translateX(8px);" class="timeline-item timeline-dot timeline-readonly timeline-inactive"></div></div>
                                 <td>
                                     <p>
                                         Location: Timeline.
                                     </p><p>
-                                        Effect: Switches to that moment in time (affects currently shown panorama and points on the map).
+                                        Effect: Switches to that moment in time and loads the panorama.
+                                        
+                                        If there is no panorama available for that point in time, then the item is grayed out. When clicking it, the map is updated and one has to manually choose the panorama (by clicking one of the red points).
                                     </p>
                                 </td>
 
@@ -486,7 +495,7 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                 <div class="modal-body" style="max-height: calc(100vh - 200px);  overflow-y: auto;">
                     <div data-bind="foreach: logs">
                         <div class="alert" data-bind="css:{'alert-danger' : ($data instanceof error), 'alert-warning' : ($data instanceof warning)}">
-                            <span data-bind="text: $parent.errorToString($data)"></span>
+                            <span data-bind="text: logger.errorToString($data)"></span>
                             <a href="#" class="close" data-dismiss="alert" aria-label="close" data-bind="click: () => {$parent.logs.remove($data)}">&times;</a>
                         </div>
                     </div>

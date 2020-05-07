@@ -71,9 +71,9 @@ class point {
         this.layer.setLatLng(coordsToLatLng(coords));
     }
 
-/**
-* @returns {[line]}
-*/
+    /**
+    * @returns {[line]}
+    */
     getLines() {
         var lines = [];
         this.vertex.forEach(e => {
@@ -300,7 +300,7 @@ class background {
             this.markers.forEach((m, i) => {
                 m.setLatLng(this.corners[i]);
             });
-        }        
+        }
     }
 
     /**
@@ -356,27 +356,45 @@ class mapViewer extends observable {
     /**
     *
     * @param {string} domElement
-    * @param {configurator} settings
     * @param {filesystem} modules.filesys
     *
     **/
-    constructor(domElement, config, settings, modules) {
+    constructor(domElement, modules, config) {
         super();
         this.config = config;
-        this.settings = settings;
         this.modules = modules;
         this.map = new L.Map(domElement, config.options);
 
         let parent = this.map.getContainer().parentElement;
 
-        parent.addEventListener('transitionend', () => this.map.invalidateSize());
+        parent.addEventListener('transitionend', () => {
+            this.map.invalidateSize();
+            if (this.pendingAnimation)
+                this.pendingAnimation();
+
+            delete this.pendingAnimation;
+        });
 
 
         //layer to map element lookup
         this.layers = new Map();
         this.backgrounds = new Map();
         this.locationLayer = new L.featureGroup();
-        this.fieldOfViewLayer = new L.featureGroup();
+
+        if (this.config.fieldOfView) {
+            this.fieldOfView = {
+                layer: new L.featureGroup(),
+                line: L.polyline([], this.config.fieldOfView),
+            }
+            this.fieldOfView.line.addTo(this.fieldOfView.layer);
+            if (this.config.fieldOfView.fillColor)
+                var fillConfig = $.extend({}, this.config.fieldOfView, {
+                    opacity: 0
+                });
+            this.fieldOfView.fill = L.polygon([], fillConfig);
+            this.fieldOfView.fill.addTo(this.fieldOfView.layer);
+        }
+
         this.lineGroup = new L.featureGroup();
         this.lineGroup.setZIndex(10);
         this.lineGroup.addEventListener('add', event => {
@@ -431,10 +449,14 @@ class mapViewer extends observable {
                 layer: this.locationLayer
             });
 
-        this.overlayTree.push({
-            label: this.config.strings.fieldOfView,
-            layer: this.fieldOfViewLayer
-        });
+        if (this.fieldOfView) {
+            this.overlayTree.push({
+                label: this.config.strings.fieldOfView,
+                layer: this.fieldOfView.layer
+            });
+
+            this.fieldOfView.layer.addTo(this.map) // show on startup
+        }
 
         this.overlayTree.push({
             label: this.config.strings.connections,
@@ -442,7 +464,7 @@ class mapViewer extends observable {
         });
         this.layerControl = L.control.layers.tree(this.baseTree, this.overlayTree, config.tree);
         this.layerControl.addTo(this.map).collapseTree().expandSelected();
-        this.fieldOfViewLayer.addTo(this.map) // show on startup
+
 
         // set up event listeners for storing tiles
         tileLayers.forEach(tl => {
@@ -546,20 +568,25 @@ class mapViewer extends observable {
         this.map.on('accuratepositionfound', markLocation);
 
         // Field of view
-        requestAnimationFrame(() => this.updateFieldOfView());
+        if (this.fieldOfView)
+            requestAnimationFrame(() => this.updateFieldOfView());
+
+        if (this.modules.settings.hideMap())
+            $('.widget-map').hide();
 
         // Listen when values in configurator change
-        this.settings.map.zoom.subscribe(val => {
+        this.modules.settings.hideMap.subscribe(hide => hide ? $('.widget-map').hide() : $('.widget-map').show()); //KoObservable
+        this.modules.settings.map.zoom.subscribe(val => {
             if (val != null)
-                this.setView(null, val);
+                setTimeout(() => this.setView(null, val), 0); // avoid long, blocking operation (up to 250 ms on mobile devices)
         });
-        this.settings.map.minZoom.subscribe(val => this.map.setMinZoom(val));
-        this.settings.map.maxZoom.subscribe(val => this.map.setMaxZoom(val));
-        this.settings.map.center.subscribe(val => {
+        this.modules.settings.map.minZoom.subscribe(val => this.map.setMinZoom(val));
+        this.modules.settings.map.maxZoom.subscribe(val => this.map.setMaxZoom(val));
+        this.modules.settings.map.center.subscribe(val => {
             if (val)
                 this.setView(val);
         });
-        this.settings.map.maxBounds.subscribe(val => this.map.setMaxBounds(val));
+        this.modules.settings.map.maxBounds.subscribe(val => this.map.setMaxBounds(val));
 
         this.map.on('moveend', ev => {
             delete this.moveTarget;
@@ -629,11 +656,11 @@ class mapViewer extends observable {
      * @returns {background}
      */
     getBackground(label) {
-	if(typeof label === "string"){
+        if (typeof label === "string") {
             var background = this.backgrounds.get(label);
-	} else {
-	    var background = label;
-	}
+        } else {
+            var background = label;
+        }
         if (background == null)
             throw new error(this.ERROR.NO_SUCH_BACKGROUND, null, label);
 
@@ -657,7 +684,6 @@ class mapViewer extends observable {
             return;
         }
 
-        this.fieldOfViewLayer.clearLayers();
         var azimuth = this.modules.panorama.getAzimuth() / 180 * Math.PI;
         var aov = this.modules.panorama.getHfov() / 180 * Math.PI;
         var centerCoords = this.modules.panorama.getVertex().coordinates;
@@ -673,12 +699,9 @@ class mapViewer extends observable {
         var lineEnd = new L.Point(Math.sin(maxBearing) * this.config.fieldOfView.radius + centerPoint.x, -Math.cos(maxBearing) * this.config.fieldOfView.radius + centerPoint.y);
         var points = [this.map.containerPointToLatLng(lineStart), this.map.containerPointToLatLng(centerPoint), this.map.containerPointToLatLng(lineEnd)];
 
-        L.polyline(points, this.config.fieldOfView).addTo(this.fieldOfViewLayer);
-        if (this.config.fieldOfView.fillColor)
-            var fillConfig = $.extend({}, this.config.fieldOfView, {
-                opacity: 0
-            });
-            L.polygon(points,fillConfig).addTo(this.fieldOfViewLayer);
+        this.fieldOfView.line.setLatLngs(points);
+        if (this.fieldOfView.fill)
+            this.fieldOfView.fill.setLatLngs(points);
 
         requestAnimationFrame(() => this.updateFieldOfView());
     }
@@ -807,11 +830,13 @@ class mapViewer extends observable {
             initClustering = true;
             this.markerGroup = new L.markerClusterGroup.layerSupport(this.config.markerClusterGroup);
         }
- 
+
         var lg = new layerGroup(g);
         //       this.addToDerivedParent(lg);
         this.layers.set(lg.layer, lg);
-        this.markerGroup.checkIn(lg.layer);
+
+        if (this.config.markerClusterGroup)
+            this.markerGroup.checkIn(lg.layer);
 
         if (initClustering)
             this.markerGroup.addTo(this.map);
@@ -839,9 +864,6 @@ class mapViewer extends observable {
         let self = this;
 
         //listen to events
-        p.addEventListener('click', (event) =>
-            self.emit(event.target, self.CLICK));
-
         if (this.config.point[type].draggable) {
             p.addEventListener('dragstart', (event) => {
                 this.modules.hist.commit();
@@ -861,7 +883,9 @@ class mapViewer extends observable {
                 self.endUpdate(p, p.COORDINATES));
         }
         let id = v.id;
+        var listener = e => this.emit(p, this.CLICK);
         p.addEventListener('add', event => {
+            (p.layer._path || p.layer._marker || p.layer).addEventListener('click', listener);
             p.vertex.forEach(e => {
                 if (e.line && e.to.point && this.isVisible(e.to.point)) {
                     e.line.layer.addTo(this.lineGroup);
@@ -872,6 +896,7 @@ class mapViewer extends observable {
         });
 
         p.addEventListener('remove', event => {
+            (p.layer._path || p.layer._marker || p.layer).removeEventListener('click', listener);
             p.vertex.forEach(e => {
                 if (e.line)
                     this.lineGroup.removeLayer(e.line.layer);
@@ -1062,10 +1087,10 @@ class mapViewer extends observable {
      */
     updateCorners(b, corners) {
         if (!recursiveCompare(b.corners, corners)) {
-            if(!b.dragging)
+            if (!b.dragging)
                 this.startUpdate(b, b.CORNERS);
             b.setCorners(corners);
-            if(!b.dragging)
+            if (!b.dragging)
                 this.endUpdate(b, b.CORNERS);
         }
     }
@@ -1266,6 +1291,9 @@ class mapViewer extends observable {
      * @param {number} zoom
      */
     setView(coords, zoom) {
+        if (this.map.isInTransition())
+            this.pendingAnimation = () => this.setView(coords, zoom);
+
         if (this.moveTarget) {
             this.map.setView(coords || this.moveTarget.center, zoom || this.moveTarget.zoom);
         } else {

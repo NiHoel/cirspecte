@@ -9,12 +9,10 @@ class mapEditor extends observable {
     }
 
 	/**
-     * @param {configurator} settings
      * @param {JSON} modules
      */
-    constructor(settings, modules) {
+    constructor(modules) {
         super();
-        this.settings = settings;
         this.modules = modules;
 
         this.currentBackground = ko.observable();
@@ -90,7 +88,7 @@ class mapEditor extends observable {
                 .filter(() => this.isShown())
                 .inhibitBy(modules.map.observe(point, modules.map.CLICK), 100)
                 .inhibitBy(modules.map.observe(line, modules.map.CLICK), 100)
-                .filter(() => this.settings.createVertexOnMapClick())
+                .filter(() => this.modules.settings.createVertexOnMapClick())
                 .do(() => modules.hist.commit())
                 .map(c => modules.model.createVertex({ coordinates: c, type: vertex.prototype.LANDMARK, spatialGroup: this.landmarkGroup() })),
 

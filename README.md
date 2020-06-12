@@ -1,7 +1,12 @@
 # Cirspecte
 Circumspectus in tempore - A panorama through time.
 
+[![Demo](screenshot.jpg?raw=true "Screenshot")](https://nihoel.github.io/cirspecte/index.html?tour=https%3A%2F%2Fnihoel.github.io%2Fcirspecte-demo%2Ftour.json)
+[Demo](https://nihoel.github.io/cirspecte/index.html?tour=https%3A%2F%2Fnihoel.github.io%2Fcirspecte-demo%2Ftour.json)
+
 https://github.com/NiHoel/cirspecte
+
+Pre-built binaries of the editor software can be found here: [https://github.com/NiHoel/cirspecte-cordova/releases/latest](https://github.com/NiHoel/cirspecte-cordova/releases/latest)
 
 ## About
 Cirspecte is a browser based, free, and open source tool for creating and viewing panorama tours. Built using HTML5, CSS3, JavaScript, and WebGL, it is plug-in free.

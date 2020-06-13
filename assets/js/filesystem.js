@@ -3041,7 +3041,7 @@ class filesystem extends observable {
 
         else
             return this.resolvePath(window.location.href)
-                .map(entry => entry instanceof file ? entry.getParent() : e);
+                .map(entry => entry instanceof file ? entry.getParent() : entry);
     }
 }
 

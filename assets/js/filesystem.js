@@ -774,6 +774,9 @@ class webkitdirectory extends directory {
                     return parent.scan().ignoreElements();
 
                 let dirName = path.shift();
+                if (!dirName)
+                    return Rx.Observable.of([parent, path]);
+
                 return parent.scan()
                     .filter(dir => dir instanceof directory && dir.name === dirName)
                     .defaultIfEmpty(null)
@@ -809,7 +812,7 @@ class webkitdirectory extends directory {
             return Rx.Observable.of(this);
 
         if (directory.isAbsolutePath(path) && directory.isRemotePath(path)) {
-            return new remotedirectory(path);
+            return Rx.Observable.of(new remotedirectory(path));
         }
 
         if (!path.endsWith('/'))
@@ -1081,7 +1084,7 @@ class remotedirectory extends directory {
             path = filesystem.concatPaths(this.getPath(), path);
 
         return remotefile.fromPath(path)
-            .catch(() => new remotedirectory(path));
+            .catch(() => Rx.Observable.of(new remotedirectory(path)));
 
     }
 

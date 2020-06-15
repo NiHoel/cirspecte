@@ -220,7 +220,8 @@ var config = {
             "showControls": true,
             "draggable": true,
  //           "author": "", // displayed on all panoramas without a dedicate author parameter
-            "compass": false
+            "compass": false,
+            "interpolateBetweenTiles": false
         },
         previewOptions: {
             "sceneFadeDuration": 0,

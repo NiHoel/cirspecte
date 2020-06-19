@@ -361,7 +361,12 @@ class cordovadirectory extends directory {
 */
     searchFile(path) {
         return this.searchEntry(path)
-            .filter(elem => elem instanceof file);
+            .filter(elem => elem instanceof file)
+            .defaultIfEmpty(null)
+            .do(elem => {
+                if (elem == null)
+                    throw (new error(directory.prototype.ERROR.FILE_NOT_FOUND, "", path));
+            });            
     }
 
     /**
@@ -374,7 +379,12 @@ class cordovadirectory extends directory {
             path += '/';
 
         return this.searchEntry(path)
-            .filter(elem => elem instanceof directory);
+            .filter(elem => elem instanceof directory)
+            .defaultIfEmpty(null)
+            .do(elem => {
+                if (elem == null)
+                    throw (new error(directory.prototype.ERROR.FILE_NOT_FOUND, "", path));
+            }); 
     }
 
     /**

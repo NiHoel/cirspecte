@@ -331,27 +331,34 @@ class cordovadirectory extends directory {
         }
 
         pathComponents = pathComponents.filter(p => p != null && p != "");
-        return obs.expand(handle => {
-            if (!pathComponents.length)
-                return Rx.Observable.empty();
+        return obs
+            .map(handle => [handle, [...pathComponents]])
+            .expand(elem => {
+                var handle, pathComponents;
+                [handle, pathComponents] = elem;
 
-            var name = pathComponents.shift();
+                if (!pathComponents.length)
+                    return Rx.Observable.empty();
 
-            if (pathComponents.length || name.indexOf('.') == -1)
+                var name = pathComponents.shift();
 
-                return Rx.Observable.create(obs => {
-                    handle.getDirectory(name, { create: true, exclusive: false },
-                        (entry) => { obs.next(entry); obs.complete(); },
-                        (err) => { obs.error(cordovadirectory.toError(err, path)) });
-                });
-            else
-                return Rx.Observable.create(obs => {
-                    handle.getFile(name, { create: true, exclusive: false },
-                        (entry) => { obs.next(entry); obs.complete(); },
-                        (err) => { obs.error(cordovadirectory.toError(err, path)) }
-                    );
-                });
-        }).last();
+                if (pathComponents.length || name.indexOf('.') == -1)
+
+                    return Rx.Observable.create(obs => {
+                        handle.getDirectory(name, { create: true, exclusive: false },
+                            (entry) => { obs.next(entry); obs.complete(); },
+                            (err) => { obs.error(cordovadirectory.toError(err, path)) });
+                    }).map(handle => [handle, [...pathComponents]]);
+                else
+                    return Rx.Observable.create(obs => {
+                        handle.getFile(name, { create: true, exclusive: false },
+                            (entry) => { obs.next(entry); obs.complete(); },
+                            (err) => { obs.error(cordovadirectory.toError(err, path)) }
+                        );
+                    }).map(handle => [handle, [...pathComponents]]);
+            })
+            .last()
+            .map(elem => elem[0]);
     }
 
     /**
@@ -366,7 +373,7 @@ class cordovadirectory extends directory {
             .do(elem => {
                 if (elem == null)
                     throw (new error(directory.prototype.ERROR.FILE_NOT_FOUND, "", path));
-            });            
+            });
     }
 
     /**
@@ -384,7 +391,7 @@ class cordovadirectory extends directory {
             .do(elem => {
                 if (elem == null)
                     throw (new error(directory.prototype.ERROR.FILE_NOT_FOUND, "", path));
-            }); 
+            });
     }
 
     /**

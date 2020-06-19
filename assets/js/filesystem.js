@@ -1433,7 +1433,7 @@ class webkitfile extends file {
                         observer.next(img);
                         observer.complete();
                     };
-                    img.onError = (err) => {
+                    img.onerror = (err) => {
                         observer.error(cordovadirectory.toError(err.target.error, this.getPath()));
                     };
 
@@ -1723,7 +1723,7 @@ class remotefile extends file {
                 observer.next(img);
                 observer.complete();
             };
-            img.onError = (err) => {
+            img.onerror = (err) => {
                 observer.error(err);
             };
 

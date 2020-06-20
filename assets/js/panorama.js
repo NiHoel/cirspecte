@@ -685,6 +685,7 @@ class panoramaViewer extends observable {
             return Rx.Observable.empty();
 
         this.loading = true;
+        setTimeout(() => this.loadingFinished(), 15000);
 
         var obs = this.modules.filesys.prepareFileAccess(v);
         if (this.config.tileResolution && (v.data.type == "equirectangular" || !v.data.type))
@@ -721,6 +722,12 @@ class panoramaViewer extends observable {
                 /** @type {pannellum.Viewer} */
                 this.viewer = pannellum.viewer(this.domElement, cfg);
                 this.scene = newScene;
+
+                if (cfg.default.sceneFadeDuration) {
+                    this.viewer.on('scenechangefadedone', () => { this.loadingFinished(); });
+                } else {
+                    this.viewer.on('load', () => { this.loadingFinished(); })
+                }
 
             } else {
                 this.viewer.addScene(newScene.id, newScene);
@@ -846,6 +853,18 @@ class panoramaViewer extends observable {
             this.viewer.setVfovBounds([null, Math.min(this.scene.vaov, 170)]);
             this.viewer.resize();
         }
+    }
+
+    /**
+     * @private
+     * 
+     */
+    loadingFinished() {
+        if (!this.loading)
+            return;
+
+        this.loading = false;
+        clearTimeout(this.loadingTimeout);
     }
 
     /**
@@ -1203,19 +1222,19 @@ class panoramaViewer extends observable {
  * @returns {function(object, Image) : Promise<Image>} - A function that returns the specified tile from a hierarchy of tiles that is created on the file from the image.
  */
     createMultiresLoader(s) {
-        return (node, img) => new Promise((resolve, reject) => {
-            if (s.vertex && s.vertex.image.directory)
-                s.vertex.image.directory.searchFile(node.uri)
-                    .mergeMap(f => f.readAsImage())
-                    .subscribe({
-                        next: img => resolve(img),
-                        error: () => reject(),
-                        complete: () => reject()
-                    });
-            else
-                reject();
-        });
-    }
+            return (node, img) => new Promise((resolve, reject) => {
+                if (s.vertex && s.vertex.image.directory)
+                    s.vertex.image.directory.searchFile(node.uri)
+                        .mergeMap(f => f.readAsImage())
+                        .subscribe({
+                            next: img => resolve(img),
+                            error: () => reject(),
+                            complete: () => reject()
+                        });
+                else
+                    reject();
+            });
+        }
 }
 
 panoramaViewer.prototype.CLICK = 'click';

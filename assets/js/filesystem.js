@@ -331,27 +331,34 @@ class cordovadirectory extends directory {
         }
 
         pathComponents = pathComponents.filter(p => p != null && p != "");
-        return obs.expand(handle => {
-            if (!pathComponents.length)
-                return Rx.Observable.empty();
+        return obs
+            .map(handle => [handle, [...pathComponents]])
+            .expand(elem => {
+                var handle, pathComponents;
+                [handle, pathComponents] = elem;
 
-            var name = pathComponents.shift();
+                if (!pathComponents.length)
+                    return Rx.Observable.empty();
 
-            if (pathComponents.length || name.indexOf('.') == -1)
+                var name = pathComponents.shift();
 
-                return Rx.Observable.create(obs => {
-                    handle.getDirectory(name, { create: true, exclusive: false },
-                        (entry) => { obs.next(entry); obs.complete(); },
-                        (err) => { obs.error(cordovadirectory.toError(err, path)) });
-                });
-            else
-                return Rx.Observable.create(obs => {
-                    handle.getFile(name, { create: true, exclusive: false },
-                        (entry) => { obs.next(entry); obs.complete(); },
-                        (err) => { obs.error(cordovadirectory.toError(err, path)) }
-                    );
-                });
-        }).last();
+                if (pathComponents.length || name.indexOf('.') == -1)
+
+                    return Rx.Observable.create(obs => {
+                        handle.getDirectory(name, { create: true, exclusive: false },
+                            (entry) => { obs.next(entry); obs.complete(); },
+                            (err) => { obs.error(cordovadirectory.toError(err, path)) });
+                    }).map(handle => [handle, [...pathComponents]]);
+                else
+                    return Rx.Observable.create(obs => {
+                        handle.getFile(name, { create: true, exclusive: false },
+                            (entry) => { obs.next(entry); obs.complete(); },
+                            (err) => { obs.error(cordovadirectory.toError(err, path)) }
+                        );
+                    }).map(handle => [handle, [...pathComponents]]);
+            })
+            .last()
+            .map(elem => elem[0]);
     }
 
     /**
@@ -361,7 +368,12 @@ class cordovadirectory extends directory {
 */
     searchFile(path) {
         return this.searchEntry(path)
-            .filter(elem => elem instanceof file);
+            .filter(elem => elem instanceof file)
+            .defaultIfEmpty(null)
+            .do(elem => {
+                if (elem == null)
+                    throw (new error(directory.prototype.ERROR.FILE_NOT_FOUND, "", path));
+            });
     }
 
     /**
@@ -374,7 +386,12 @@ class cordovadirectory extends directory {
             path += '/';
 
         return this.searchEntry(path)
-            .filter(elem => elem instanceof directory);
+            .filter(elem => elem instanceof directory)
+            .defaultIfEmpty(null)
+            .do(elem => {
+                if (elem == null)
+                    throw (new error(directory.prototype.ERROR.FILE_NOT_FOUND, "", path));
+            });
     }
 
     /**
@@ -1433,7 +1450,7 @@ class webkitfile extends file {
                         observer.next(img);
                         observer.complete();
                     };
-                    img.onError = (err) => {
+                    img.onerror = (err) => {
                         observer.error(cordovadirectory.toError(err.target.error, this.getPath()));
                     };
 
@@ -1723,7 +1740,7 @@ class remotefile extends file {
                 observer.next(img);
                 observer.complete();
             };
-            img.onError = (err) => {
+            img.onerror = (err) => {
                 observer.error(err);
             };
 
@@ -1812,37 +1829,51 @@ class diskAccessor extends observable {
     constructor() {
         super();
 
-        var browser = platform.name.split(" ")[0];
-        var mobile = platform.product != null || /Mobile/.test(platform.name);
-        var version = Number.parseInt(platform.version.split('.')[0]);
-        var osVersion = Number.parseInt(platform.os.version.split('.')[0]);
+        try {
 
-        this.allowsDrop =
-            browser == "Microsoft" && version >= 15 && !mobile ||
-            browser == "Firefox" && version >= 4 && !mobile ||
-            browser == "Chrome" && version >= 4 && !mobile && directory.isRemotePath(window.location.href) ||
-            browser == "Safari" && version >= 3 && !mobile ||
-            browser == "Opera" && version >= 12 && !mobile ||
-            browser == "Safari" && version >= 11 && mobile ||
-            browser == "IE" && version >= 10 && mobile
-            ;
+            if (platform.name)
+                var browser = platform.name.split(" ")[0];
 
-        this.allowsDirectorySelect =
-            browser == "Microsoft" && version >= 15 && !mobile ||
-            browser == "Firefox" && version >= 58 && !mobile ||
-            browser == "Chrome" && version >= 49 && !mobile ||
-            browser == "Safari" && version >= 12 && !mobile
-            ;
+            var mobile = platform.isMobile;
 
-        this.allowsMultiFileSelect =
-            browser == "IE" && version >= 11 && !mobile ||
-            browser == "Microsoft" && version >= 15 && !mobile ||
-            browser == "Firefox" && version >= 58 && !mobile ||
-            browser == "Chrome" && version >= 49 && !mobile ||
-            browser == "Safari" && version >= 11 && !mobile ||
-            browser == "Safari" && version >= 10 && mobile && osVersion >= 5 ||
-            browser == "Chrome" && version >= 64 && mobile && osVersion >= 5
-            ;
+            if(platform.version)
+                var version = Number.parseInt(platform.version.split('.')[0]);
+
+            if (platform.osVersion)
+                var osVersion = Number.parseInt(platform.os.version.split('.')[0]);
+
+            this.allowsDrop =
+                browser == "Microsoft" && version >= 15 && !mobile ||
+                browser == "Firefox" && version >= 4 && !mobile ||
+                browser == "Chrome" && version >= 4 && !mobile && directory.isRemotePath(window.location.href) ||
+                browser == "Safari" && version >= 3 && !mobile ||
+                browser == "Opera" && version >= 12 && !mobile ||
+                browser == "Safari" && version >= 11 && mobile ||
+                browser == "IE" && version >= 10 && mobile
+                ;
+
+            this.allowsDirectorySelect =
+                browser == "Microsoft" && version >= 15 && !mobile ||
+                browser == "Firefox" && version >= 58 && !mobile ||
+                browser == "Chrome" && version >= 49 && !mobile ||
+                browser == "Safari" && version >= 12 && !mobile
+                ;
+
+            this.allowsMultiFileSelect =
+                browser == "IE" && version >= 11 && !mobile ||
+                browser == "Microsoft" && version >= 15 && !mobile ||
+                browser == "Firefox" && version >= 58 && !mobile ||
+                browser == "Chrome" && version >= 49 && !mobile ||
+                browser == "Safari" && version >= 11 && !mobile ||
+                browser == "Safari" && version >= 10 && mobile && osVersion >= 5 ||
+                browser == "Chrome" && version >= 64 && mobile && osVersion >= 5
+                ;
+
+        } catch (e) {
+            this.allowsDrop = false;
+            this.allowsDirectorySelect = false;
+            this.allowsMultiFileSelect = false;
+        }
 
         this.path = ko.observable();
         this.name = ko.observable();

@@ -1829,37 +1829,51 @@ class diskAccessor extends observable {
     constructor() {
         super();
 
-        var browser = platform.name.split(" ")[0];
-        var mobile = platform.product != null || /Mobile/.test(platform.name);
-        var version = Number.parseInt(platform.version.split('.')[0]);
-        var osVersion = Number.parseInt(platform.os.version.split('.')[0]);
+        try {
 
-        this.allowsDrop =
-            browser == "Microsoft" && version >= 15 && !mobile ||
-            browser == "Firefox" && version >= 4 && !mobile ||
-            browser == "Chrome" && version >= 4 && !mobile && directory.isRemotePath(window.location.href) ||
-            browser == "Safari" && version >= 3 && !mobile ||
-            browser == "Opera" && version >= 12 && !mobile ||
-            browser == "Safari" && version >= 11 && mobile ||
-            browser == "IE" && version >= 10 && mobile
-            ;
+            if (platform.name)
+                var browser = platform.name.split(" ")[0];
 
-        this.allowsDirectorySelect =
-            browser == "Microsoft" && version >= 15 && !mobile ||
-            browser == "Firefox" && version >= 58 && !mobile ||
-            browser == "Chrome" && version >= 49 && !mobile ||
-            browser == "Safari" && version >= 12 && !mobile
-            ;
+            var mobile = platform.isMobile;
 
-        this.allowsMultiFileSelect =
-            browser == "IE" && version >= 11 && !mobile ||
-            browser == "Microsoft" && version >= 15 && !mobile ||
-            browser == "Firefox" && version >= 58 && !mobile ||
-            browser == "Chrome" && version >= 49 && !mobile ||
-            browser == "Safari" && version >= 11 && !mobile ||
-            browser == "Safari" && version >= 10 && mobile && osVersion >= 5 ||
-            browser == "Chrome" && version >= 64 && mobile && osVersion >= 5
-            ;
+            if(platform.version)
+                var version = Number.parseInt(platform.version.split('.')[0]);
+
+            if (platform.osVersion)
+                var osVersion = Number.parseInt(platform.os.version.split('.')[0]);
+
+            this.allowsDrop =
+                browser == "Microsoft" && version >= 15 && !mobile ||
+                browser == "Firefox" && version >= 4 && !mobile ||
+                browser == "Chrome" && version >= 4 && !mobile && directory.isRemotePath(window.location.href) ||
+                browser == "Safari" && version >= 3 && !mobile ||
+                browser == "Opera" && version >= 12 && !mobile ||
+                browser == "Safari" && version >= 11 && mobile ||
+                browser == "IE" && version >= 10 && mobile
+                ;
+
+            this.allowsDirectorySelect =
+                browser == "Microsoft" && version >= 15 && !mobile ||
+                browser == "Firefox" && version >= 58 && !mobile ||
+                browser == "Chrome" && version >= 49 && !mobile ||
+                browser == "Safari" && version >= 12 && !mobile
+                ;
+
+            this.allowsMultiFileSelect =
+                browser == "IE" && version >= 11 && !mobile ||
+                browser == "Microsoft" && version >= 15 && !mobile ||
+                browser == "Firefox" && version >= 58 && !mobile ||
+                browser == "Chrome" && version >= 49 && !mobile ||
+                browser == "Safari" && version >= 11 && !mobile ||
+                browser == "Safari" && version >= 10 && mobile && osVersion >= 5 ||
+                browser == "Chrome" && version >= 64 && mobile && osVersion >= 5
+                ;
+
+        } catch (e) {
+            this.allowsDrop = false;
+            this.allowsDirectorySelect = false;
+            this.allowsMultiFileSelect = false;
+        }
 
         this.path = ko.observable();
         this.name = ko.observable();

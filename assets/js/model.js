@@ -1345,7 +1345,7 @@ class graph extends observable {
     * @param  {boolean} [config.ignoreFrom] - exclude source of edge
     * @returns {JSON}
     */
-    toJSON(config) {
+    toJSON(config = {}) {
 
         var spatialGroups = [];
         var jsonTemporalGroups = [];

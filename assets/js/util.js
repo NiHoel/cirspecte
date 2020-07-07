@@ -723,7 +723,7 @@ class imageConverter extends observable {
         else if (img instanceof Image)
             return Rx.Observable.create(obs => {
                 this.drawOnInternalCanvas(img);
-                obs.next(this.loaderContext.getImageData(0, 0, width, height));
+                obs.next(this.loaderContext.getImageData(0, 0, this.loaderCanvas.width, this.loaderCanvas.height));
                 obs.complete();
             });
         else if (typeof img === "string" || img instanceof Blob || img instanceof ArrayBuffer)

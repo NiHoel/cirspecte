@@ -160,10 +160,20 @@ class exporter extends observable {
             else
                 sg.path = this.modules.model.getSpatialGroup(sg.id).images.directory.getPath(this.modules.filesys.getWorkspace());
 
+            if (sg.images)
+                delete sg.images.path;
+
             if (this.enableTiling()) {
                 delete sg.thumbnails;
-                if (sg.images)
+                if (sg.images) {
                     delete sg.images.prefix;
+
+                    if (sg.images.width && this.enableMaxWidth())
+                        sg.images.width = Math.min(sg.images.width, this.maxWidth());
+
+                    if (sg.images.height && this.enableMaxHeight())
+                        sg.images.height = Math.min(sg.images.height, this.maxHeight());
+                }
             }
         }
 

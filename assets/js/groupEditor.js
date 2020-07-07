@@ -473,7 +473,7 @@ class groupEditor extends observable {
                     g = this.modules.model.createSpatialGroup({
                         timeslot: timeslot.toDate(),
                         name: timeslot.format('MMMM YYYY'),
-                        type: spatialGroup.prototype.ROUTE,
+                        type: spatialGroup.prototype.SINGLESHOT,
                         superGroup: g,
                         path: f.getParent().getPath(g.directory),
                         images: {

@@ -687,8 +687,11 @@ class panoramaViewer extends observable {
         this.loading = true;
         setTimeout(() => this.loadingFinished(), 15000);
 
+        if (!v.data.type)
+            this.modules.model.updateData(v, { type: "equirectangular" });
+
         var obs = this.modules.filesys.prepareFileAccess(v);
-        if (this.config.tileResolution && (v.data.type == "equirectangular" || !v.data.type))
+        if (this.config.tileResolution && v.data.type == "equirectangular")
             obs = obs.mergeMap(() => this.autoTile(v, config));
         else if (v.data.type.startsWith('multires'))
             obs = obs.map(v => {

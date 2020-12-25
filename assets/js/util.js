@@ -60,7 +60,9 @@ class algorithms {
                 .mergeMap(f =>
                     f.readAsJSON()
                         .mergeMap(t => this.readTour(t, f.getParent()))
-                );
+                )
+                .defaultIfEmpty(null)
+                .last();
         }
 
         return other.map(successful => successful && this.loadGraph(tour, rootDirectory));
@@ -81,7 +83,7 @@ class algorithms {
         var successful = true;
         rootDirectory = rootDirectory || this.filesys;
 
-        var edges = [];
+        var edges = tour.edges || [];
         var vertices = tour.vertices || [];
         var spatialGroups = tour.spatialGroups || [];
         var temporalGroups = tour.temporalGroups || [];
@@ -342,7 +344,7 @@ class algorithms {
         established.set(v.spatialGroup.id, v.spatialGroup);
         v.forEach(e => {
             if (e.type === edge.prototype.TEMPORAL) {
-                let g = e.to.spatialGroup.superGroup;
+                let g = e.to.spatialGroup;
                 established.set(g.id, g);
                 edges.push(e);
             }

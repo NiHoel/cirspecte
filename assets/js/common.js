@@ -438,7 +438,13 @@ function createCommonRoutines(modules, settings) {
                     .mergeMap(dir => {
                         modules.filesys.setWorkspace(dir);
                         return dir.searchFile("tour.json")
-                            .map(f => [f, dir]);
+                            .map(f => [f, dir])
+                            .catch(err => {
+                                if (editors && editors.groupEdit)
+                                    editors.groupEdit.beginCreate(temporalGroup);
+
+                                throw err;
+                            });
                     });
             })
             .mergeMap(arr => {
@@ -498,7 +504,19 @@ function createCommonRoutines(modules, settings) {
                     folders: true
                 }
             }))
+            .mergeMap(dir => {
+                if (!modules.hist || !modules.hist.dirty || !modules.settings.autoSave() || !modules.persist)
+                    return Rx.Observable.of(dir);
+
+                return modules.persist.getSaveObservable().defaultIfEmpty(dir).last().mapTo(dir);
+            })
             .mergeMap(dir => dir.searchFile("tour.json")
+                .catch(err => {
+                    if (editors && editors.groupEdit)
+                        editors.groupEdit.beginCreate(temporalGroup);
+
+                    throw err;
+                })
                 .filter(f => f instanceof file && f.isType(file.prototype.JSON))
                 .do(() => {
                     if (modules.hist)

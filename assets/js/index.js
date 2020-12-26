@@ -66,7 +66,7 @@
                         .filter(e => e.type === edge.prototype.TEMPORAL)
                         .map(e => modules.timeline.setActive(e.to.spatialGroup, true)),
 
-                    modules.model.observe(edge, modules.model.CREATE)
+                    modules.model.observe(edge, modules.model.CREATE, Rx.Scheduler.queue)
                         .filter(e => modules.panorama.getVertex() === e.from && e.type === edge.prototype.TEMPORAL)
                         .map(e => modules.timeline.setActive(e.to.spatialGroup, true))
                 ]);

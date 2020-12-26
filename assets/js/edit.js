@@ -62,7 +62,7 @@ function readyFunction() {
 
             var routines = createCommonRoutines(modules, settings).concat([
 
-                modules.model.observe(edge, modules.model.CREATE)
+                modules.model.observe(edge, modules.model.CREATE, Rx.Scheduler.queue)
                     .filter(e => e.type === edge.prototype.LANDMARK && e.from === modules.panorama.getVertex())
                     .do(e => modules.map.createLine(e)),
 

@@ -175,8 +175,57 @@ function createCommonRoutines(modules, settings) {
         return obs
             .mergeMap(t => {
                 var obs = modules.alg.readTour(t, dir)
-                    .filter(success => success && t.settings)
-                    .do(() => settings.setOptions(t.settings));
+                    .do(success => {
+                        if (success && t.settings)
+                            settings.setOptions(t.settings);
+
+                            // create temporal edges
+                            try {
+                                var applicationDir = window.location.href;
+                                var lastSlash = applicationDir.lastIndexOf('/');
+                                var lastPoint = applicationDir.lastIndexOf('.');
+                                if (lastSlash >= 0 && lastPoint > lastSlash)
+                                    applicationDir = applicationDir.substring(0, lastSlash);
+
+                                var scripts = ["dms.js", "vector3d.js", "latlon-ellipsoidal.js", "latlon-vincenty.js"]
+                                    .map(s => "geodesy/" + s)
+                                    .concat(["priority-queue.min.js"])
+                                    .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
+                                    .join(",");
+
+                                var worker = algorithms.createInlineWorker(json => {
+                                    var model = new graph();
+                                    var alg = new algorithms({
+                                        model: model,
+                                        logger: { log: console.log },
+                                        map: { getBackground: () => { return null; } }
+                                    });
+
+                                    alg.loadGraph(json, new directory(""));
+                                    var edges = alg.connectAllColocated();
+                                    self.postMessage(edges.map(e => e.toJSON()));
+                                }, ["self.window = self;",
+                                    "importScripts(" + scripts + ");",
+                                    algorithms,
+                                    "class observable{constructor(){}emit(){}}",
+                                    graph, edge, vertex, spatialGroup, temporalGroup, directory]);
+
+                                worker.onmessage = msg => {
+                                    for (var edge of msg.data)
+                                        try {
+                                            modules.model.createEdge(edge);
+                                        } catch (e) { }
+
+                                    worker.terminate();
+                                };
+
+                                worker.postMessage(modules.model.toJSON());
+                            } catch (e) {
+                                console.log(e);
+                            }
+                        
+                    })
+                    .filter(success => success && t.settings);
 
                 if (t.settings && t.settings.panorama)
                     return obs
@@ -192,51 +241,6 @@ function createCommonRoutines(modules, settings) {
                 } catch (err) {
                     return modules.model.observe(vertex, modules.model.CREATE)
                         .filter(v => v.id == initialScene);
-                }
-            })
-            .do(() => {
-                try {
-                    var applicationDir = window.location.href;
-                    var lastSlash = applicationDir.lastIndexOf('/');
-                    var lastPoint = applicationDir.lastIndexOf('.');
-                    if (lastSlash >= 0 && lastPoint > lastSlash)
-                        applicationDir = applicationDir.substring(0, lastSlash);
-
-                    var scripts = ["dms.js", "vector3d.js", "latlon-ellipsoidal.js", "latlon-vincenty.js"]
-                        .map(s => "geodesy/" + s)
-                        .concat(["priority-queue.min.js"])
-                        .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
-                        .join(",");
-
-                    var worker = algorithms.createInlineWorker(json => {
-                        var model = new graph();
-                        var alg = new algorithms({
-                            model: model,
-                            logger: { log: console.log },
-                            map: { getBackground: () => { return null; } }
-                        });
-
-                        alg.loadGraph(json, new directory(""));
-                        var edges = alg.connectAllColocated();
-                        self.postMessage(edges.map(e => e.toJSON()));
-                    }, ["self.window = self;",
-                        "importScripts(" + scripts + ");",
-                        algorithms,
-                        "class observable{constructor(){}emit(){}}",
-                        graph, edge, vertex, spatialGroup, temporalGroup, directory]);
-
-                    worker.onmessage = msg => {
-                        for (var edge of msg.data)
-                            try {
-                                modules.model.createEdge(edge);
-                            } catch (e) { }
-
-                        worker.terminate();
-                    };
-
-                    worker.postMessage(modules.model.toJSON());
-                } catch (e) {
-                    console.log(e);
                 }
             })
             .delay(1000)  // give filesystem enough time to register all files
@@ -255,7 +259,7 @@ function createCommonRoutines(modules, settings) {
             .do(v => v.image.file ? modules.filesys.link(v, v.image.file) : null),
 
         // edge -> line
-        modules.model.observe(edge, modules.model.CREATE)
+        modules.model.observe(edge, modules.model.CREATE, Rx.Scheduler.queue)
             .filter(e => e.type !== edge.prototype.LANDMARK) // only landmark connections to current panorama shown
             .do(e => modules.map.createLine(e))
         ,
@@ -298,7 +302,7 @@ function createCommonRoutines(modules, settings) {
 
 
         // edge -> hotspot
-        modules.model.observe(edge, modules.model.CREATE)
+        modules.model.observe(edge, modules.model.CREATE, Rx.Scheduler.queue)
             .filter(e => modules.panorama.getVertex() === e.from)
             .filter(e => e.type !== edge.prototype.TEMPORAL && e.type !== edge.prototype.TEMP)
             .do(e => modules.panorama.createHotspot(e)),

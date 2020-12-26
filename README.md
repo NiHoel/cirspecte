@@ -56,6 +56,11 @@ Since Cirspecte is built with recent web standards, it requires a modern browser
 Cirspecte is distributed under the Apache License 2.0. For more information, read the file `LICENSE` or peruse the license [online](https://github.com/nihoel/cirspecte/blob/master/LICENSE).
 Some library files are distributed under different licenses (see the files in assets/lib)
 
+## Development
+To update the modified vis timeline:
+1. Follow the build instructions from: https://github.com/visjs/vis-timeline
+2. Apply the patch vis-timeline-add-toggleGroupShowNested.patch
+3. Build the library and copy the non-minified .css to assets/css and the minified .js and .map to assets/js/lib
 
 ## Credits
 Nico Höllerich

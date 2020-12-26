@@ -1,0 +1,35 @@
+From 863dfb89959b4d59383c08029aaf38821bd8edab Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Nico=20H=C3=B6llerich?= <s1nihoel@uni-bayreuth.de>
+Date: Sat, 26 Dec 2020 15:58:25 +0100
+Subject: [PATCH] feat: add toggleGroupShowNested to timeline
+
+---
+ lib/timeline/Timeline.js | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/lib/timeline/Timeline.js b/lib/timeline/Timeline.js
+index 2d9bbef6..df843291 100644
+--- a/lib/timeline/Timeline.js
++++ b/lib/timeline/Timeline.js
+@@ -417,6 +417,18 @@ export default class Timeline extends Core {
+     return this.itemSet && this.itemSet.getSelection() || [];
+   }
+ 
++/**
++ * Toggle show nested
++ * @param {object} group
++ * @param {boolean} force
++ */
++    toggleGroupShowNested(group, force = undefined) {
++      var gr = this.itemSet.groups[group] || this.itemSet.groups[group.id] || this.itemSets.groups[group.groupId]; 
++
++      this.itemSet.toggleGroupShowNested(gr,
++        force);
++    }
++
+   /**
+    * Adjust the visible window such that the selected item (or multiple items)
+    * are centered on screen.
+-- 
+2.29.2.windows.1
+

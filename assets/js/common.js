@@ -391,6 +391,9 @@ function createCommonRoutines(modules, settings) {
             }),
 
         modules.filesys.observe(modules.filesys.DIRECTORY, modules.filesys.WORKSPACE)
+            .do(d => {
+                $('.workspace-path').text(d instanceof directory ? d.getPath() : "not set");
+            })
             .filter(() => modules.settings.loadRecentWorkspace())
             .do(d => modules.settings.recentWorkspace(d.getPath())),
 

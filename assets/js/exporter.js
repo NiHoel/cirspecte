@@ -160,10 +160,20 @@ class exporter extends observable {
             else
                 sg.path = this.modules.model.getSpatialGroup(sg.id).images.directory.getPath(this.modules.filesys.getWorkspace());
 
+            if (sg.images)
+                delete sg.images.path;
+
             if (this.enableTiling()) {
                 delete sg.thumbnails;
-                if (sg.images)
+                if (sg.images) {
                     delete sg.images.prefix;
+
+                    if (sg.images.width && this.enableMaxWidth())
+                        sg.images.width = Math.min(sg.images.width, this.maxWidth());
+
+                    if (sg.images.height && this.enableMaxHeight())
+                        sg.images.height = Math.min(sg.images.height, this.maxHeight());
+                }
             }
         }
 
@@ -271,7 +281,7 @@ class exporter extends observable {
                         newV.path = newV.path.replace(/\./g, '_');
                         delete newV.image.path;
 
-                        var newPath = filesystem.concatPaths(oldV.image.directory.getPath(this.modules.filesys.getWorkspace()), newV.path);
+                        var newPath = filesystem.concatPaths(oldV.image.directory.getPath(this.modules.filesys.getWorkspace()), newV.path.split('/').pop());
 
 
                         return this.directory.searchDirectory(newPath)
@@ -712,6 +722,8 @@ class exporter extends observable {
         return this.directory.write(path, oldB.image.file)
             .retry(2)
             .do(f => {
+                newB.image.path = path;
+
                 this.created(newB.label, f);
                 this.finished(newB.label);
             })
@@ -749,12 +761,20 @@ class exporter extends observable {
 
         if (this.exportGraph.hasVertex(id)) {
             var v = this.exportGraph.getVertex(id);
+
+            var tGroups = [];
             var tg = v.spatialGroup.superGroup;
-            while (tg && !this.destinationGraph.hasTemporalGroup(tg.id)) {
-                this.destinationGraph.createTemporalGroup(tg.toJSON({
-                    ignoreSpatialGroups: true
-                }))
+            while (tg) {
+                tGroups.unshift(tg);
+                tg = tg.superGroup;
             }
+            for (tg of tGroups) {
+                if (tg && !this.destinationGraph.hasTemporalGroup(tg.id))
+                    this.destinationGraph.createTemporalGroup(tg.toJSON({
+                        ignoreSpatialGroups: true
+                    }))
+            }
+
             if (!this.destinationGraph.hasSpatialGroup(v.spatialGroup.id))
                 this.destinationGraph.createSpatialGroup(v.spatialGroup.toJSON({
                     ignoreVertices: true

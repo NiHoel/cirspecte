@@ -297,8 +297,12 @@ class panoramaViewer extends observable {
         if (!hs.draggable)
             hs.clickHandlerFunc = () => this.emit(hs, this.CLICK);
         else {
-            hs.dragStartHandlerFunc = () => this.startUpdate(hs, hs.POSITION);
-            hs.dragHandlerFunc = () => this.endUpdate(hs, hs.POSITION);
+            hs.dragHandlerFunc = (e) => {
+                if (e.type === 'mousedown' || e.type === 'pointerdown')
+                    this.startUpdate(hs, hs.POSITION);
+                else if (e.type === 'touchend' || e.type === 'pointerup' || e.type === 'pointerleave' || e.type === 'mouseup' || e.type === 'mouseleave')
+                    this.endUpdate(hs, hs.POSITION);
+            }
         }
         let sceneId = this.getScene().id;
         this.viewer.addHotSpot(hs, sceneId);
@@ -687,8 +691,11 @@ class panoramaViewer extends observable {
         this.loading = true;
         setTimeout(() => this.loadingFinished(), 15000);
 
+        if (!v.data.type)
+            this.modules.model.updateData(v, { type: "equirectangular" });
+
         var obs = this.modules.filesys.prepareFileAccess(v);
-        if (this.config.tileResolution && (v.data.type == "equirectangular" || !v.data.type))
+        if (this.config.tileResolution && v.data.type == "equirectangular")
             obs = obs.mergeMap(() => this.autoTile(v, config));
         else if (v.data.type.startsWith('multires'))
             obs = obs.map(v => {
@@ -831,8 +838,12 @@ class panoramaViewer extends observable {
             };
 
             hs.draggable = true;
-            hs.dragStartHandlerFunc = () => this.startUpdate(hs, hotspot.prototype.POSITION, this.NORTHHOTSPOT);
-            hs.dragHandlerFunc = () => this.endUpdate(hs, hotspot.prototype.POSITION, this.NORTHHOTSPOT);
+            hs.dragHandlerFunc = (e) => {
+                if (e.type === 'mousedown' || e.type === 'pointerdown')
+                    this.startUpdate(hs, hotspot.prototype.POSITION, this.NORTHHOTSPOT);
+                else if (e.type === 'touchend' || e.type === 'pointerup' || e.type === 'pointerleave' || e.type === 'mouseup' || e.type === 'mouseleave')
+                    this.endUpdate(hs, hotspot.prototype.POSITION, this.NORTHHOTSPOT);
+            }
             this.northHotspot = hs;
             return this.reloadScene();
         } else if (!enable && this.northHotspot) {

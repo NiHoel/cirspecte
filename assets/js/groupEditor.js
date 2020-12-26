@@ -182,6 +182,10 @@ class groupEditor extends observable {
                                 id: null,
                                 spatialGroup: v.spatialGroup
                             }));
+
+                            vert.data = vert.data || {};
+                            vert.data.type = "equirectangular";
+
                             v.forEach(e => {
                                 let eConfig = Object.assign({}, e.toJSON(), { from: vert, id: null, type: null });
                                 modules.model.createEdge(eConfig);
@@ -473,7 +477,7 @@ class groupEditor extends observable {
                     g = this.modules.model.createSpatialGroup({
                         timeslot: timeslot.toDate(),
                         name: timeslot.format('MMMM YYYY'),
-                        type: spatialGroup.prototype.ROUTE,
+                        type: spatialGroup.prototype.SINGLESHOT,
                         superGroup: g,
                         path: f.getParent().getPath(g.directory),
                         images: {
@@ -600,7 +604,9 @@ class groupEditor extends observable {
             //.first() // filesys might not complete
             .filter(v => v instanceof vertex && this.modules.settings.autoDisplayPanorama())
             .mergeMap(v => this.modules.panorama.loadScene(v))
-            .subscribe();
+            .subscribe({
+                error: err => this.modules.logger.log(err)
+            });
     }
 
     /**

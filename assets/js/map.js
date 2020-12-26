@@ -1316,7 +1316,15 @@ class mapViewer extends observable {
      * Refresh layer tree
      * */
     updateLayerTree() {
-        this.layerControl.setOverlayTree(this.overlayTree).collapseTree(true).expandSelected(true);
+        if (this.layerTreeUpdateScheduled)
+            return;
+
+        this.layerTreeUpdateScheduled = true;
+        setTimeout(() => {
+            this.layerTreeUpdateScheduled = false;
+            this.layerControl.setOverlayTree(this.overlayTree).collapseTree(true).expandSelected(true);
+            },
+            100);
     }
 
     toJSON() {

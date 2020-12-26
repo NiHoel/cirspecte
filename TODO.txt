@@ -2,55 +2,20 @@ bugs
 	item deselected when selecting group in editor
 	control group in map not selected when selecting item
 
-ux
-	Arcgis developer plan
-	migrate to vis-timeline
-
-
-cordova:
-	
-
-	options
-		save & load	
-			switch workspace
-			import workspace
-			import tour
-			save as
-			autosave
-			load recent workspace on startup
-			request missing
-			automatically save selected items
-			
-		view
-			aggregate items
-			show group on map wen selecting it in sidebar
-			auto save selection (map, timeline)
-			configuration options
-			
-		advanced
-			create point when clicking on map
-			delete landmarks
-			copy vertices
-			track files
-			copy attributes
-			edit options for copying vertices
-			
-		
-
 add functionality
-	update scene based on position (only displayed points, use colocatedRadius)
-	save settings, selected layers, and working directory in storage
-	autosave
+	save selected layers, collapsed timeline groups
+	panorama editor: haov, vaov, horizonPitch, horizonRoll
 	
+	capture panoramas on mobile devices
+		apps: Panorama camera, Google Maps (https://gbksoft.com/blog/best-360-camera-apps-for-iphone-android-development/)
+		https://sciencevikinglabs.com/capturing-android-intents/
+		https://github.com/EinfachHans/cordova-plugin-advanced-imagepicker		https://stackoverflow.com/questions/63945786/cordova-access-image-in-androids-cache-or-files-folder-from-an-html-file
 	
 	get height from Google API
 	display deepzoom images with leaflet:
 		https://github.com/alfarisi/leaflet-deepzoom
 	tour settings
 		startup base layer for map
-	haov optimization
-	update vertex by editing json
-		for data, image and thumbnail
 	multiselection
 		https://github.com/sandropibia/Leaflet.SelectAreaFeature/
 		map and timeline

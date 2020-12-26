@@ -443,8 +443,8 @@ function createCommonRoutines(modules, settings) {
                         return dir.searchFile("tour.json")
                             .map(f => [f, dir])
                             .catch(err => {
-                                if (editors && editors.groupEdit)
-                                    editors.groupEdit.beginCreate(temporalGroup);
+                                if (modules.editors && modules.editors.groupEdit)
+                                    modules.editors.groupEdit.beginCreate(temporalGroup);
 
                                 throw err;
                             });
@@ -515,8 +515,8 @@ function createCommonRoutines(modules, settings) {
             })
             .mergeMap(dir => dir.searchFile("tour.json")
                 .catch(err => {
-                    if (editors && editors.groupEdit)
-                        editors.groupEdit.beginCreate(temporalGroup);
+                    if (modules.editors && modules.editors.groupEdit)
+                        modules.editors.groupEdit.beginCreate(temporalGroup);
 
                     throw err;
                 })

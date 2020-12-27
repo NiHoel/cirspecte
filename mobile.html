@@ -1190,26 +1190,29 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                             </tr>
                             <tr class="row">
                                 <td>
-                                    <div class="timeline-item timeline-point timeline-readonly" style="background-color:black"><div class="timeline-item-content" style="margin-left: 32px;">2018</div><div class="timeline-item timeline-dot timeline-readonly" style="top: 7px; left: 8px;"></div></div>
+                                    <div class="vis-item vis-point vis-readonly" style="background-color: black;position: relative;"><div class="vis-item-content" style="margin-left: 32px;">2019</div><div class="vis-item vis-dot vis-readonly" style="top: 7px; transform: translateX(8px);"></div></div>
+                                    <div class="vis-item vis-point vis-readonly vis-inactive" style="background-color: black;position: relative;margin-top: 4px;"><div class="vis-item-content vis-inactive" style="margin-left: 32px;">2018</div><div style="top: 7px; transform: translateX(8px);" class="vis-item vis-dot vis-readonly vis-inactive"></div></div>
                                 </td>
                                 <td>
                                     <p>
                                         Location: Timeline.
                                     </p><p>
-                                        Effect: Switches to that moment in time (affects currently shown panorama and points on the map).
-                                    </p>
+    Effect: Switches to that moment in time and loads the panorama.
+
+    If there is no panorama available for that point in time, then the item is grayed out. When clicking it, the map is updated and one has to manually choose the panorama (by clicking one of the red points).
+</p>
                                 </td>
 
                             </tr>
                             <tr class="row">
                                 <td>
-                                    <div class="timeline-item timeline-range timeline-readonly" style=" width: 90px; top: 5px;position: relative;"><div class="timeline-item-overflow"><div class="timeline-item-content" style="transform: translateX(0px);">2016 - 2019</div></div><div class="timeline-item-visible-frame"></div></div>
+                                    <div class="vis-item vis-range vis-readonly" style=" width: 90px; top: 5px;position: relative;"><div class="vis-item-overflow"><div class="vis-item-content" style="transform: translateX(0px);">2016 - 2019</div></div><div class="vis-item-visible-frame"></div></div>
                                 </td>
                                 <td>
                                     <p>
                                         Location: Timeline.
                                     </p><p>
-                                        Aggregated stack of timeline items. Zoom closer to see individual items.
+                                        Aggregated stack of timeline items. Zoom closer or click to see individual items.
                                     </p>
                                 </td>
 

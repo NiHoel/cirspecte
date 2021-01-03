@@ -527,9 +527,29 @@ class algorithms {
         var content = calledFunctions.map(f => {
             var fstr = f.toString();
             if (fstr.startsWith('('))
-                return f.name + fstr;
-            else
-                return fstr;
+                fstr = f.name + fstr;
+
+            if (f.prototype) {
+                for (var attr in f.prototype) {
+                    if (f.prototype[attr] == null)
+                        continue;
+
+                    var t = typeof f.prototype[attr];
+                    if (t == "undefined")
+                        continue;
+
+                    var prefix = f.name + '.prototype.' + attr + ' = ';
+
+                    if (t == "boolean" || t == "number" || t == "function")
+                        fstr += prefix + f.prototype[attr].toString() + ';';
+                    if (t == "string")
+                        fstr += prefix + '"' + f.prototype[attr].toString() + '";';
+                    if (t == "object")
+                        fstr += prefix + JSON.stringify(f.prototype[attr]) + ';';
+                }
+            }
+
+            return fstr;
         });
         content.push(
             'self.main = ', main.toString(), ';',

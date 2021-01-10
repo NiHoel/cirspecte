@@ -295,7 +295,7 @@ class panoramaViewer extends observable {
 
         // (event, clickHandlerArgs) => {...}
         if (!hs.draggable)
-            hs.clickHandlerFunc = () => this.emit(hs, this.CLICK);
+            hs.clickHandlerFunc = (event) => {if(event.type == 'click') this.emit(hs, this.CLICK);}
         else {
             hs.dragHandlerFunc = (e) => {
                 if (e.type === 'mousedown' || e.type === 'pointerdown')
@@ -689,7 +689,8 @@ class panoramaViewer extends observable {
             return Rx.Observable.empty();
 
         this.loading = true;
-        setTimeout(() => this.loadingFinished(), 15000);
+        this.loadingTimeout = () => this.loadingFinished();
+        setTimeout(this.loadingTimeout, 10000);
 
         if (!v.data.type)
             this.modules.model.updateData(v, { type: "equirectangular" });
@@ -786,8 +787,6 @@ class panoramaViewer extends observable {
             }
             this.setNorthOffset(newScene.northOffset); // scene and viewer northOffset differ in sign
 
-            this.loading = false;
-
             if (!config.reload)
                 this.emit(newScene, this.CREATE);
 
@@ -876,6 +875,7 @@ class panoramaViewer extends observable {
 
         this.loading = false;
         clearTimeout(this.loadingTimeout);
+        delete this.loadingTimeout;
     }
 
     /**

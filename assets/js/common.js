@@ -144,10 +144,6 @@ function animateLayout(settings, modules, responsiveElements = []) {
 * @returns {[Rx.Observable]}
  */
 function createCommonRoutines(modules, settings) {
-    if (platform.mobile == null)
-        platform.mobile = platform.product != null || /Mobile/.test(platform.browser);
-
-
 
     /********************/
     /* common functions */

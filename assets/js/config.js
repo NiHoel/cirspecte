@@ -93,7 +93,10 @@ var config = {
             maxWait: 60000, // defaults to 10000
             desiredAccuracy: 3 // defaults to 20
         },
-        mobileRadius: 8,
+        "mobile": {
+            "radius": 5,
+            "weight": 10
+        },
         "point": {
             "panorama": {
                 color: 'red',

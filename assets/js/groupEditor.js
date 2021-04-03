@@ -199,6 +199,10 @@ class groupEditor extends observable {
             ,
 
             vertexSelector
+                .filter(() => this.editingMode() === this.EDIT.COPY)
+                .do(v => this.copyVertex(v)),
+
+            vertexSelector
                 .filter(() => this.editingMode() === this.EDIT.DELETE)
                 .do(v => modules.model.deleteVertex(v)),
 
@@ -648,6 +652,71 @@ class groupEditor extends observable {
     }
 
     /**
+     * @param {vertex} v to be copied to this.current.spatialGroup(), applies options for copying templates
+     */
+    copyVertex(v) {
+        if (!this.current.spatialGroup() || !v || v.spatialGroup == this.current.spatialGroup())
+            return;
+
+        this.modules.hist.commit();
+        var options = this.modules.settings.getTemplateOptions();
+        var mask = this.modules.settings.getTemplateMask();
+        var path;
+
+        if (mask.path && v.type === vertex.prototype.PANORAMA) {
+            var imgConfig = v.getImageConfig();
+            var root = imgConfig.directory || this.modules.filesys.getWorkspace();
+            path = filesystem.concatPaths(v.path, imgConfig.path, imgConfig.prefix);
+            path = filesystem.concatPaths(root.getPath(), path);
+
+            var sgDir = this.current.spatialGroup().images
+                ? this.current.spatialGroup().images.directory
+                : this.current.spatialGroup().directory;
+            var sgPath = sgDir.getPath()
+            if (!path.startsWith(sgPath))
+                throw new error(this.ERROR.INVALID_PATH, path + " is not contained in " + sgPath, path);
+
+            path = path.substr(sgPath.length)
+        }
+
+        var distanceThreshold = options.colocated ? this.current.spatialGroup().superGroup.colocatedRadius : 0;
+
+
+            if (mask.types.indexOf(v.type) !== -1) {
+                var targ = this.modules.alg.getColocated(this.current.spatialGroup(), v.coordinates, distanceThreshold);
+                var copied = false;
+                if (!targ && options.create) {
+                    var config = { spatialGroup: this.current.spatialGroup() };
+                    if (path) {
+                        config.path = path;
+                        mask.path = false;
+                    }
+
+                    mask.type = true;
+
+                    config = this.assign(config, v, mask);
+                    var newV = this.modules.model.createVertex(config);
+                    this.createEdgesFromTemplate(v, newV);
+
+                    copied = true;
+                } else if (targ && options.update) {
+                    if (mask.coordinates)
+                        this.modules.model.updateCoordinates(targ, v.coordinates);
+                    if (mask.data)
+                        this.modules.model.updateData(targ, this.assign(targ.data, v.data, mask.data));
+                    if (mask.path)
+                        this.modules.model.updatePath(targ, v.path);
+                    this.createEdgesFromTemplate(v, targ);
+                    copied = true;
+                }
+
+                if (copied && this.modules.settings.getTemplateOptions().deleteOriginal)
+                    this.modules.model.deleteVertex(v);
+            }
+      
+    }
+
+    /**
      * Copies vertices from spatialGroupTemplate to current.spatialGroup applying the copy vertex options.
      * */
     applyTemplate() {
@@ -713,5 +782,6 @@ groupEditor.prototype.EDIT = {};
 groupEditor.prototype.EDIT.SCENE = "Load Panorama";
 groupEditor.prototype.EDIT.LINE = "Draw Line";
 groupEditor.prototype.EDIT.POLYLINE = "Draw Polyline";
+groupEditor.prototype.EDIT.COPY = "Copy Point";
 groupEditor.prototype.EDIT.DELETE = "Delete Point";
 groupEditor.prototype.EDIT.LOG = "Log to Console";

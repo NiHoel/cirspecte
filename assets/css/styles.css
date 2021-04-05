@@ -315,3 +315,11 @@ div.hotspot-container:hover div.preview-tooltip:after {
 #sidebar-wrapper a {
     color: #d5d5d5;
 }
+
+.inline-list-stretched {
+    display: flex;
+    flex-flow: nowrap;
+    justify-content: space-between;
+    align-items: center;
+}
+

@@ -146,8 +146,8 @@ hotspot.prototype.POSITION = 'position';
 /**
  * Listen to events: this.observe(<class>, <action>).subscribe(elem => / do something with element here /)
  * where <class> in {scene, hotspot, this.NORTHHOTSPOT}
- * <action> in {this.CREATE, this.DELETE, this.DRAG, this.CLICK}
- * click and drag not available for scene
+ * <action> in {this.CREATE, this.DELETE, this.DRAG, this.CLICK, this.LOADED}
+ * click and drag not available for scene, loaded not available for hotspot
  * */
 class panoramaViewer extends observable {
     get [Symbol.toStringTag]() {
@@ -181,11 +181,29 @@ class panoramaViewer extends observable {
                 else
                     this.viewer.stopOrientation();
             }
-        })
+        });
 
         // the settings from the tour file are applied in common.js after reading the file
 
+        this.isAutoRotating = ko.observable(false);
+        var startButton = $('#start-auto-rotate-button')[0];
+        var stopButton = $('#stop-auto-rotate-button')[0];
 
+        if (startButton)
+            startButton.onclick = () => this.startAutoRotate();
+
+        if (stopButton) {
+            stopButton.style.display = 'none';
+            stopButton.onclick = () => this.stopAutoRotate();
+    }
+
+        this.isAutoRotating.subscribe(enabled => {
+            if (startButton)
+                startButton.style.display = enabled ? 'none' : 'inherit';
+
+            if (stopButton)
+                stopButton.style.display = enabled ? 'inherit' : 'none';
+        });
     }
 
     /**
@@ -256,11 +274,13 @@ class panoramaViewer extends observable {
         }
         cfg.northOffset = cfg.northOffset || 0;
         cfg.vOffset = cfg.vOffset || 0;
-        cfg.pitch = cfg.pitch || (this.scene ? this.viewer.getPitch() : 0);
-        cfg.yaw = cfg.yaw + cfg.northOffset || (this.scene ? this.viewer.getYaw() - this.getNorthOffset() + cfg.northOffset : cfg.northOffset);
+        cfg.pitch = cfg.pitch || (this.scene ? "same" : 0);
+        cfg.yaw = cfg.yaw + cfg.northOffset || (this.scene ? "sameAzimuth" : cfg.northOffset);
         cfg.vaov = cfg.vaov || (this.scene ? this.scene.vaov : 120);
         cfg.minHfov = Math.min(120, config.minHfov || $(this.domElement).innerWidth() / width / this.config.maxZoomFactor * 360);
-        cfg.hfov = cfg.hfov || (this.scene ? this.viewer.getHfov() : Math.min(cfg.vaov, 170));
+        cfg.hfov = cfg.hfov || (this.scene ? "same" : Math.min(cfg.vaov, 170));
+        if(cfg.autoRotate == null)
+        cfg.autoRotate = this.isAutoRotating() ? this.modules.settings.autoRotateSpeed() : false;
         return cfg;
     }
 
@@ -595,6 +615,25 @@ class panoramaViewer extends observable {
     }
 
 
+    startAutoRotate() {
+        if (!this.viewer)
+            return;
+
+        this.viewer.startAutoRotate(this.modules.settings.autoRotateSpeed(),
+            undefined,
+            undefined,
+            this.modules.settings.autoRotateInactivityEnabled()
+            ? this.modules.settings.autoRotateInactivityDelay() * 1000
+            : -1);
+    }
+
+    stopAutoRotate() {
+        if (!this.viewer)
+            return;
+
+        this.viewer.stopAutoRotate();
+    }
+
     /**
      * Loads the image associated to vertex, resizes it to the specified resolution
      * Stores the result in vertex.img.
@@ -609,6 +648,10 @@ class panoramaViewer extends observable {
                 let canvas = document.createElement('canvas');
                 let gl = canvas.getContext('experimental-webgl', { alpha: false, depth: false });
                 panoramaViewer.maxWidth = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+
+                var extension = gl.getExtension('WEBGL_lose_context');
+                if (extension)
+                    extension.loseContext();
             }
 
             if (width == null)
@@ -651,7 +694,55 @@ class panoramaViewer extends observable {
         });
     }
 
+    /**
+     * Creates a new pannellum viewer, merges initital configurations and sets up event handlers
+     * @param {scene} First scene to be shown
+     */
+    initViewer(newScene) {
+        if (this.viewer != null) { //viewer displays error
+            this.viewer.destroy();
+            this.viewer = null;
+            this.scene = null;
+        }
+        let cfg = { 'default': {}, 'scenes': {} };
+        Object.assign(cfg.default, this.config.default,
+            {
+                firstScene: newScene.id,
+                orientationOnByDefault: this.modules.settings.enableOrientation(),
+                autoRotate: this.modules.settings.autoRotateSpeed(),
+                autoRotateInactivityDelay: this.modules.settings.autoRotateInactivityEnabled() ? this.modules.settings.autoRotateInactivityDelay() * 1000 : -1
+            });
+        cfg['scenes'][newScene.id] = newScene;
 
+        if (this.config.default.interpolateBetweenTiles == null) {
+            cfg['default']['interpolateBetweenTiles'] = !platform.isMobile;
+        }
+
+
+        /** @type {pannellum.Viewer} */
+        this.viewer = pannellum.viewer(this.domElement, cfg);
+        this.scene = newScene;
+
+        if (cfg.default.sceneFadeDuration) {
+            this.viewer.on('scenechangefadedone', () => { this.loadingFinished(); });
+        } else {
+            this.viewer.on('load', () => { this.loadingFinished(); });
+        }
+
+        this.viewer.on('autorotatestart', () => this.isAutoRotating(true));
+        this.viewer.on('autorotatefinished', () => this.isAutoRotating(false));
+
+        this.autoRotateSubscription = ko.computed(() => {
+            var speed = this.modules.settings.autoRotateSpeed();
+            if (this.isAutoRotating())
+                this.viewer.startAutoRotate(speed);
+
+            if (this.modules.settings.autoRotateInactivityEnabled())
+                this.viewer.setAutoRotateInactivityDelay(this.modules.settings.autoRotateInactivityDelay() * 1000);
+            else
+                this.viewer.setAutoRotateInactivityDelay(-1);
+        });
+    }
 
     /**
      * Center view in the direction the hotspot points to.
@@ -665,7 +756,7 @@ class panoramaViewer extends observable {
             throw new error(panoramaViewer.ERROR.UNSUPPORTED_VERTEX_TYPE, e.to.type, e);
 
         if (this.scene && e.from === this.scene.vertex && e.type !== edge.prototype.TEMPORAL) {
-            return this.loadScene(e.to, { yaw: algorithms.getAzimuth(e.from, e.to), pitch: 0 });
+            return this.loadScene(e.to, { autoRotate: false });
         } else {
             return this.loadScene(e.to);
         }
@@ -689,8 +780,7 @@ class panoramaViewer extends observable {
             return Rx.Observable.empty();
 
         this.loading = true;
-        this.loadingTimeout = () => this.loadingFinished();
-        setTimeout(this.loadingTimeout, 10000);
+        this.loadingTimeout = setTimeout(this.loadingFinished.bind(this), 10000);
 
         if (!v.data.type)
             this.modules.model.updateData(v, { type: "equirectangular" });
@@ -711,34 +801,9 @@ class panoramaViewer extends observable {
 
         return obs.map(newScene => {
             if (this.viewer == null || !this.viewer.getScene() || !this.viewer.isLoaded()) {
-                if (this.viewer != null) { //viewer displays error
-                    this.viewer.destroy();
-                    this.viewer = null;
-                    this.scene = null;
-                }
-                let cfg = { 'default': {}, 'scenes': {} };
-                Object.assign(cfg.default, this.config.default);
-                cfg['scenes'][newScene.id] = newScene;
-                cfg['default']['firstScene'] = newScene.id;
-                cfg['default']['orientationOnByDefault'] = this.modules.settings.enableOrientation();
-
-                if (this.config.default.interpolateBetweenTiles == null) {
-                    cfg['default']['interpolateBetweenTiles'] = !platform.isMobile;
-                }
-
-
-                /** @type {pannellum.Viewer} */
-                this.viewer = pannellum.viewer(this.domElement, cfg);
-                this.scene = newScene;
-
-                if (cfg.default.sceneFadeDuration) {
-                    this.viewer.on('scenechangefadedone', () => { this.loadingFinished(); });
+                this.initViewer(newScene);
                 } else {
-                    this.viewer.on('load', () => { this.loadingFinished(); })
-                }
-
-            } else {
-                this.viewer.addScene(newScene.id, newScene);
+                this.viewer.addScene(newScene.id, $.extend({}, newScene, { northOffset: -newScene.northOffset }));
 
                 if (this.scene != null) {
                     this.scene.forEach(hs => {
@@ -776,7 +841,7 @@ class panoramaViewer extends observable {
                         this.emit(this.scene, this.DELETE);
                 }
 
-                this.viewer.loadScene(newScene.id);
+                this.viewer.loadScene(newScene.id, newScene.pitch, newScene.yaw, newScene.hfov, false);
                 this.scene = newScene;
 
                 if (this.northHotspot != null) {
@@ -870,12 +935,19 @@ class panoramaViewer extends observable {
      * 
      */
     loadingFinished() {
+        if (this.modules.settings.autoRotateInactivityEnabled())
+            this.viewer.setAutoRotateInactivityDelay(this.modules.settings.autoRotateInactivityDelay() * 1000);
+        else
+            this.viewer.setAutoRotateInactivityDelay(-1);
+
         if (!this.loading)
             return;
 
         this.loading = false;
         clearTimeout(this.loadingTimeout);
         delete this.loadingTimeout;
+
+        this.emit(this.scene, this.LOADED);
     }
 
     /**
@@ -1253,6 +1325,7 @@ panoramaViewer.prototype.DRAG = 'drag';
 panoramaViewer.prototype.CREATE = 'create';
 panoramaViewer.prototype.NORTHHOTSPOT = 'north hotspot';
 panoramaViewer.prototype.DELETE = 'delete';
+panoramaViewer.prototype.LOADED = 'loaded';
 
 panoramaViewer.prototype.ERROR.NO_IMAGE = 'no image associated to vertex'
 panoramaViewer.prototype.ERROR.IMAGE_TOO_BIG = 'image resolution too high'

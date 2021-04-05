@@ -837,6 +837,60 @@
                                 </div>
 
                                 <hr>
+                                <h4>Automatically rotate panorama</h4>
+                                <form class="inline-list-stretched" style="margin-bottom: 1rem !important;">
+                                    <button id="start-auto-rotate-button" class="btn btn-primary" data-dismiss="modal">Start</button>
+                                    <button id="stop-auto-rotate-button" class="btn btn-primary" data-dismiss="modal">Stop</button>
+
+                                    <div class="input-group">
+                                        <div class="input-group-addon">
+                                            <input data-bind="checked: autoRotateInactivityEnabled" type="checkbox" id="autoRotateInactivityEnabled">
+                                        </div>
+                                        <div class="input-group-addon">
+                                            <label for="autoRotateInactivityEnabled" title="If there is no user interaction with the panorama, the view begins to turn automatically after the specified time.">Always start after</label>
+                                        </div>
+                                        <input type="number" class="form-control" id="colocatedRadius" value="1" min="0" data-bind="value: autoRotateInactivityDelay, enable: autoRotateInactivityEnabled">
+                                        <div class="input-group-addon">
+                                            <label for="colocatedRadius">s of inactivity</label>
+                                        </div>
+                                    </div>
+
+                                </form>
+                                <div class="form-group"  style="margin-bottom: 1rem !important;">
+                                    <label class="col-sm-1 control-label">Speed</label>
+                                    <div class="col-sm-11">
+                                        <input type="range" class="form-range" min="-20" max="20" step="0.25" data-bind="value: autoRotateSpeed">
+                                    </div>
+                                </div>
+
+                                <h4>Cycle through panoramas</h4>
+                                <form class="inline-list-stretched" style="margin-bottom: 1rem !important;">
+                                    <button id="start-cycle-timepoints-button" class="btn btn-primary" data-dismiss="modal">Start</button>
+                                    <button id="stop-cycle-timepoints-button" class="btn btn-primary" data-dismiss="modal">Stop</button>
+                                    <div class="checkbox">
+                                        <label title="Whenever the panorama starts or stops to automatically rotate, the loading of panorams is started or stopped " class="control-label" for="cycle-timepoints-bind-to-auto-rotate">
+                                            <input type="checkbox" data-bind="checked: cycleTimepointsBindToAutoRotate" id="cycle-timepoints-bind-to-auto-rotate">
+                                            Start and stop with auto rotate
+                                        </label>
+                                    </div>
+
+                                </form>
+
+                                <div class="input-group">
+                                    <div class="input-group-addon">
+                                        <label for="autoRotateInactivityEnabled">Blend panoramas for</label>
+                                    </div>
+                                    <input type="number" class="form-control" value="1" min="0" max="10" data-bind="value: cycleTimepointsFadeDuration">
+                                    <div class="input-group-addon">
+                                        <label for="autoRotateInactivityEnabled">s and wait for</label>
+                                    </div>
+                                    <input type="number" class="form-control" value="1" min="1" data-bind="value: cycleTimepointsDelay">
+                                    <div class="input-group-addon">
+                                        <label for="colocatedRadius">s before loading next.</label>
+                                    </div>
+                                </div>
+
+                                <hr>
 
                                 <div class="container-fluid">
                                     <span>Pan and zoom and then click to save the following values.</span>
@@ -1592,10 +1646,10 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                                     <p>
                                         Location: Timeline.
                                     </p><p>
-    Effect: Switches to that moment in time and loads the panorama.
+                                        Effect: Switches to that moment in time and loads the panorama.
 
-    If there is no panorama available for that point in time, then the item is grayed out. When clicking it, the map is updated and one has to manually choose the panorama (by clicking one of the red points).
-</p>
+                                        If there is no panorama available for that point in time, then the item is grayed out. When clicking it, the map is updated and one has to manually choose the panorama (by clicking one of the red points).
+                                    </p>
                                 </td>
 
                             </tr>

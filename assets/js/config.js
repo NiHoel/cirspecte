@@ -218,6 +218,7 @@ var config = {
     panorama: {
         default: {
             "sceneFadeDuration": 1000,
+            "dynamicSceneFade": true,
             "orientationOnByDefault": true,
             "mouseZoom": true,
             "showControls": true,

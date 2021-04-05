@@ -61,7 +61,36 @@ class navigationViewer extends observable {
                 this.subscription.unsubscribe();
                 complete();
             }
-        })
+        });
+
+        this.isCycleTimepoints = ko.observable(false);
+
+        this.cycleTimepointsSubscription = ko.computed(() => {
+            if (this.modules.settings.cycleTimepointsBindToAutoRotate())
+                if (this.modules.panorama.isAutoRotating())
+                    this.startCycleTimepoints();
+                else
+                    this.stopCycleTimepoints();
+        });
+
+        var startButton = $('#start-cycle-timepoints-button')[0];
+        var stopButton = $('#stop-cycle-timepoints-button')[0];
+
+        if (startButton)
+            startButton.onclick = () => this.startCycleTimepoints();
+
+        if (stopButton) {
+            stopButton.style.display = 'none';
+            stopButton.onclick = () => this.stopCycleTimepoints();
+        }
+
+        this.isCycleTimepoints.subscribe(enabled => {
+            if (startButton)
+                startButton.style.display = enabled ? 'none' : 'inherit';
+
+            if (stopButton)
+                stopButton.style.display = enabled ? 'inherit' : 'none';
+        });
     }
 
 
@@ -260,6 +289,16 @@ class navigationViewer extends observable {
         });
     }
 
+    notifySceneLoaded(s) {
+        if (this.isCycleTimepoints() && s.vertex == this.currentVertex) {
+            if (this.cycleTimepointsDelayTimeout)
+                clearTimeout(this.cycleTimepointsDelayTimeout);
+
+            this.cycleTimepointsDelayTimeout = setTimeout(this.startCycleTimepoints.bind(this),
+                this.modules.settings.cycleTimepointsDelay() * 1000);
+        }
+    }
+
     /**
      * 
      * @param { GeolocationPosition} pos
@@ -291,6 +330,47 @@ class navigationViewer extends observable {
 
         if (closest)
             this.emit(closest, this.LOCATIONUPDATE);
+    }
+
+    stopCycleTimepoints() {
+        this.isCycleTimepoints(false);
+
+        clearTimeout(this.cycleTimepointsDelayTimeout);
+        delete this.cycleTimepointsDelayTimeout;
+    }
+
+    startCycleTimepoints() {
+        if (!this.currentVertex && !this.predecessor && !this.successor) {
+            this.stopCycleTimepoints();
+            return;
+        }
+
+        clearTimeout(this.cycleTimepointsDelayTimeout);
+        delete this.cycleTimepointsDelayTimeout;
+
+        this.isCycleTimepoints(true);
+
+        var nextV;
+        if (this.successor) {
+            nextV = this.successor.to;
+
+        } else if (this.predecessor) {
+            nextV = this.currentVertex;
+            this.currentVertex.forEach(e => {
+                if (e.type === edge.prototype.TEMPORAL && e.to.getTimeslot() < nextV.getTimeslot())
+                    nextV = e.to;
+            });
+        }
+
+        if (nextV) {
+            this.modules.panorama
+                .loadScene(nextV,
+                    { sceneFadeDuration: this.modules.settings.cycleTimepointsFadeDuration() * 1000 })
+                .catch((err) => {
+                    console.log(err);
+                    this.modules.logger.log(err);
+                }).subscribe();
+        }
     }
 }
 

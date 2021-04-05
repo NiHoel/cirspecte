@@ -347,6 +347,9 @@ function createCommonRoutines(modules, settings) {
             .do(s => modules.nav.setVertex(s.vertex))
             .do(s => modules.timeline.toggleSelection(s.vertex.spatialGroup.item, true)),
 
+        modules.panorama.observe(scene, modules.panorama.LOADED)
+            .do(s => modules.nav.notifySceneLoaded(s)),
+
         modules.map.observe(layerGroup, modules.map.SHOW)
             .map(l => l.spatialGroup)
             .do(sg => modules.nav.notifySpatialGroupShown(sg))

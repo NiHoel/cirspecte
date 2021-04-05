@@ -81,7 +81,13 @@ class configurator {
             enableGPS: false,
             requiredGPSAccuracy: 10,
             currentGPSAccuracy: 0,
-            recentWorkspace: null
+            recentWorkspace: null,
+            autoRotateSpeed: -5,
+            autoRotateInactivityEnabled: true,
+            autoRotateInactivityDelay: 10,
+            cycleTimepointsBindToAutoRotate: true,
+            cycleTimepointsFadeDuration: 8,
+            cycleTimepointsDelay: 10
         }
 
         ko.mapping.fromJS(this.localOptions, {}, this);

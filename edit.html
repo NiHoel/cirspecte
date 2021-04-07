@@ -245,52 +245,73 @@
             <div id="panorama-editor" class="tab-pane fade">
                 <ul class="sidebar-nav">
                     <li>
-                        <div>
-                            <label for="coord-text" style="margin-right: 20px;" title="The longitude and latitude of the vertex (as displayed on the map)">Coordinates:</label><br />
+                        <div class="checkbox description">
+                            <label for="panorama-edit-coordinates-checkbox" title="The longitude and latitude of the vertex (as displayed on the map)">
+                                <input type="checkbox" id="panorama-edit-coordinates-checkbox" data-bind="checked: optimizeCoordinates" title="Include in optimization">
+                                Coordinates:
+                            </label><br />
                             <span id="coord-text" style="width: 16em" type="text">
                                 0.0, 0.0
                             </span>
                         </div>
-                        <div>
-                            <label for="file-text" style="margin-right: 20px;" title="The image file name">File:</label><br />
+                        <div class="description">
+                            <label for="file-text" title="The image file name">File:</label><br />
                             <span id="file-text" style="width: 16em" type="text">
                                 *.jpg
                             </span>
                         </div>
-                        <div>
-                            <label for="image-display-resolution-text" style="margin-right: 20px;">Displayed Resolution:</label><br />
+                        <div class="description">
+                            <label for="image-display-resolution-text">Displayed Resolution:</label><br />
                             <span id="image-display-resolution-text" style="width: 16em" type="text">
                                 0 x 0 Pixel
                             </span>
                         </div>
-                        <div>
-                            <label for="northOffset-text" style="margin-right: 20px;" title="The offset between geographical north and the horizontal center of the image (change it by dragging the blue hotspot)">North Offset:</label>
+                        <div class="checkbox description">
+                            <label for="panorama-edit-northOffset-checkbox" title="The offset between geographical north and the horizontal center of the image (change it by dragging the blue hotspot)">
+                                <input type="checkbox" id="panorama-edit-northOffset-checkbox" data-bind="checked: optimizeNorthOffset" title="Include in optimization">
+                                North Offset:
+                            </label>
                             <span id="northOffset-text" style="width: 8em" type="text">
                                 0°
                             </span>
                         </div>
-                        <div>
-                            <label for="vOffset-text" style="margin-right: 20px;" title="The offset between the horizon and the vertical center of the image (change it by checking &quot;Edit Vertical Offset&quot; and dragging the blue hotspot)">Vertical Offset:</label>
+                        <div class="description">
+                            <label for="vOffset-text" title="The offset between the horizon and the vertical center of the image (change it by checking &quot;Edit Vertical Offset&quot; and dragging the blue hotspot)">Vertical Offset:</label>
                             <span id="vOffset-text" style="width: 8em" type="text">
                                 0°
                             </span>
                         </div>
+
+                        <div class="checkbox description">
+                            <label title="Horizontal angle the panorama spans." for="panorama-edit-haov-checkbox">
+                                <input type="checkbox" id="panorama-edit-haov-checkbox" data-bind="checked: optimizeHaov" title="Include in optimization">
+                                Horizontal angle:
+                            </label><span style="width: 8em" type="text" data-bind="text: haov() + '°'">360°</span>
+                        </div>
                         <div>
-                            <label for="optimize-error-text" style="margin-right: 20px;" title="Average offset (in degrees) between landmark positions marked on the image and the position where they are (given coordinates and north offset of the panorama).">Error:</label>
+                            <input id="panorama-edit-haov-slider" type="text" class="slider form-control" data-bind="sliderValue: {value: haov, min:90, max: 360, step: 0.1}" />
+
+                        </div>
+                        <div  class="description">
+                            <label for="optimize-error-text" title="Average offset (in degrees) between landmark positions marked on the image and the position where they are (given coordinates and north offset of the panorama).">Error:</label>
                             <span id="optimize-error-text" style="width: 8em" type="text">
                                 -
                             </span>
                         </div>
                     </li>
                     <li>
+                       
+                    </li>
+                    <li>
                         <button class="btn btn-primary" id="optimize-button" type="button"
                                 title="
 1. click on the map to create landmark points
 2. drag the green hotspots onto the landmarks on the image
-3. click &quot;Optimize&quot; to change coordinates and north offset of the panorama such that the landmarks fit">
+3. click &quot;Optimize&quot; to change coordinates, north offset and/or horizontal angle of the panorama such that the landmarks fit">
                             Optimize
                         </button>
                     </li>
+                    <hr />
                     <li>
                         <div class="checkbox">
                             <label for="panorama-edit-voffset-checkbox">

@@ -142,6 +142,16 @@ section {
     margin-bottom: 0;
 }
 
+.description label {
+    margin-right: 20px;
+    font-weight: 700;
+}
+
+.sidebar-nav li .checkbox.description {
+    margin: unset;
+    margin-bottom: 5px;
+}
+
 
 /****************/
 /*** panorama ***/

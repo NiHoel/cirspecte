@@ -11,7 +11,7 @@ function readyFunction() {
     }
 
     Rx.Observable.create(obs => {
-        obs.next({ settings: new configurator(config.settings) });
+        obs.next({ settings: new configurator($.extend({}, config.settings, { autoRotateInactivityEnabled: false })) });
         obs.complete();
     }).observeOn(Rx.Scheduler.asap)
         .do(modules => {

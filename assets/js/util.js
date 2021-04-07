@@ -182,7 +182,7 @@ class algorithms {
 
     /**
      * Given: yaw from manually set landmark hotspots
-     * Search space: Coordinates and northOffset of scene
+     * Search space: Coordinates, northOffset, horizontal angle of scene
      * Uses northOffset and coordinates to compute azimuth for each landmark hotspot
      * Objective function: Minimize difference between yaw and azimuth.
      * Performs gradient decent (with estimated gradients) to find the optimal solution
@@ -191,11 +191,14 @@ class algorithms {
      * 
       * @param {scene} scene
       * @param {[hotspot]} hotspots
+     * @param {boolean} objectives.coordinates - Include coordinates in search space
+     * @param {boolean} objectives.northOffset - Include north offset in search space
+     * @param {boolean} objectives.haov - Include horizontal angle of panorama in search space
       * @returns {Rx.Observable<JSON>} - {solution: {northOffset, coordinates}, f} where f is the standard deviation taken over all hotspots
       */
-    optimize(scene, hotspots) {
+    optimize(scene, hotspots, objectives = {coordinates: true, northOffset: true}) {
         return Rx.Observable.create(observer => {
-
+            let haovScaling = 1e-4;
             let sqr = function (x) { return x * x; };
             let mean = function (angles) {
                 var sin = 0, cos = 0;
@@ -209,37 +212,85 @@ class algorithms {
             let normalize = function (angle) {
                 return angle > 180 ? angle - 360 : (angle < -180 ? angle + 360 : angle);
             };
-
-            let objective = function (coordinates) {
-                var [lat, lon] = coordinates;
-                if (lat > 90.0 || lat < -90.0 || lon > 180.0 || lon < -180.0) {
-                    //                       console.log([lat, lon]);
-                    return Number.POSITIVE_INFINITY;
-
-                }
-
-                let angles = hotspots.map(hs => normalize(hs.yaw - algorithms.getAzimuth(coordinates, hs.edge.to)));
-                var northOffset = mean(angles);
-                var sum = angles.map(a => sqr(normalize(a - northOffset))).reduce((a, b) => a + b);
-                //           console.log([coordinates, angles, sum]);
-                if (!Number.isFinite(sum)) {
-                    return Number.POSITIVE_INFINITY;
-                }
-                return Math.sqrt(sum / angles.length);
-            };
-
-            let start = scene.vertex.coordinates || config.coordinates;
-            let result = numeric.uncmin(objective, start, 1e-7);
-            // console.log(result);
-            if (!result.solution)
-                observer.error(result.message);
-            else {
-                result.solution = {
-                    northOffset: mean(hotspots.map(hs => hs.yaw - algorithms.getAzimuth(result.solution, hs.edge.to))),
-                    coordinates: result.solution
-                };
+            let getAngles = function (coordinates, haov) {
+                var haovFactor = objectives.haov ? haov / (scene.haov || 360) : 1;
+                return hotspots.map(hs => normalize(hs.yaw * haovFactor - algorithms.getAzimuth(coordinates, hs.edge.to)));
             }
+            var result = {};
 
+            if (!objectives.coordinates && !objectives.haov) {
+                let angles = getAngles(coordinates, scene.haov);
+
+                result.solution = {
+                    northOffset: mean(angles)
+                };
+            
+                var sum = angles.map(a => sqr(normalize(a - northOffset))).reduce((a, b) => a + b);
+                result.error = Math.sqrt(sum / angles.length);
+            } else {
+
+
+                let objective = function (x) {
+                    var [lat, lon] = scene.vertex.coordinates || config.coordinates;
+                    var haov = scene.haov || 360;
+
+                    if (objectives.coordinates) {
+                        lat = x[0];
+                        lon = x[1];
+                        x = x.slice(2);
+
+                        if (lat > 90.0 || lat < -90.0 || lon > 180.0 || lon < -180.0) {
+                            return Number.POSITIVE_INFINITY;
+                        }
+                    }
+
+                    var errorMultiplier = 1;
+                    if (objectives.haov) {
+                        haov = x[0] / haovScaling;
+
+                        
+                        errorMultiplier = Math.max(90.0 - haov + 1, Math.max(haov - 360 + 1, 1));
+                        haov = Math.max(90, Math.min(360, haov));
+                    }
+
+                    let angles = getAngles([lat, lon], haov);
+                    var northOffset = mean(angles);
+                    var sum = angles.map(a => sqr(normalize(a - northOffset))).reduce((a, b) => a + b);
+                    //           console.log([coordinates, angles, sum]);
+                    if (!Number.isFinite(sum)) {
+                        return Number.POSITIVE_INFINITY;
+                    }
+                    return Math.sqrt(sum / angles.length) * errorMultiplier;
+                };
+
+                var start = [];
+
+                if (objectives.coordinates)
+                    start = (scene.vertex.coordinates || config.coordinates).slice();
+
+                // normalize the search space,
+                // otherwise the objective function seems to be flat w.r.t. the haov dimension
+                if (objectives.haov)
+                    start.push((scene.haov || 360) * haovScaling);
+
+                result = numeric.uncmin(objective, start, 1e-7);
+                // console.log(result);
+                if (!result.solution)
+                    observer.error(result.message);
+                else {
+                    var vec = result.solution;
+                    if (objectives.coordinates) {
+                        result.solution.coordinates = [vec[0], vec[1]];
+                        vec = vec.slice(2);
+                    }
+                    if (objectives.haov)
+                        result.solution.haov = vec[0] / haovScaling;
+                    if (objectives.northOffset)
+                        result.solution.northOffset = mean(getAngles(result.solution.coordinates || scene.vertex.coordinates || config.coordinates,
+                            result.solution.haov || scene.haov || 360));
+
+                }
+            }
 
             observer.next(result);
             observer.complete();

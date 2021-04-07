@@ -279,8 +279,8 @@ class panoramaViewer extends observable {
         cfg.vaov = cfg.vaov || (this.scene ? this.scene.vaov : 120);
         cfg.minHfov = Math.min(120, config.minHfov || $(this.domElement).innerWidth() / width / this.config.maxZoomFactor * 360);
         cfg.hfov = cfg.hfov || (this.scene ? "same" : Math.min(cfg.vaov, 170));
-        if(cfg.autoRotate == null)
-        cfg.autoRotate = this.isAutoRotating() ? this.modules.settings.autoRotateSpeed() : false;
+        if (cfg.autoRotate == null)
+            cfg.autoRotate = this.isAutoRotating() ? this.modules.settings.autoRotateSpeed() : false;
         return cfg;
     }
 
@@ -315,7 +315,7 @@ class panoramaViewer extends observable {
 
         // (event, clickHandlerArgs) => {...}
         if (!hs.draggable)
-            hs.clickHandlerFunc = (event) => {if(event.type == 'click') this.emit(hs, this.CLICK);}
+            hs.clickHandlerFunc = (event) => { if (event.type == 'click') this.emit(hs, this.CLICK); }
         else {
             hs.dragHandlerFunc = (e) => {
                 if (e.type === 'mousedown' || e.type === 'pointerdown')
@@ -455,18 +455,29 @@ class panoramaViewer extends observable {
     updateScene(v) {
         if (!this.scene || this.scene.vertex !== v)
             return;
-        var modified = new Set();
 
-        for (var prop in v.data) {
-            if (this.scene[prop] !== v.data[prop])
-                modified.add(prop);
+        var changed = (prop) => {
+            if (prop === "type" || prop === "object")
+                return false;
+
+            if (typeof v.data[prop] === "number")
+                return Math.abs(this.scene[prop] - v.data[prop]) >= 1e-6;
+            else
+                return this.scene[prop] !== v.data[prop];
+
         }
 
-        if (modified.has("northOffset") && modified.size === 1) {
-            this.setNorthOffset(v.data.northOffset);
-            return Rx.Observable.of(this.scene);
-        } else
-            return this.reloadScene(v.data);
+        for (var prop in v.data) {
+            if (changed(prop) && !this.viewerSettableProperties.has(prop))
+                return this.reloadScene(v.data);
+        }
+
+        for (var prop in v.data) {
+            if (changed(prop))
+                this.viewer["set" + prop[0].toLocaleUpperCase() + prop.substr(1)](v.data[prop]);
+        }
+
+        return Rx.Observable.of(this.scene);
     }
 
 
@@ -623,8 +634,8 @@ class panoramaViewer extends observable {
             undefined,
             undefined,
             this.modules.settings.autoRotateInactivityEnabled()
-            ? this.modules.settings.autoRotateInactivityDelay() * 1000
-            : -1);
+                ? this.modules.settings.autoRotateInactivityDelay() * 1000
+                : -1);
     }
 
     stopAutoRotate() {
@@ -742,6 +753,16 @@ class panoramaViewer extends observable {
             else
                 this.viewer.setAutoRotateInactivityDelay(-1);
         });
+
+        this.viewerSettableProperties = new Set();
+        for (var f in this.viewer) {
+            if (f.startsWith("set") && typeof this.viewer[f] === "function") {
+                this.viewerSettableProperties.add(f[3].toLocaleLowerCase() + f.substr(4));
+            }
+        }
+
+        // first load event is fired before viewer construction completes
+        this.loadingFinished();
     }
 
     /**
@@ -818,19 +839,24 @@ class panoramaViewer extends observable {
                         delete this.scene.thumb;
                         if (this.scene.multiRes && this.scene.multiRes.loader) {
                             var obj = this.scene.multiRes;
-                            if (obj.base) {
-                                delete obj.base.file.img;
-                                delete obj.base.img;
-                                delete obj.base.imgObs;
-                            }
 
-                            if (obj.thumb) {
-                                delete obj.thumb.file.img;
-                                delete obj.thumb.img;
-                                delete obj.thumb.imgObs;
-                            }
+                            setTimeout(obj => {
+                                if (obj.base) {
+                                    delete obj.base.file.img;
+                                    delete obj.base.img;
+                                    delete obj.base.imgObs;
+                                }
 
-                            delete this.scene.multiRes.loader;
+                                if (obj.thumb) {
+                                    delete obj.thumb.file.img;
+                                    delete obj.thumb.img;
+                                    delete obj.thumb.imgObs;
+                                }
+
+                                delete obj.loader;
+                            },
+                                this.modules.settings.cycleTimepointsFadeDuration() * 1000,
+                                obj);
                         }
 
                     }

@@ -158,7 +158,7 @@ class mapEditor extends observable {
                 this.modules.map.unsetEditable(this.prevBackground);
 	
             if(b)
-		this.opacity(b.opacity);
+		        this.opacity(b.opacity);
 	
             if (this.isShown())
                 this.modules.map.setEditable(this.currentBackground());
@@ -169,7 +169,7 @@ class mapEditor extends observable {
         this.opacity.subscribe(val => {
             if (this.currentBackground())
                 this.modules.map.updateOpacity(this.currentBackground(), val);
-        })
+        });
 
         for (let r of routines) {
             r.catch((err, caught) => {

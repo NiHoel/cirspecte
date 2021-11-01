@@ -125,6 +125,16 @@ class hotspot {
         this.text = this.text || e.id;
         this.draggable = this.draggable;
     }
+
+    updateNorthOffset(northOffset) {
+        this.northOffset = northOffset;
+
+        var e = this.edge;
+        if (e.data.yaw == null)
+            this.yaw = algorithms.getAzimuth(e.from, e.to) + this.northOffset;
+        else
+            this.yaw = e.data.yaw + this.northOffset;
+    }
 }
 
 hotspot.prototype.ROUTE = 'scene'; // edge is part of a tour
@@ -435,7 +445,7 @@ class panoramaViewer extends observable {
     getNorthOffset() {
         if (this.scene == null)
             return 0;
-        return this.scene.northOffset;
+        return this.scene.northOffset || 0;
     }
 
     /**
@@ -465,6 +475,17 @@ class panoramaViewer extends observable {
             else
                 return this.scene[prop] !== v.data[prop];
 
+        }
+
+        if (changed("northOffset")) {
+            this.scene.northOffset = v.data.northOffset;
+            if (this.northHotspot)
+                this.northHotspot.yaw = this.getNorthOffset();
+            this.scene.hotSpots.forEach(hs => {
+                if (hs.updateNorthOffset)
+                    hs.updateNorthOffset(v.data.northOffset);
+            });
+            this.invalidateSize();
         }
 
         for (var prop in v.data) {

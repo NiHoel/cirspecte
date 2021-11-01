@@ -1259,6 +1259,8 @@ class file {
         for (var type of [file.prototype.JPG,
         file.prototype.PNG,
         file.prototype.TXT,
+        file.prototype.WEBP,
+        file.prototype.AVIF,
         file.prototype.JSON]) {
             if (this.isType(type))
                 return type;
@@ -1283,6 +1285,9 @@ class file {
 
 file.prototype.JPG = "image/jpeg";
 file.prototype.PNG = "image/png";
+file.prototype.WEBP = "image/webp"
+file.prototype.AVIF = "image/avif";
+file.prototype.IMAGE = [file.prototype.JPG, file.prototype.PNG, file.prototype.WEBP, file.prototype.AVIF]
 file.prototype.TXT = "text/plain";
 file.prototype.JSON = "application/json";
 
@@ -2118,7 +2123,7 @@ class fileTree {
 
 
                     dir.scan()
-                        .filter(e => !(e instanceof file) || e.isType([file.prototype.JPG, file.prototype.PNG, file.prototype.JSON]))
+                        .filter(e => !(e instanceof file) || e.isType([file.prototype.JPG, file.prototype.PNG, file.prototype.WEBP, file.prototype.AVIF, file.prototype.JSON]))
                         .map(e => {
                             let cNode = e.toNode();
                             self.nodeIdToEntry.set(cNode.id, e);

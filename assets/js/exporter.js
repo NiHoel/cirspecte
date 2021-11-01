@@ -37,7 +37,7 @@ class exporter extends observable {
         this.enableThreads = ko.observable(this.canThreads());
         this.threads = ko.observable(8);
         //       this.truncatePaths = ko.observable(false);
-        this.contentTypes = [file.prototype.JPG, file.prototype.PNG];
+        this.contentTypes = file.prototype.IMAGE;
         this.contentType = ko.observable(file.prototype.JPG);
         this.quality = ko.observable(0.9);
         this.tilePathPattern = ko.observable("%l/%x_%y");

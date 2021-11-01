@@ -166,7 +166,7 @@ class groupEditor extends observable {
                         filter: { files: true, folders: false }
                     })
                         .do(f => {
-                            if (!f.isType([file.prototype.JPG, file.prototype.PNG]))
+                            if (!f.isType(file.prototype.IMAGE))
                                 throw new error(this.ERROR.UNSUPPORTED_IMAGE_TYPE, "", f.name);
                             var parentDir = v.spatialGroup.images.directory || v.spatialGroup.directory || (this.current.spatialGroup() ? this.current.spatialGroup().images.directory : modules.filesys.getWorkspace());
                             if (!f.getParent().isAncestor(parentDir))
@@ -450,12 +450,12 @@ class groupEditor extends observable {
      */
     createVertex(g, f) {
         var parentDir = this.current.spatialGroup() ? this.current.spatialGroup().images.directory : modules.filesys.getWorkspace();
-        if (f && !f.isType([file.prototype.JPG, file.prototype.PNG]))
+        if (f && !f.isType(file.prototype.IMAGE))
             throw new error(this.ERROR.UNSUPPORTED_IMAGE_TYPE, "", f.name);
         if (f && !f.getParent().isAncestor(parentDir))
             throw new error(this.ERROR.INVALID_PATH, f.getPath() + " is not contained in " + parentDir.getPath(), f.getPath());
 
-        if (f instanceof file && f.isType([file.prototype.JPG, file.prototype.PNG])) {
+        if (f instanceof file && f.isType(file.prototype.IMAGE)) {
             var jsonVertex = {
                 coordinates: this.modules.alg.extractCoordinates(f.name) || this.modules.map.getCenter(),
                 type: vertex.prototype.PANORAMA,

@@ -18,7 +18,7 @@ class algorithms {
      */
     constructor(modules) {
         this.modules = modules;
-        this.filenamePattern = /([+-]?\d+(?:\.\d+)?),\s+([+-]?\d+(?:\.\d+)?)\.jpg/;
+        this.filenamePattern = /([+-]?\d+(?:\.\d+)?),\s+([+-]?\d+(?:\.\d+)?)\.(?:(?:jpe?g)|(?:png)|(?:webp)|(?:avif))/i;
     }
 
     /**
@@ -219,14 +219,14 @@ class algorithms {
             var result = {};
 
             if (!objectives.coordinates && !objectives.haov) {
-                let angles = getAngles(coordinates, scene.haov);
+                let angles = getAngles(scene.vertex.coordinates || config.coordinates, scene.haov);
 
                 result.solution = {
                     northOffset: mean(angles)
                 };
             
-                var sum = angles.map(a => sqr(normalize(a - northOffset))).reduce((a, b) => a + b);
-                result.error = Math.sqrt(sum / angles.length);
+                var sum = angles.map(a => sqr(normalize(a - result.solution.northOffset))).reduce((a, b) => a + b);
+                result.f = Math.sqrt(sum / angles.length);
             } else {
 
 

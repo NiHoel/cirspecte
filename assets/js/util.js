@@ -59,6 +59,7 @@ class algorithms {
                 .mergeMap(path => rootDirectory.searchFile(path))
                 .mergeMap(f =>
                     f.readAsJSON()
+                        .do(() => this.modules.model.updateHierarchical(true))
                         .mergeMap(t => this.readTour(t, f.getParent()))
                 )
                 .defaultIfEmpty(null)
@@ -174,7 +175,7 @@ class algorithms {
 
         if (this.modules.panorama.getVertex() && this.modules.model.hasVertex(this.modules.panorama.getVertex().id)) {
             this.modules.settings.panorama.scene(this.modules.panorama.getVertex() ? this.modules.panorama.getVertex().id : undefined);
-            this.modules.settings.panorama.yaw(this.modules.panorama.getYaw());
+            this.modules.settings.panorama.yaw(this.modules.panorama.getAzimuth());
             this.modules.settings.panorama.pitch(this.modules.panorama.getPitch());
             this.modules.settings.panorama.hfov(this.modules.panorama.getHfov());
         }

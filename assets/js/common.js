@@ -533,6 +533,8 @@ function createCommonRoutines(modules, settings) {
                         modules.map.deleteBackground(b);
                     }
 
+                    modules.model.updateHierarchical(false);
+
                     modules.filesys.setWorkspace(dir);
 
                     if (modules.hist)

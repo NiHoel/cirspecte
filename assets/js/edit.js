@@ -171,7 +171,7 @@ function readyFunction() {
                     .do(() => settings.panorama.scene(modules.panorama.getVertex() ? modules.panorama.getVertex().id : undefined)),
 
                 Rx.Observable.fromEvent(document.querySelector('#set-yaw-panorama-settings-button'), 'click')
-                    .do(() => settings.panorama.yaw(modules.panorama.getYaw())),
+                    .do(() => settings.panorama.yaw(modules.panorama.getAzimuth())),
 
                 Rx.Observable.fromEvent(document.querySelector('#set-pitch-panorama-settings-button'), 'click')
                     .do(() => settings.panorama.pitch(modules.panorama.getPitch())),

@@ -319,4 +319,24 @@ class panoramaEditor extends observable {
                 vOffset: vOffset
             });
     }
+
+    alignTop() {
+        var v = this.modules.panorama.getVertex();
+
+        if (!v || v.type !== vertex.prototype.PANORAMA)
+            return;
+
+        var imgConf = v.getImageConfig();
+        var tileConf = v.data.multiRes || {};
+
+        var w = imgConf.width || tileConf.originalWidth;
+        var h = imgConf.height || tileConf.originalHeight;
+        var haov = v.data.haov || 360;
+
+        if (!w || !h)
+            return;
+
+        this.modules.hist.commit();
+        this.modules.model.updateData(v, { vOffset: haov / 2 * (0.5 - h / w) });
+    }
 }

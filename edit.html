@@ -292,7 +292,7 @@
                             <input id="panorama-edit-haov-slider" type="text" class="slider form-control" data-bind="sliderValue: {value: haov, min:90, max: 360, step: 0.1}" />
 
                         </div>
-                        <div  class="description">
+                        <div class="description">
                             <label for="optimize-error-text" title="Average offset (in degrees) between landmark positions marked on the image and the position where they are (given coordinates and north offset of the panorama).">Error:</label>
                             <span id="optimize-error-text" style="width: 8em" type="text">
                                 -
@@ -300,7 +300,7 @@
                         </div>
                     </li>
                     <li>
-                       
+
                     </li>
                     <li>
                         <button class="btn btn-primary" id="optimize-button" type="button"
@@ -319,7 +319,12 @@
                             </label>
                         </div>
                     </li>
-
+                    <li>
+                        <button class="btn btn-primary" id="align-top-button" type="button" data-bind="click: () => {alignTop();}"
+                                title="Sets the vertical offset such that the top of the image is the zenith.">
+                            Align top
+                        </button>
+                    </li>
                     <li>
                         <div class="form" id="landmark-group-selector-map-editor">
                             <label for="landmarkGroupSelectorMapEditor" title="Enable the option &quot;Create point when clicking on the map&quot;&#13;Click on the map to create a landmark point. The point will be added to the following group.">Landmark Group</label><br />

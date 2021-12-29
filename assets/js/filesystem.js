@@ -347,13 +347,13 @@ class cordovadirectory extends directory {
                     return Rx.Observable.create(obs => {
                         handle.getDirectory(name, { create: true, exclusive: false },
                             (entry) => { obs.next(entry); obs.complete(); },
-                            (err) => { obs.error(cordovadirectory.toError(err, path)) });
+                            (err) => { obs.error(cordovadirectory.toError(err, filesystem.concatPaths(this.getPath(), path))) });
                     }).map(handle => [handle, [...pathComponents]]);
                 else
                     return Rx.Observable.create(obs => {
                         handle.getFile(name, { create: true, exclusive: false },
                             (entry) => { obs.next(entry); obs.complete(); },
-                            (err) => { obs.error(cordovadirectory.toError(err, path)) }
+                            (err) => { obs.error(cordovadirectory.toError(err, filesystem.concatPaths(this.getPath(), path))) }
                         );
                     }).map(handle => [handle, [...pathComponents]]);
             })
@@ -562,7 +562,15 @@ class cordovadirectory extends directory {
     * @param {string} path
     */
     static toError(err, path) {
-        switch (err.code) {
+        var code = 0;
+        if (typeof err === "number")
+            code = err;
+        else if (err.code)
+            code = err.code;
+        else
+            return new error(directory.prototype.ERROR.INVALID_STATE_ERR, "", path);
+
+        switch (code) {
             case FileError.NOT_FOUND_ERR:
                 if (path && path.split('/').pop().indexOf('.') != -1)
                     return new error(directory.prototype.ERROR.FILE_NOT_FOUND, "", path);
@@ -1294,7 +1302,8 @@ file.prototype.JSON = "application/json";
 file.prototype.ERROR = {};
 file.prototype.ERROR.JSON_PARSE_EXCEPTION = "Syntax Error in JSON";
 file.prototype.ERROR.READING_FILE_EXCEPTION = "Error reading file";
-file.prototype.ERROR.UNSUPPORTED_OPERATION = "operation cannot be performed on this file";
+file.prototype.ERROR.UNSUPPORTED_OPERATION = "Operation cannot be performed on this file";
+file.prototype.ERROR.LOAD_IMAGE = "Could not load image";
 
 file.prototype.usedFiles = new Set();
 
@@ -1456,7 +1465,7 @@ class webkitfile extends file {
                         observer.complete();
                     };
                     img.onerror = (err) => {
-                        observer.error(cordovadirectory.toError(err.target.error, this.getPath()));
+                        observer.error(err.target.error || file.prototype.ERROR.LOAD_IMAGE, this.getPath());
                     };
 
                     img.src = src;
@@ -1605,7 +1614,7 @@ class cordovafile extends webkitfile {
         return Rx.Observable.create(obs => {
             window.resolveLocalFileSystemURL(this.path,
                 (entry) => { obs.next(entry); obs.complete(); },
-                (err) => { obs.error(cordovadirectory.toError(err, this.path)) }
+                (err) => { obs.error(cordovadirectory.toError(err, this.getPath())) }
             )
         }).mergeMap(handle => {
 
@@ -2543,8 +2552,8 @@ class electronAccessor extends observable {
      * */
     getDialogResponse() {
         return Rx.Observable.create(obs => {
-            var responseHandler = (emitter, paths) => {
-                for (var path of (paths || []))
+            var responseHandler = (emitter, result) => {
+                for (var path of (result.filePaths || result.paths || []))
                     obs.next(path.replace(/\\/g, '/'));
 
                 obs.complete();
@@ -3072,7 +3081,7 @@ class filesystem extends observable {
             if (folders.length > 1) {
                 var lastFolder = folders.pop() || folders.pop();
                 if (lastFolder !== 'www' && lastFolder !== 'app.asar')
-                    path = filesystem.concatPaths(path, 'www');
+                    path = filesystem.concatPaths(path, platform.isElectron ? 'app.asar' : 'www');
             }
 
             return this.resolvePath(path);

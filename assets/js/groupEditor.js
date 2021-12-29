@@ -40,7 +40,7 @@ class groupEditor extends observable {
                 id: '', name: '', description: '', type: temporalGroup.prototype.TOUR, superGroup: '', autoConnectColocated: true, colocatedRadius: 3, multiselect: false, exclusiveTemporalSubgroups: false
             },
             spatialGroup: {
-                id: '', name: '', description: '', type: spatialGroup.prototype.ROUTE, background: null, superGroup: '', path: ko.observable(''), timeslot: ko.observable(moment())
+                id: '', name: '', description: '', type: spatialGroup.prototype.SINGLESHOT, background: null, superGroup: '', path: ko.observable(''), timeslot: ko.observable(moment())
             }
         };
 
@@ -466,6 +466,10 @@ class groupEditor extends observable {
                     type: "equirectangular"
                 }
             };
+
+            try {
+                jsonVertex.image.directory = f.getParent();
+            } catch (e) { }
 
             var obs = Rx.Observable.of(jsonVertex);
             if (g instanceof temporalGroup) {

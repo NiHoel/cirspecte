@@ -36,7 +36,7 @@ class persistence {
             obs.push(modules.filesys.observe(modules.filesys.DIRECTORY, modules.filesys.WORKSPACE)
                 .merge(modules.model.observe(modules.model.HIERARCHICAL, modules.model.CHANGE))
                 .do(() => {
-                    if (modules.filesys.getWorkspace().canWrite() && !modules.model.isHierarchical()) {
+                    if (modules.filesys.getWorkspace() && modules.filesys.getWorkspace().canWrite() && !modules.model.isHierarchical()) {
                         $('#save-workspace-as').hide();
                         $('#save-workspace').show();
                     } else {

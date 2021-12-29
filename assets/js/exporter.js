@@ -35,7 +35,7 @@ class exporter extends observable {
         this.maxHeight = ko.observable(2048);
         this.canThreads = ko.observable(typeof OffscreenCanvas !== 'undefined' && typeof Worker !== 'undefined');
         this.enableThreads = ko.observable(this.canThreads());
-        this.threads = ko.observable(8);
+        this.threads = ko.observable(6);
         //       this.truncatePaths = ko.observable(false);
         this.contentTypes = file.prototype.IMAGE;
         this.contentType = ko.observable(file.prototype.JPG);
@@ -313,7 +313,10 @@ class exporter extends observable {
 
                 return obs
                     .catch(err => {
-                        err.message = "excluding panorama from export";
+                        if(err instanceof error)
+                            err.message = "excluding panorama from export";
+                        else
+                            err = new error(err, "excluding panorama '" + newV.id + "' from export")
                         this.errors.log.push(err);
                         this.exportGraph.deleteVertex(newV);
                         return this.deleteCreatedFiles(newV.id);
@@ -924,7 +927,7 @@ class exporter extends observable {
             .last()
             .do(() => {
                 var files = this.createdFiles.get(id);
-                if (files.length) {
+                if (files && files.length) {
                     this.filesToCreateTotal(this.filesToCreateTotal() - files.length);
                     this.filesToCreateCount(this.filesToCreateCount() - files.length);
                 }

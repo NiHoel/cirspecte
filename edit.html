@@ -84,6 +84,7 @@
     <script type="text/javascript" src="assets/js/lib/numeric.min.js"></script>
     <script type="text/javascript" src="assets/js/lib/exif.js"></script>
     <script type="text/javascript" src="assets/js/lib/clipboard.min.js"></script>
+    <script type="module" src="assets/js/lib/threejs/jsm/loaders/RGBELoader.js"></script>
 
     <script type="text/javascript" src="assets/js/lib/geodesy/dms.js"></script>
     <script type="text/javascript" src="assets/js/lib/geodesy/vector3d.js"></script>
@@ -1340,7 +1341,7 @@
 
                     <div>
                         <section id="workspace-droparea">
-                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:image/webp file:image/avif file:application/json" class="centerall">
+                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:image/webp file:image/avif file:image/vnd.radiance file:application/json" class="centerall">
                                 Drop directory here
                             </div>
                         </section>
@@ -1371,7 +1372,7 @@
 
                     <div data-bind="visible: allowsDrop">
                         <section id="webkit-workspace-droparea">
-                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:image/webp file:image/avif file:application/json" class="centerall">
+                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:image/webp file:image/avif file:image/vnd.radiance file:application/json" class="centerall">
                                 Drop directory here
                             </div>
                         </section>
@@ -1454,7 +1455,7 @@
 
                             <div data-bind="visible: allowsDrop && !name()">
                                 <section id="webkit-droparea">
-                                    <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:image/webp file:image/avif file:application/json" class="centerall">
+                                    <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:image/webp file:image/avif file:image/vnd.radiance file:application/json" class="centerall">
                                         Drop here
                                     </div>
                                 </section>

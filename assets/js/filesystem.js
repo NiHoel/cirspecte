@@ -1256,6 +1256,12 @@ class file {
                 this.name.endsWith(".JPG")
             ))
                 return true;
+
+            if (type === file.prototype.HDR && (
+                this.name.endsWith(".hdr") ||
+                this.name.endsWith(".HDR")
+            ))
+                return true;
         }
         return false;
     }
@@ -1269,6 +1275,7 @@ class file {
         file.prototype.TXT,
         file.prototype.WEBP,
         file.prototype.AVIF,
+        file.prototype.HDR,
         file.prototype.JSON]) {
             if (this.isType(type))
                 return type;
@@ -1295,6 +1302,7 @@ file.prototype.JPG = "image/jpeg";
 file.prototype.PNG = "image/png";
 file.prototype.WEBP = "image/webp"
 file.prototype.AVIF = "image/avif";
+file.prototype.HDR = "image/vnd.radiance"
 file.prototype.IMAGE = [file.prototype.JPG, file.prototype.PNG, file.prototype.WEBP, file.prototype.AVIF]
 file.prototype.TXT = "text/plain";
 file.prototype.JSON = "application/json";
@@ -2132,7 +2140,7 @@ class fileTree {
 
 
                     dir.scan()
-                        .filter(e => !(e instanceof file) || e.isType([file.prototype.JPG, file.prototype.PNG, file.prototype.WEBP, file.prototype.AVIF, file.prototype.JSON]))
+                        .filter(e => !(e instanceof file) || e.isType(file.prototype.IMAGE))
                         .map(e => {
                             let cNode = e.toNode();
                             self.nodeIdToEntry.set(cNode.id, e);

@@ -1,5 +1,7 @@
 'use strict';
 
+
+
 /**
  * Classes: scene, hotspot, panoramaViewer
  * 
@@ -275,6 +277,7 @@ class panoramaViewer extends observable {
         var cfg = Object.assign({}, v.data, config);
         delete cfg.reload;
         let width = v.getImageConfig().width;
+
         if (!width) {
             if (v.data.multiRes) {
                 width = v.data.multiRes.originalWidth || 4 * v.data.multiRes.cubeResolution;
@@ -282,6 +285,7 @@ class panoramaViewer extends observable {
                 width = 4096;
             }
         }
+
         cfg.northOffset = cfg.northOffset || 0;
         cfg.vOffset = cfg.vOffset || 0;
         cfg.pitch = cfg.pitch || (this.scene ? "same" : 0);
@@ -289,8 +293,13 @@ class panoramaViewer extends observable {
         cfg.vaov = cfg.vaov || (this.scene ? this.scene.vaov : 120);
         cfg.minHfov = Math.min(120, config.minHfov || $(this.domElement).innerWidth() / width / this.config.maxZoomFactor * 360);
         cfg.hfov = cfg.hfov || (this.scene ? "same" : Math.min(cfg.vaov, 170));
+
         if (cfg.autoRotate == null)
             cfg.autoRotate = this.isAutoRotating() ? this.modules.settings.autoRotateSpeed() : false;
+
+        if (v.image && v.image.file && v.image.file.isType(file.prototype.HDR) || cfg.mutiRes && cfg.multiRes.extension === "hdr")
+            cfg.hdr = true;
+
         return cfg;
     }
 
@@ -747,7 +756,7 @@ class panoramaViewer extends observable {
         cfg['scenes'][newScene.id] = newScene;
 
         if (this.config.default.interpolateBetweenTiles == null) {
-            cfg['default']['interpolateBetweenTiles'] = !platform.isMobile;
+            //cfg['default']['interpolateBetweenTiles'] = !platform.isMobile;
         }
 
 
@@ -1355,7 +1364,13 @@ class panoramaViewer extends observable {
             return (node, img) => new Promise((resolve, reject) => {
                 if (s.vertex && s.vertex.image.directory)
                     s.vertex.image.directory.searchFile(node.uri)
-                        .mergeMap(f => f.readAsImage())
+                        .mergeMap(f => {
+                            if (f.isType(file.prototype.HDR)) {
+                                return f.readAsArrayBuffer().map(b => new RGBELoader().parse(b));
+                            }
+                            else
+                                return f.readAsImage();
+                        })
                         .subscribe({
                             next: img => resolve(img),
                             error: () => reject(),

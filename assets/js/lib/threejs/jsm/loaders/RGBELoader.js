@@ -1,23 +1,13 @@
-import {
-	DataTextureLoader,
-	DataUtils,
-	FloatType,
-	HalfFloatType,
-	LinearEncoding,
-	LinearFilter,
-	RGBFormat,
-} from '../../three.module.js';
-
 // https://github.com/mrdoob/three.js/issues/5552
 // http://en.wikipedia.org/wiki/RGBE_image_format
 
-class RGBELoader extends DataTextureLoader {
+class RGBELoader extends THREE.DataTextureLoader {
 
 	constructor( manager ) {
 
 		super( manager );
 
-		this.type = FloatType;
+		this.type = THREE.FloatType;
 
 	}
 
@@ -351,9 +341,9 @@ class RGBELoader extends DataTextureLoader {
 			const scale = Math.pow( 2.0, e - 128.0 ) / 255.0;
 
 			// clamping to 65504, the maximum representable value in float16
-			destArray[ destOffset + 0 ] = DataUtils.toHalfFloat( Math.min( sourceArray[ sourceOffset + 0 ] * scale, 65504 ) );
-			destArray[ destOffset + 1 ] = DataUtils.toHalfFloat( Math.min( sourceArray[ sourceOffset + 1 ] * scale, 65504 ) );
-			destArray[ destOffset + 2 ] = DataUtils.toHalfFloat( Math.min( sourceArray[ sourceOffset + 2 ] * scale, 65504 ) );
+			destArray[ destOffset + 0 ] = THREE.DataUtils.toHalfFloat( Math.min( sourceArray[ sourceOffset + 0 ] * scale, 65504 ) );
+			destArray[ destOffset + 1 ] = THREE.DataUtils.toHalfFloat( Math.min( sourceArray[ sourceOffset + 1 ] * scale, 65504 ) );
+			destArray[ destOffset + 2 ] = THREE.DataUtils.toHalfFloat( Math.min( sourceArray[ sourceOffset + 2 ] * scale, 65504 ) );
 
 		};
 
@@ -374,7 +364,7 @@ class RGBELoader extends DataTextureLoader {
 
 				switch ( this.type ) {
 
-					case FloatType:
+					case THREE.FloatType:
 
 						numElements = image_rgba_data.length / 4;
 						const floatArray = new Float32Array( numElements * 3 );
@@ -386,11 +376,11 @@ class RGBELoader extends DataTextureLoader {
 						}
 
 						data = floatArray;
-						format = RGBFormat;
-						type = FloatType;
+						format = THREE.RGBFormat;
+						type = THREE.FloatType;
 						break;
 
-					case HalfFloatType:
+					case THREE.HalfFloatType:
 
 						numElements = image_rgba_data.length / 4;
 						const halfArray = new Uint16Array( numElements * 3 );
@@ -402,8 +392,8 @@ class RGBELoader extends DataTextureLoader {
 						}
 
 						data = halfArray;
-						format = RGBFormat;
-						type = HalfFloatType;
+						format = THREE.RGBFormat;
+						type = THREE.HalfFloatType;
 						break;
 
 					default:
@@ -444,20 +434,20 @@ class RGBELoader extends DataTextureLoader {
 
 			switch ( texture.type ) {
 
-				case FloatType:
+				case THREE.FloatType:
 
-					texture.encoding = LinearEncoding;
-					texture.minFilter = LinearFilter;
-					texture.magFilter = LinearFilter;
+					texture.encoding = THREE.LinearEncoding;
+					texture.minFilter = THREE.LinearFilter;
+					texture.magFilter = THREE.LinearFilter;
 					texture.generateMipmaps = false;
 					texture.flipY = true;
 					break;
 
-				case HalfFloatType:
+				case THREE.HalfFloatType:
 
-					texture.encoding = LinearEncoding;
-					texture.minFilter = LinearFilter;
-					texture.magFilter = LinearFilter;
+					texture.encoding = THREE.LinearEncoding;
+					texture.minFilter = THREE.LinearFilter;
+					texture.magFilter = THREE.LinearFilter;
 					texture.generateMipmaps = false;
 					texture.flipY = true;
 					break;
@@ -475,4 +465,4 @@ class RGBELoader extends DataTextureLoader {
 }
 
 window.RGBELoader = RGBELoader;
-export { RGBELoader };
+

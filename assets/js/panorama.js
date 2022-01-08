@@ -842,7 +842,7 @@ class panoramaViewer extends observable {
         else if (v.data.type.startsWith('multires'))
             obs = obs.map(v => {
                 var s = new scene(v, this.generatePanoramaConfig(v, config));
-                s.multiRes.loader = this.createMultiresLoader(s);
+                s.multiRes.loader = window.Worker ? this.createWebworkerMultiresLoader(s) : this.createMultiresLoader(s);
                 return s;
             })
         else
@@ -1380,6 +1380,167 @@ class panoramaViewer extends observable {
                     reject();
             });
         }
+}
+
+
+    /**
+* 
+* @param {scene} s
+* @returns {function(object, Image) : Promise<Image>} - A function that returns the specified tile from a hierarchy of tiles that is created on the file from the image.
+*/
+    createWebworkerMultiresLoader(s) {
+        if (this.promises) {
+            for (var promise of this.promises.values())
+                promise.reject();
+        }
+        this.promises = new Map();
+
+        if (!s.vertex || !s.vertex.image.directory) {
+            return (node, img) => new Promise((resolve, reject) => {
+                reject();
+            });
+        }
+
+        if (!this.workerMultires) {
+            var applicationDir = window.location.href;
+            var lastSlash = applicationDir.lastIndexOf('/');
+            var lastPoint = applicationDir.lastIndexOf('.');
+            if (lastSlash >= 0 && lastPoint > lastSlash)
+                applicationDir = applicationDir.substring(0, lastSlash);
+
+            this.workerMultires = algorithms.createInlineWorker(async function (node) {
+
+                var req = Promise.resolve(node.blob);
+                if (!node.blob) {
+                    props = {
+                        mode: 'cors',
+                        credentials: node.crossOrigin == 'use-credentials' ? 'include' : 'same-origin'
+                    }
+
+                    if (node.hdr)
+                        props.responseType = 'arraybuffer';
+
+                    req = fetch(node.absURI, props).then(function (response) {
+                        return node.hdr ? response.arrayBuffer() : response.blob();
+                    });
+                } else if (node.hdr) {
+                    req = new Promise((resolve, reject) => {
+                        var fileReader = new FileReader();
+                        fileReader.readAsArrayBuffer(node.blob);
+
+                        fileReader.onload = function (event) {
+                            resolve(event.target.result || event.currentTarget.result);
+                        };
+                        fileReader.onerror = (err) => {
+                            reject();
+                        };
+                    });
+                }
+
+                if (node.hdr)
+                    req = req.then(function (arrayBuffer) {
+                        var texture = new RGBELoader().parse(arrayBuffer);
+                        var buf = texture.data;
+
+                        if (node.level == 1) {
+
+                            var min = Infinity; // smallest value > 0
+                            var max = 0;
+
+                            for (var i = 0; i < buf.length/3; i+=3) {
+                                var l = 0.299 * buf[3 * i] + 0.587 * buf[3 * i + 1] + 0.114 * buf[3 * i + 2];
+                                max = Math.max(l, max);
+
+                                if (l > 0 && l < min)
+                                    min = l;
+
+                            }
+
+                            texture.minIntensity = min;
+                            texture.maxIntensity = max;
+                        }
+
+                        node.img = texture;
+
+                        postMessage(node, [buf]);
+                    }).catch(function () {
+                        postMessage(node);
+                    });
+                else
+                    req = req.then(function (blob) {
+                        return createImageBitmap(blob);
+                    }).then(function (bitmap) {
+                        node.img = bitmap;
+                        postMessage(node, [bitmap]);
+                    }).catch(function () {
+                        postMessage(node);
+                    });
+
+            }, ["self.window = self;",
+                `importScripts('${applicationDir}/assets/js/lib/three.js');`,
+                RGBELoader]);
+        }
+
+        let loader = (node, img) => new Promise((resolve, reject) => {
+            if (!this.promises) {
+                reject();
+                return;
+            }
+
+            if (this.promises.has(node.path))
+                this.promises.get(node.path).reject();
+
+            this.promises.set(node.path, { resolve: resolve, reject: reject });
+
+            var myNode = {
+                path: node.path,
+                level: node.level,
+                x: node.x,
+                y: node.y,
+                uri: node.uri,
+                crossOrigin: node.crossOrigin
+            };
+
+            s.vertex.image.directory.searchFile(node.uri)
+                .mergeMap(f => {
+                    if (f.isType(file.prototype.HDR))
+                        myNode.hdr = true;
+
+                    if (f instanceof remotefile) {
+                        myNode.absURI = f.getPath();
+                        return Rx.Observable.of(myNode);
+                    } else {
+                        return f.readAsBlob().map(b => {
+                            myNode.blob = b;
+                        }).mapTo(myNode);
+                    }
+
+
+                })
+                .subscribe({
+                    next: myNode => this.workerMultires.postMessage(myNode),
+                    error: () => reject()
+                });
+
+        });
+
+
+        this.workerMultires.onmessage = e => {
+            var node = e.data;
+            if (this.promises && this.promises.get(node.path)) {
+                var prom = this.promises.get(node.path);
+                if (node.img) {
+                    prom.resolve(node.img);
+                } else {
+                    prom.reject();
+                    console.log(node.error);
+                }
+                this.promises.delete(node.path);
+            }
+        }
+
+        return loader;
+    }
 }
 
 panoramaViewer.prototype.CLICK = 'click';

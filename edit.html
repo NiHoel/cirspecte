@@ -84,7 +84,8 @@
     <script type="text/javascript" src="assets/js/lib/numeric.min.js"></script>
     <script type="text/javascript" src="assets/js/lib/exif.js"></script>
     <script type="text/javascript" src="assets/js/lib/clipboard.min.js"></script>
-    <script type="module" src="assets/js/lib/threejs/jsm/loaders/RGBELoader.js"></script>
+    <script type="text/javascript" src="assets/js/lib/three.js"></script>
+    <script type="text/javascript" src="assets/js/lib/threejs/jsm/loaders/RGBELoader.js"></script>
 
     <script type="text/javascript" src="assets/js/lib/geodesy/dms.js"></script>
     <script type="text/javascript" src="assets/js/lib/geodesy/vector3d.js"></script>
@@ -162,7 +163,7 @@
                             Delete Tour
                         </span>
                     </li>
-                    <li>
+                    <li data-bind="visible: !$root.modules.settings.multiresPanoramaImport()">
                         <button class="btn btn-default" data-bind="click: () => {addFiles($root.current.temporalGroup());}, enable: $root.current.temporalGroup">
                             <span class="glyphicon glyphicon-import"></span>
                         </button>
@@ -883,7 +884,7 @@
                                     </div>
 
                                 </form>
-                                <div class="form-group"  style="margin-bottom: 1rem !important;">
+                                <div class="form-group" style="margin-bottom: 1rem !important;">
                                     <label class="col-sm-1 control-label">Speed</label>
                                     <div class="col-sm-11">
                                         <input type="range" class="form-range" min="-20" max="20" step="0.25" data-bind="value: autoRotateSpeed">
@@ -1060,6 +1061,12 @@
                                     <label title="Shows button to batch copy vertices into a tour." class="control-label" for="enable-batch-copy-checkbox">
                                         <input type="checkbox" data-bind="checked: enableBatchCopying" id="enable-batch-copy-checkbox">
                                         Enable batch copying of vertices
+                                    </label>
+                                </div>
+                                <div class="checkbox">
+                                    <label title="When clicking the add panorama button a dialog opens to configure multires scene options." class="control-label" for="multires-panorama-import-checkbox">
+                                        <input type="checkbox" data-bind="checked: multiresPanoramaImport" id="multires-panorama-import-checkbox">
+                                        Import panoramas consisting of multiple images
                                     </label>
                                 </div>
                                 <div class="checkbox">
@@ -1259,6 +1266,118 @@
     </div>
 
     <!-- /#export--progress-dialog -->
+    <!-- #import-multires-panorama-editor -->
+    <div id="import-multires-panorama-editor" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h4>Export</h4>
+                </div>
+                <div class="modal-body">
+                    <form class="form-horizontal" style="width: 100%" , data-bind="with: editable.multiresPanorama">
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="multires-sceneType" title="Type of base image">Scene type</label>
+                            <select class="form-control" id="multires-sceneType" data-live-search="true" data-show-subtext="true" name="sceneType"
+                                    data-bind="options: $root.multiresSceneTypes, optionsText: g => {return g.name;}, value: sceneType"></select>
+                        </div>
+
+
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="multires-basePath">Panorama location</label>
+                            <div class="controls">
+                                <div class='input-group' id='multires-basePath'>
+                                    <input class="form-control" data-bind="value: basePath" type="text" id="multires-basePath" disabled="disabled">
+                                    <div class="input-group-addon" data-bind="click: () => $root.selectMultiresPath()" id="multires-basePath-selector" style="cursor:pointer">
+                                        <span class="glyphicon glyphicon-folder-open"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="invalid-input" data-bind="visible: $root.errors.path() && $root.errors.path() != '', text: $root.errors.path">
+
+                            </div>
+                        </div>
+
+                        <div class="checkbox">
+                            <label class="control-label" for="multires-hdr-checkbox">
+                                <input type="checkbox" data-bind="checked: hdr" id="multires-hdr-checkbox">
+                                High dynamic range image.
+                            </label>
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="enableTiling-checkbox">Tile path</label>
+                            <div class="input-group">
+                                <input class="form-control" type="text" data-bind="value: path">
+                                <div class="input-group-addon">
+                                    <label for="tilePanoramas-checkbox">.</label>
+                                </div>
+                                <select type="select" class="form-control" id="multires-extension"
+                                        data-bind="options: extensionOptions, value: extension"></select>
+                            </div>
+                        </div>
+
+                        <h5>Placeholders</h5>
+                        <ul>
+                            <li data-bind="visible: sceneType().type === 'multires' || sceneType().type === 'cubemap'">%s - side of the cube (<b>f</b>ront, <b>b</b>ack, <b>u</b>p, <b>d</b>down, <b>l</b>eft, <b>r</b>ight)</li>
+                            <li data-bind="visible: sceneType().type.startsWith('multires')">%l0 - level index (starting at 0)</li>
+                            <li data-bind="visible: sceneType().type.startsWith('multires')">%l - level index (starting at 1)</li>
+                            <li data-bind="visible: sceneType().type.startsWith('multires')">%x - tile index along the x-axis (left to right)</li>
+                            <li data-bind="visible: sceneType().type.startsWith('multires')">%y - tile index along the y-axis (top to bottom)</li>
+                        </ul>
+
+                        <div class="control-group" style="width: 100%" data-bind="visible: sceneType().attributes.has('originalWidth')">
+                            <label class="control-label">Tiling properties</label>
+                            <div class="input-group">
+                                <input class="form-control" type="number" min="0" data-bind="value: maxLevel">
+                                <div class="input-group-addon">
+                                    <label>levels in total and tile length is</label>
+                                </div>
+                                <input class="form-control" type="number" min="4" data-bind="value: tileResolution">
+                                <div class="input-group-addon">
+                                    <label>pixels</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group" style="width: 100%" data-bind="visible: sceneType().attributes.has('originalWidth')">
+                            <label class="control-label">Base image dimensions</label>
+                            <div class="input-group">
+                                <input class="form-control" type="number" min="4" data-bind="value: originalWidth">
+                                <div class="input-group-addon">
+                                    <label>width in pixel</label>
+                                </div>
+                                <input class="form-control" type="number" min="4" data-bind="value: originalHeight">
+                                <div class="input-group-addon">
+                                    <label>height in pixel</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group" style="width: 100%" data-bind="visible: sceneType().attributes.has('cubeResolution')">
+                            <label class="control-label">Dimension of a cube side</label>
+                            <div class="input-group">
+                                <input class="form-control" type="number" min="4" data-bind="value: cubeResolution">
+                                <div class="input-group-addon">
+                                    <label>pixel</label>
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: $root.addMultiresPanorama, enable: $root.canAddMultiresPanorama" class="btn btn-primary" data-dismiss="modal">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- /#import-multires-panorama-editor -->
     <!-- #logs-dialog -->
     <div id="logs-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
         <div class="modal-dialog">

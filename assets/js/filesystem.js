@@ -1257,11 +1257,10 @@ class file {
             ))
                 return true;
 
-            if (type === file.prototype.HDR && (
-                this.name.endsWith(".hdr") ||
-                this.name.endsWith(".HDR")
-            ))
-                return true;
+            if (type === file.prototype.HDR) 
+                for (var extension of ['.hdr', '.xyz', '.rgbe'])
+                    if (this.name.toLowerCase().endsWith(extension))
+                        return true;
         }
         return false;
     }
@@ -1829,6 +1828,10 @@ class remotefile extends file {
             if (this.contentType.startsWith(type))
                 return true;
 
+            if (type === file.prototype.HDR)
+                for (var extension of ['.hdr', '.xyz', '.rgbe'])
+                    if (this.name.toLowerCase().endsWith(extension))
+                        return true;
         }
         return false;
     }

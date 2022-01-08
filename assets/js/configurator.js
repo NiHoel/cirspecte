@@ -77,6 +77,7 @@ class configurator {
             loadRecentWorkspace: false,
             trackChanges: false,
             enableBatchCopying: false,
+            multiresPanoramaImport: false,
             enableOrientation: true,
             enableGPS: false,
             requiredGPSAccuracy: 10,

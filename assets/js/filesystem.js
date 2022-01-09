@@ -318,9 +318,10 @@ class cordovadirectory extends directory {
     /**
  * 
  * @param {string} path
+ * @param {bool} isFile - last path component is a file
  * @returns {Rx.Observable<DirectoryEntry|FileEntry>}
  */
-    createPath(path) {
+    createPath(path, isFile = false) {
         var obs = cordovadirectory.resolve(this.path);
         var pathComponents = path.split('/');
         if (directory.isAbsolutePath(path)) {
@@ -342,7 +343,7 @@ class cordovadirectory extends directory {
 
                 var name = pathComponents.shift();
 
-                if (pathComponents.length || name.indexOf('.') == -1)
+                if (pathComponents.length || !isFile)
 
                     return Rx.Observable.create(obs => {
                         handle.getDirectory(name, { create: true, exclusive: false },
@@ -499,7 +500,7 @@ class cordovadirectory extends directory {
     write(path, content) {
         path = path instanceof file ? file.getPath(this) : path;
 
-        return this.createPath(path)
+        return this.createPath(path, true)
             .mergeMap(handle => Rx.Observable.create(obs => {
                 handle.createWriter(writer => { obs.next(writer); obs.complete(); },
                     err => obs.error(cordovadirectory.toError(err, filesystem.concatPaths(this.getPath(), path)))

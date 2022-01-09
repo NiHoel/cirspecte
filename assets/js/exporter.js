@@ -212,8 +212,8 @@ class exporter extends observable {
                     if (v.data && v.data.type) {
                         if (this.enableTiling() || v.data.type.startsWith('multires')) {
                             try {
-                                var width = v.image.width || v.data.multiRes.width;
-                                var height = v.image.height || v.data.multiRes.height;
+                                var width = v.image.width || v.data.multiRes.originalWidth;
+                                var height = v.image.height || v.data.multiRes.originalHeight;
 
                                 if (width && height)
                                     this.setFilesToCreate(v.id, this.getTilesCount(width, height));
@@ -609,7 +609,7 @@ class exporter extends observable {
             var height = Math.ceil(originalHeight * f);
 
             for (var x = 0; x < Math.ceil(width / tileResolution); x++) {
-                for (var y = 0; x < Math.ceil(height / tileResolution); y++) {
+                for (var y = 0; y < Math.ceil(height / tileResolution); y++) {
                     if (newV.data.type === "multires")
                         for (var side of ['f', 'r', 'b', 'l', 'u', 'd'])
                             nodes.push({
@@ -642,8 +642,14 @@ class exporter extends observable {
                         this.created(newV.id, f);
                     }).catch(() => Rx.Observable.empty());
             })
+            .defaultIfEmpty(null)
             .last()
-            .do(() => this.finished(newV.id))
+            .do(node => {
+                if (!node)
+                    throw "No files found";
+
+                this.finished(newV.id)
+            })
             .mapTo(worker);
     }
 
@@ -702,6 +708,7 @@ class exporter extends observable {
      */
     resolvePathPattern(multiRes, node) {
         var path = multiRes.path;
+        path = path.replace("%l0", node.l - 1);
         for (var param in node) {
             path = path.replace(new RegExp("%" + param, "gi"), "" + node[param]);
         }

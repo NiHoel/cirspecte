@@ -452,7 +452,10 @@ function createCommonRoutines(modules, settings) {
             .mergeMap(arr => {
                 return loadTour(arr[0], arr[1]);
             })
-            .do(() => modules.hist.clear())
+            .do(() => {
+                if(modules.hist)
+                    modules.hist.clear();
+            })
             .catch((err, caught) => {
                 console.log(err);
                 modules.logger.log(err);

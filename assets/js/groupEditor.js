@@ -869,7 +869,7 @@ class groupEditor extends observable {
      */
     beginMultiresPanoramaImport(v) {
         this.editable.multiresPanorama(ko.mapping.fromJS(this.default.multiresPanorama));
-        this.default.multiresPanorama.oldV = v;
+        this.editable.multiresPanorama().oldV = v;
 
         this.errors.path('');
         $('#import-multires-panorama-editor').modal();
@@ -903,7 +903,6 @@ class groupEditor extends observable {
             data.multiRes[attr] = parseInt(cfg[attr]());
 
         var jsonVertex = {
-            id: cfg.oldV ? cfg.oldV.id : undefined,
             coordinates: cfg.oldV ? cfg.oldV.coordinates : this.modules.map.getCenter(),
             type: vertex.prototype.PANORAMA,
             spatialGroup: g,

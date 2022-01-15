@@ -1276,6 +1276,7 @@ class file {
         file.prototype.WEBP,
         file.prototype.AVIF,
         file.prototype.HDR,
+        file.prototype.EXR,
         file.prototype.JSON]) {
             if (this.isType(type))
                 return type;
@@ -1303,6 +1304,7 @@ file.prototype.PNG = "image/png";
 file.prototype.WEBP = "image/webp"
 file.prototype.AVIF = "image/avif";
 file.prototype.HDR = "image/vnd.radiance"
+file.prototype.EXR = "image/exr";
 file.prototype.IMAGE = [file.prototype.JPG, file.prototype.PNG, file.prototype.WEBP, file.prototype.AVIF]
 file.prototype.TXT = "text/plain";
 file.prototype.JSON = "application/json";
@@ -1833,6 +1835,9 @@ class remotefile extends file {
                 for (var extension of ['.hdr', '.xyz', '.rgbe'])
                     if (this.name.toLowerCase().endsWith(extension))
                         return true;
+
+            if (type === file.prototype.EXR && this.name.toLowerCase().endsWith(".exr"))
+                return true;
         }
         return false;
     }

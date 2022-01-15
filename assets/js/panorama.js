@@ -297,7 +297,8 @@ class panoramaViewer extends observable {
         if (cfg.autoRotate == null)
             cfg.autoRotate = this.isAutoRotating() ? this.modules.settings.autoRotateSpeed() : false;
 
-        if (v.image && v.image.file && v.image.file.isType(file.prototype.HDR) || cfg.mutiRes && cfg.multiRes.extension === "hdr")
+        if (v.image && v.image.file && v.image.file.isType([file.prototype.HDR, file.prototype.EXR]) ||
+            cfg.mutiRes && (cfg.multiRes.extension === "hdr" || cfg.multiRes.extension === "exr"))
             cfg.hdr = true;
 
         return cfg;
@@ -1365,9 +1366,10 @@ class panoramaViewer extends observable {
                 if (s.vertex && s.vertex.image.directory)
                     s.vertex.image.directory.searchFile(node.uri)
                         .mergeMap(f => {
-                            if (f.isType(file.prototype.HDR)) {
+                            if (f.isType(file.prototype.HDR))
                                 return f.readAsArrayBuffer().map(b => new RGBELoader().parse(b));
-                            }
+                            else if (f.isType(file.prototype.EXR))
+                                return f.readAsArrayBuffer().map(b => new EXRLoader().parse(b));
                             else
                                 return f.readAsImage();
                         })
@@ -1408,6 +1410,10 @@ class panoramaViewer extends observable {
             if (lastSlash >= 0 && lastPoint > lastSlash)
                 applicationDir = applicationDir.substring(0, lastSlash);
 
+            var scripts = ["fflate.min.js", "threejs/three.js", "threejs/DataUtils.js", "threejs/RGBELoader.js", "threejs/EXRLoader.js"]
+                .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
+                .join(",");
+
             this.workerMultires = algorithms.createInlineWorker(async function (node) {
 
                 var req = Promise.resolve(node.blob);
@@ -1439,16 +1445,21 @@ class panoramaViewer extends observable {
 
                 if (node.hdr)
                     req = req.then(function (arrayBuffer) {
-                        var texture = new RGBELoader().parse(arrayBuffer);
-                        var buf = texture.data;
+                        var loader = new THREE.RGBELoader();
+                        if (node.uri.endsWith('.exr'))
+                            loader = new THREE.EXRLoader();                       
+                        
 
                         if (node.level == 1) {
+                            loader.type = THREE.FloatType;
+                            var texture = loader.parse(arrayBuffer);
+                            var buf = texture.data;
 
                             var min = Infinity; // smallest value > 0
                             var max = 0;
 
-                            for (var i = 0; i < buf.length/3; i+=3) {
-                                var l = 0.299 * buf[3 * i] + 0.587 * buf[3 * i + 1] + 0.114 * buf[3 * i + 2];
+                            for (var i = 0; i < buf.length/4; i++) {
+                                var l = 0.299 * buf[4 * i] + 0.587 * buf[4 * i + 1] + 0.114 * buf[4 * i + 2];
                                 max = Math.max(l, max);
 
                                 if (l > 0 && l < min)
@@ -1458,6 +1469,9 @@ class panoramaViewer extends observable {
 
                             texture.minIntensity = min;
                             texture.maxIntensity = max;
+                        } else {
+                            var texture = loader.parse(arrayBuffer);
+                            var buf = texture.data;
                         }
 
                         node.img = texture;
@@ -1477,8 +1491,7 @@ class panoramaViewer extends observable {
                     });
 
             }, ["self.window = self;",
-                `importScripts('${applicationDir}/assets/js/lib/three.js');`,
-                RGBELoader]);
+                "importScripts(" + scripts + ");"]);
         }
 
         let loader = (node, img) => new Promise((resolve, reject) => {
@@ -1503,7 +1516,7 @@ class panoramaViewer extends observable {
 
             s.vertex.image.directory.searchFile(node.uri)
                 .mergeMap(f => {
-                    if (f.isType(file.prototype.HDR))
+                    if (f.isType([file.prototype.HDR, file.prototype.EXR]))
                         myNode.hdr = true;
 
                     if (f instanceof remotefile) {

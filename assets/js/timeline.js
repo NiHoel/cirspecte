@@ -395,6 +395,7 @@ class timelineViewer extends observable {
             select = !this.isSelected(i);
 
         var update = false;
+        var updateItems = false;
         if (select) {
             if (!this.isSelected(i)) {
                 // deselect others
@@ -405,7 +406,7 @@ class timelineViewer extends observable {
 
                 if (i.className) {// overwrites inactive style, but keep active value
                     delete i.className;
-                    this.refreshItems(true);
+                    updateItems = true;
                 }
                 this.selections.set(i.id, i);
                 update = true;
@@ -416,7 +417,7 @@ class timelineViewer extends observable {
         } else {
             if (!i.active) {
                 i.className = 'timeline-inactive';
-                this.refreshItems(true);
+                updateItems = true
             }
 
             update = this.selections.delete(i.id);
@@ -424,10 +425,11 @@ class timelineViewer extends observable {
                 this.emit(i, this.DESELECT);
         }
 
-        if (update) {
+        if (updateItems)
+            this.refreshItems(true);
+        else if (update)
             this.refreshSelections();
-        }
-
+        
         return i;
     }
 
@@ -442,10 +444,11 @@ class timelineViewer extends observable {
     }
 
     /**
-     * @param {item | spatialGroup | string}
+     * @param {item | spatialGroup | string} elem
      * @param {boolean} active
+     * @param {boolean} redraw
      */
-    setActive(elem, active) {
+    setActive(elem, active, redraw = true) {
         if (elem instanceof item)
             var it = elem;
         else if (elem instanceof spatialGroup)
@@ -466,14 +469,15 @@ class timelineViewer extends observable {
         else
             it.className = "timeline-inactive";
 
-        this.refreshItems(true);
+        if(redraw)
+            this.refreshItems(true);
     }
 
     /**
-     * @param {item | spatialGroup | string}
      * @param {boolean} active
+     * @param {boolean} redraw
      */
-    setAllActive(active) {
+    setAllActive(active, redraw = true) {
         for (var it of this.items.values()) {
             it.active = active;
 
@@ -486,7 +490,8 @@ class timelineViewer extends observable {
                 it.className = "timeline-inactive";
         }
 
-        this.refreshItems(true);
+        if(redraw)
+            this.refreshItems(true);
     }
 
     /**

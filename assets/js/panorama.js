@@ -764,6 +764,8 @@ class panoramaViewer extends observable {
         /** @type {pannellum.Viewer} */
         this.viewer = pannellum.viewer(this.domElement, cfg);
         this.scene = newScene;
+        this.sceneCache = new Map();
+        this.sceneCache.set(newScene.id, newScene);
 
         if (cfg.default.sceneFadeDuration) {
             this.viewer.on('scenechangefadedone', () => { this.loadingFinished(); });
@@ -893,13 +895,29 @@ class panoramaViewer extends observable {
                     }
 
                     this.viewer.removeScene(this.scene.id);
+                    setTimeout(id => {
+                        var s = this.sceneCache.get(id);
+
+                        if (s && s.promises) {
+                            for (var promise of s.promises.values())
+                                promise.reject();
+
+                            delete s.promises;
+                        }
+
+                        this.sceneCache.delete(id);
+                    },
+                        this.modules.settings.cycleTimepointsFadeDuration() * 1000,
+                        this.scene.id);
 
                     if (!config.reload)
                         this.emit(this.scene, this.DELETE);
                 }
 
                 this.viewer.loadScene(newScene.id, newScene.pitch, newScene.yaw, newScene.hfov, false);
+                this.sceneCache.set(newScene.id, newScene);
                 this.scene = newScene;
+
 
                 if (this.northHotspot != null) {
                     this.northHotspot.yaw = this.getNorthOffset();
@@ -1203,13 +1221,6 @@ class panoramaViewer extends observable {
             console.warn(this.ERROR.IMAGE_TOO_BIG, s);
         }
 
-        if (this.promises) {
-            for (var promise of this.promises.values())
-                promise.reject();
-
-            delete this.promises;
-        }
-
         if (!this.worker)
             this.worker = algorithms.createInlineWorker(async function (node) {
                 var processRequest = async node => {
@@ -1293,19 +1304,18 @@ class panoramaViewer extends observable {
         this.worker.postMessage(init);
 
 
-
-
-
         let loader = (node, img) => new Promise((resolve, reject) => {
-            if (!this.promises || node.level > init.maxLevel || node.level < 0) {
+            var s = this.sceneCache.get(node.sceneId);
+
+            if (!s || node.level > init.maxLevel || node.level < 0) {
                 reject();
                 return;
             }
 
-            if (this.promises.has(node.path))
-                this.promises.get(node.path).reject();
+            if (!s.promises)
+                s.promises = new Map();
 
-            this.promises.set(node.path, { resolve: resolve, reject: reject });
+            s.promises.set(node.path, { resolve: resolve, reject: reject });
 
             this.worker.postMessage(node);
         });
@@ -1315,20 +1325,22 @@ class panoramaViewer extends observable {
         this.worker.onmessage = e => {
             var node = e.data;
             if (node === "init") {
-                this.promises = new Map();
                 subject.next(true);
                 subject.complete();
                 return;
             }
-            if (this.promises && this.promises.get(node.path)) {
-                var prom = this.promises.get(node.path);
+
+            var s = this.sceneCache.get(node.sceneId);
+
+            if (s && s.promises && s.promises.get(node.path)) {
+                var prom = s.promises.get(node.path);
                 if (node.img) {
                     prom.resolve(node.img);
                 } else {
                     prom.reject();
                     console.log(node.error);
                 }
-                this.promises.delete(node.path);
+                s.promises.delete(node.path);
             }
         }
 
@@ -1363,6 +1375,13 @@ class panoramaViewer extends observable {
  */
     createMultiresLoader(s) {
             return (node, img) => new Promise((resolve, reject) => {
+                var s = this.sceneCache.get(node.sceneId);
+
+                if (!s) {
+                    reject();
+                    return;
+                }
+
                 if (s.vertex && s.vertex.image.directory)
                     s.vertex.image.directory.searchFile(node.uri)
                         .mergeMap(f => {
@@ -1391,12 +1410,6 @@ class panoramaViewer extends observable {
 * @returns {function(object, Image) : Promise<Image>} - A function that returns the specified tile from a hierarchy of tiles that is created on the file from the image.
 */
     createWebworkerMultiresLoader(s) {
-        if (this.promises) {
-            for (var promise of this.promises.values())
-                promise.reject();
-        }
-        this.promises = new Map();
-
         if (!s.vertex || !s.vertex.image.directory) {
             return (node, img) => new Promise((resolve, reject) => {
                 reject();
@@ -1404,6 +1417,8 @@ class panoramaViewer extends observable {
         }
 
         if (!this.workerMultires) {
+            var threads = this.config.decodeThreads || 1;
+
             var applicationDir = window.location.href;
             var lastSlash = applicationDir.lastIndexOf('/');
             var lastPoint = applicationDir.lastIndexOf('.');
@@ -1414,98 +1429,109 @@ class panoramaViewer extends observable {
                 .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
                 .join(",");
 
-            this.workerMultires = algorithms.createInlineWorker(async function (node) {
+            this.workerMultires = [];
 
-                var req = Promise.resolve(node.blob);
-                if (!node.blob) {
-                    props = {
-                        mode: 'cors',
-                        credentials: node.crossOrigin == 'use-credentials' ? 'include' : 'same-origin'
-                    }
+            for (var i = 0; i < threads; i++)
+                this.workerMultires.push({
+                    workerId: i,
+                    pending: 0,
+                    lastSent: 0,
+                    worker: algorithms.createInlineWorker(async function (node) {
 
-                    if (node.hdr)
-                        props.responseType = 'arraybuffer';
-
-                    req = fetch(node.absURI, props).then(function (response) {
-                        return node.hdr ? response.arrayBuffer() : response.blob();
-                    });
-                } else if (node.hdr) {
-                    req = new Promise((resolve, reject) => {
-                        var fileReader = new FileReader();
-                        fileReader.readAsArrayBuffer(node.blob);
-
-                        fileReader.onload = function (event) {
-                            resolve(event.target.result || event.currentTarget.result);
-                        };
-                        fileReader.onerror = (err) => {
-                            reject();
-                        };
-                    });
-                }
-
-                if (node.hdr)
-                    req = req.then(function (arrayBuffer) {
-                        var loader = new THREE.RGBELoader();
-                        if (node.uri.endsWith('.exr'))
-                            loader = new THREE.EXRLoader();                       
-                        
-
-                        if (node.level == 1) {
-                            loader.type = THREE.FloatType;
-                            var texture = loader.parse(arrayBuffer);
-                            var buf = texture.data;
-
-                            var min = Infinity; // smallest value > 0
-                            var max = 0;
-
-                            for (var i = 0; i < buf.length/4; i++) {
-                                var l = 0.299 * buf[4 * i] + 0.587 * buf[4 * i + 1] + 0.114 * buf[4 * i + 2];
-                                max = Math.max(l, max);
-
-                                if (l > 0 && l < min)
-                                    min = l;
-
+                        var req = Promise.resolve(node.blob);
+                        if (!node.blob) {
+                            props = {
+                                mode: 'cors',
+                                credentials: node.crossOrigin == 'use-credentials' ? 'include' : 'same-origin'
                             }
 
-                            texture.minIntensity = min;
-                            texture.maxIntensity = max;
-                        } else {
-                            var texture = loader.parse(arrayBuffer);
-                            var buf = texture.data;
+                            if (node.hdr)
+                                props.responseType = 'arraybuffer';
+
+                            req = fetch(node.absURI, props).then(function (response) {
+                                return node.hdr ? response.arrayBuffer() : response.blob();
+                            });
+                        } else if (node.hdr) {
+                            req = new Promise((resolve, reject) => {
+                                var fileReader = new FileReader();
+                                fileReader.readAsArrayBuffer(node.blob);
+
+                                fileReader.onload = function (event) {
+                                    resolve(event.target.result || event.currentTarget.result);
+                                };
+                                fileReader.onerror = (err) => {
+                                    reject();
+                                };
+                            });
                         }
 
-                        node.img = texture;
+                        if (node.hdr)
+                            req = req.then(function (arrayBuffer) {
+                                var loader = new THREE.RGBELoader();
+                                if (node.uri.endsWith('.exr'))
+                                    loader = new THREE.EXRLoader();
 
-                        postMessage(node, [buf]);
-                    }).catch(function () {
-                        postMessage(node);
-                    });
-                else
-                    req = req.then(function (blob) {
-                        return createImageBitmap(blob);
-                    }).then(function (bitmap) {
-                        node.img = bitmap;
-                        postMessage(node, [bitmap]);
-                    }).catch(function () {
-                        postMessage(node);
-                    });
 
-            }, ["self.window = self;",
-                "importScripts(" + scripts + ");"]);
+                                if (node.level == 1) {
+                                    loader.type = THREE.FloatType;
+                                    var texture = loader.parse(arrayBuffer);
+                                    var buf = texture.data;
+
+                                    var min = Infinity; // smallest value > 0
+                                    var max = 0;
+
+                                    for (var i = 0; i < buf.length / 4; i++) {
+                                        var l = 0.299 * buf[4 * i] + 0.587 * buf[4 * i + 1] + 0.114 * buf[4 * i + 2];
+                                        max = Math.max(l, max);
+
+                                        if (l > 0 && l < min)
+                                            min = l;
+
+                                    }
+
+                                    texture.minIntensity = min;
+                                    texture.maxIntensity = max;
+                                } else {
+                                    var texture = loader.parse(arrayBuffer);
+                                    var buf = texture.data;
+                                }
+
+                                node.img = texture;
+
+                                postMessage(node, [buf]);
+                            }).catch(function () {
+                                postMessage(node);
+                            });
+                        else
+                            req = req.then(function (blob) {
+                                return createImageBitmap(blob);
+                            }).then(function (bitmap) {
+                                node.img = bitmap;
+                                postMessage(node, [bitmap]);
+                            }).catch(function () {
+                                postMessage(node);
+                            });
+
+                    }, ["self.window = self;",
+                        "importScripts(" + scripts + ");"])
+                });
         }
 
         let loader = (node, img) => new Promise((resolve, reject) => {
-            if (!this.promises) {
+            var s = this.sceneCache.get(node.sceneId);
+
+            if (!s) {
                 reject();
                 return;
             }
 
-            if (this.promises.has(node.path))
-                this.promises.get(node.path).reject();
+            if (!s.promises)
+                s.promises = new Map();
 
-            this.promises.set(node.path, { resolve: resolve, reject: reject });
+            s.promises.set(node.path, { resolve: resolve, reject: reject });
 
             var myNode = {
+                sceneId: node.sceneId,
                 path: node.path,
                 level: node.level,
                 x: node.x,
@@ -1531,26 +1557,52 @@ class panoramaViewer extends observable {
 
                 })
                 .subscribe({
-                    next: myNode => this.workerMultires.postMessage(myNode),
+                    next: myNode => {
+                        var s = this.sceneCache.get(node.sceneId);
+
+                        if (!s || !s.promises || !s.promises.has(node.path))
+                            return;
+
+                        var best = this.workerMultires[0];
+                        for (var worker of this.workerMultires) {
+                            if (!worker.pending) {
+                                best = worker;
+                                break;
+                            }
+
+                            if (worker.pending < best.pending ||
+                                worker.pending === best.pending && worker.lastSent < best.lastSent)
+                                best = worker;
+                        }
+
+                        myNode.workerId = best.workerId;
+                        best.worker.postMessage(myNode);
+                        best.pending += 1;
+                        best.lastSent = new Date();
+                    },
                     error: () => reject()
                 });
 
         });
 
+        for (var worker of this.workerMultires)
+            worker.worker.onmessage = e => {
+                var node = e.data;
+                this.workerMultires[node.workerId].pending -= 1;
 
-        this.workerMultires.onmessage = e => {
-            var node = e.data;
-            if (this.promises && this.promises.get(node.path)) {
-                var prom = this.promises.get(node.path);
-                if (node.img) {
-                    prom.resolve(node.img);
-                } else {
-                    prom.reject();
-                    console.log(node.error);
+                var s = this.sceneCache.get(node.sceneId);
+
+                if (s && s.promises && s.promises.get(node.path)) {
+                    var prom = s.promises.get(node.path);
+                    if (node.img) {
+                        prom.resolve(node.img);
+                    } else {
+                        prom.reject();
+                        console.log(node.error);
+                    }
+                    s.promises.delete(node.path);
                 }
-                this.promises.delete(node.path);
             }
-        }
 
         return loader;
     }

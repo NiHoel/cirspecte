@@ -235,7 +235,8 @@ var config = {
         },
         maxZoomFactor: 4,
         navigationHotspotPitch: -15,
-        tileResolution: 1024
+        tileResolution: 1024,
+        decodeThreads: 4
     },
     settings: {
         vtempConfigurator : {

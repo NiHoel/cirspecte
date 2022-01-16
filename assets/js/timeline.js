@@ -154,6 +154,7 @@ class timelineViewer extends observable {
 
         this.modules = modules;
         var settings = modules.settings;
+        this.collapsed = this.isCollapsed();
 
         this.items = new Map();
         this.groups = new vis.DataSet();
@@ -179,6 +180,20 @@ class timelineViewer extends observable {
         //        config.dataAttributes = 'all';
 
         this.config = config;
+
+        $("#bottombar-wrapper").on('transitionstart', () => {
+            if (!this.collapsed && !this.isCollapsed())
+                return;
+
+            this.collapsed = this.isCollapsed();
+
+            this.refreshItems(true);
+
+            if (this.centeredTime != null) {
+                this.timeline.moveTo(this.centeredTime);
+                this.centeredTime = null;
+            }
+        });
 
         // Create a Timeline
         this.timeline = new vis.Timeline(this.domElement, [], this.groups, this.config);
@@ -214,6 +229,9 @@ class timelineViewer extends observable {
         this.height = $(this.domElement).height();
 
         var heightChangeCheck = () => {
+            if (this.isCollapsed())
+                return;
+
             var height = $(this.domElement).height();
             if (this.height != height) {
                 this.height = height;
@@ -260,6 +278,13 @@ class timelineViewer extends observable {
             });
             selections.forEach(i => this.toggleSelection(this.getItem(i), true));
         });
+    }
+
+    /**
+     * @return Timeline is collapsed
+     * */
+    isCollapsed() {
+        return $("#bottombar-wrapper").hasClass("collapsed");
     }
 
     /**
@@ -332,7 +357,7 @@ class timelineViewer extends observable {
         if (selections.has(it.id))
             this.toggleSelection(it, true);
 
-        if (!this.refreshScheduled) {
+        if (!this.isCollapsed() && !this.refreshScheduled) {
             this.refreshScheduled = true;
             setTimeout(() => {
                 this.refreshItems(true);
@@ -536,9 +561,13 @@ class timelineViewer extends observable {
         if (!it)
             return;
 
-        try {
-            this.timeline.moveTo(it.start);
-        } catch (e) { }
+        if (this.isCollapsed()) {
+            this.centeredTime = it.start;
+        } else {
+            try {
+                this.timeline.moveTo(it.start);
+            } catch (e) { }
+        }
     }
 
     /**
@@ -637,7 +666,9 @@ class timelineViewer extends observable {
     }
 
     refreshItems(force = false) {
-        
+        if (this.isCollapsed())
+            return;
+
         let width = $(this.timeline.body.dom.backgroundVertical).width();
         let window = this.timeline.getWindow();
         let millisecondsPerPixel = /*this.timeline.range.millisecondsPerPixelCache

@@ -336,14 +336,14 @@ function createCommonRoutines(modules, settings) {
             .observeOn(Rx.Scheduler.queue)
             .do(sg => modules.timeline.toggleSelection(sg.item, false)),
 
-        modules.panorama.observe(scene, modules.panorama.CREATE)
+        modules.panorama.observe(scene, modules.panorama.CREATE, Rx.Scheduler.async)
             .do(s => modules.map.setView(s.vertex.coordinates))
             .mergeMap(s => s.vertex.toObservable())
             .filter(e => e.type !== edge.prototype.TEMPORAL && e.type !== edge.prototype.PLACEHOLDER)
             .map(e => modules.panorama.createHotspot(e, e.type === edge.prototype.LANDMARK ? hotspot.prototype.LANDMARK : hotspot.prototype.ROUTE)) // error propagation fails when using do
         ,
 
-        modules.panorama.observe(scene, modules.panorama.CREATE)
+        modules.panorama.observe(scene, modules.panorama.CREATE, Rx.Scheduler.async)
             .do(s => modules.nav.setVertex(s.vertex))
             .do(s => modules.timeline.toggleSelection(s.vertex.spatialGroup.item, true)),
 

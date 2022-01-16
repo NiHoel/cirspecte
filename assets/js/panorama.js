@@ -1498,8 +1498,10 @@ class panoramaViewer extends observable {
 
                                 node.img = texture;
 
-                                postMessage(node, [buf]);
-                            }).catch(function () {
+                                postMessage(node, [buf.buffer]);
+                            }).catch(function (e) {
+                                node.error = e;
+                                delete node.img;
                                 postMessage(node);
                             });
                         else
@@ -1508,7 +1510,9 @@ class panoramaViewer extends observable {
                             }).then(function (bitmap) {
                                 node.img = bitmap;
                                 postMessage(node, [bitmap]);
-                            }).catch(function () {
+                            }).catch(function (e) {
+                                node.error = e;
+                                delete node.img;
                                 postMessage(node);
                             });
 

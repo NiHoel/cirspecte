@@ -1177,6 +1177,13 @@ class file {
     }
 
     /**
+     * @returns {string}
+     * */
+    getExtension() {
+        return this.name.split('.').pop();
+    }
+
+    /**
     * 
     * @param {FileSystemFileEntry | FileEntry} entry
     * @returns {Rx.Observable<File>}

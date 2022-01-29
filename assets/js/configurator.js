@@ -39,6 +39,7 @@ class configurator {
                     vOffset: false,
                     vaov: false,
                     type: false,
+                    hdr: false,
                 }
             }
         });
@@ -152,7 +153,9 @@ class configurator {
     }
 
     getTemplateMask() {
-        return ko.mapping.toJS(this.vtempConfigurator.settings);
+        var mask = ko.mapping.toJS(this.vtempConfigurator.settings);
+        mask.multiRes = mask.type;
+        return mask;
     }
 
     getTemplateOptions() {

@@ -67,7 +67,7 @@ class groupEditor extends observable {
                 id: '', name: '', description: '', type: spatialGroup.prototype.SINGLESHOT, background: null, superGroup: '', path: ko.observable(''), timeslot: ko.observable(moment())
             },
             multiresPanorama: {
-                sceneType: ko.observable(this.multiresSceneTypes[0]), hdr: false, extension: 'jpg', extensionOptions: this.extensionOptionsSDR, path: '%l0/%x_%y', basePath: '', directory: null, tileResolution: 2048, maxLevel: 4, originalWidth: 16384, originalHeight: 8192, cubeResolution: 4096
+                sceneType: ko.observable(this.multiresSceneTypes[0]), hdr: false, extension: 'jpg', extensionOptions: this.extensionOptionsSDR, path: '%l0/%x_%y', basePath: '', directory: null, tileResolution: 1024, maxLevel: 5, originalWidth: 16384, originalHeight: 8192, cubeResolution: 4096
             }
         };
 
@@ -595,7 +595,8 @@ class groupEditor extends observable {
     createVertexFromTemplate(template, defaultConfig = {}) {
         var mask = this.modules.settings.getTemplateMask();
         mask.type = true;
-        if (defaultConfig.file) delete mask.path;
+        if (defaultConfig.image.file || defaultConfig.path)
+            delete mask.path;
 
         defaultConfig = this.assign(defaultConfig, template, mask);
         var v = this.modules.model.createVertex(defaultConfig);

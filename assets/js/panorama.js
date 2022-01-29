@@ -914,10 +914,9 @@ class panoramaViewer extends observable {
                         this.emit(this.scene, this.DELETE);
                 }
 
-                this.viewer.loadScene(newScene.id, newScene.pitch, newScene.yaw, newScene.hfov, false);
                 this.sceneCache.set(newScene.id, newScene);
                 this.scene = newScene;
-
+                this.viewer.loadScene(newScene.id, newScene.pitch, newScene.yaw, newScene.hfov, false);
 
                 if (this.northHotspot != null) {
                     this.northHotspot.yaw = this.getNorthOffset();
@@ -1089,7 +1088,7 @@ class panoramaViewer extends observable {
         }
 
         let promise = (node, img) => new Promise((resolve, reject) => {
-            if (node.level > maxLevel || node.level < 0 || !s.thumb || !s.base) {
+            if (node.sceneId !== this.scene.id || node.level > maxLevel || node.level < 0 || !s.thumb || !s.base) {
                 reject();
                 return;
             }
@@ -1223,6 +1222,7 @@ class panoramaViewer extends observable {
 
         if (!this.worker)
             this.worker = algorithms.createInlineWorker(async function (node) {
+                /* eslint require-atomic-updates: 0 */
                 var processRequest = async node => {
                     let f = Math.pow(2, node.level - this.maxLevel);
                     var img;
@@ -1235,6 +1235,9 @@ class panoramaViewer extends observable {
                     if (!img) {
                         this.requestQueue.push(node);
                         return;
+                    } else if (this.sceneId !== node.sceneId) {
+                        self.postMessage(node);
+                        return;
                     }
 
                     this.canvas.width = Math.min(this.tileResolution, Math.ceil(this.width * f) - this.tileResolution * node.x);
@@ -1246,7 +1249,7 @@ class panoramaViewer extends observable {
                     }
                     try {
                         this.ctx.drawImage(img, -this.tileResolution * node.x, -this.tileResolution * node.y, Math.ceil(this.width * f), Math.ceil(this.height * f));
-                        node.img = await createImageBitmap(canvas);
+                        node.img = await createImageBitmap(this.canvas);
                         self.postMessage(node);
                     } catch (e) {
                         node.error = e;
@@ -1266,12 +1269,14 @@ class panoramaViewer extends observable {
                     delete this.thumb;
                     delete this.creatingThumb;
                     delete this.img;
+                    delete this.sceneId;
                 } else if (node.type === "thumb") {
                     if (this.thumb || this.creatingThumb)
                         return;
 
                     this.creatingThumb = true;
                     this.thumb = await createImageBitmap(node.thumb);
+                    this.sceneId = node.sceneId;
                     this.creatingThumb = false;
                     self.postMessage("init");
                 } else if (node.type === "img") {
@@ -1279,6 +1284,7 @@ class panoramaViewer extends observable {
                         return;
 
                     this.img = await createImageBitmap(node.img);
+                    this.sceneId = node.sceneId;
 
                     if (!this.thumb && !this.creatingThumb) {
                         this.creatingThumb = true;
@@ -1307,7 +1313,7 @@ class panoramaViewer extends observable {
         let loader = (node, img) => new Promise((resolve, reject) => {
             var s = this.sceneCache.get(node.sceneId);
 
-            if (!s || node.level > init.maxLevel || node.level < 0) {
+            if (!s || s !== this.scene || node.level > init.maxLevel || node.level < 0) {
                 reject();
                 return;
             }
@@ -1345,14 +1351,14 @@ class panoramaViewer extends observable {
         }
 
 
-
+        var id = s.id;
         if (s.thumb.file && !s.thumb.file.equals(s.base.file)) {
             s.thumb.file.readAsBlob()
                 .catch(err => {
                     this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.thumb.file.getPath(), err));
                     return Rx.Observable.empty();
                 })
-                .subscribe(blob => this.worker.postMessage({ thumb: blob, type: "thumb" }));
+                .subscribe(blob => this.worker.postMessage({ thumb: blob, type: "thumb", sceneId : id }));
         }
 
         s.base.file.readAsBlob()
@@ -1360,7 +1366,7 @@ class panoramaViewer extends observable {
                 this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.base.file.getPath(), err));
                 return Rx.Observable.empty();
             })
-            .subscribe(blob => this.worker.postMessage({ img: blob, type: "img" }));
+            .subscribe(blob => this.worker.postMessage({ img: blob, type: "img", sceneId : id }));
 
 
         return subject.mapTo(loader);

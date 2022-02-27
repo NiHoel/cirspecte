@@ -237,7 +237,7 @@ directory.prototype.REMOTE_PATH_TESTER = new RegExp('^\\s*((https?)|(ftp)):.*', 
 
 directory.prototype.CREATE = "create";
 
-directory.prototype.ERROR.FILE_NOT_FOUND = "file not found";
+directory.prototype.ERROR.FILE_NOT_FOUND = "file not found or permission denied";
 directory.prototype.ERROR.DIRECTORY_NOT_FOUND = "directory not found";
 directory.prototype.ERROR.INVALID_PATH = "invalid path";
 directory.prototype.ERROR.NO_DIRECTORY_HANDLE = "no directory handle";
@@ -247,7 +247,7 @@ directory.prototype.ERROR.ABORT_ERR = "failed to abort";
 directory.prototype.ERROR.NOT_READABLE_ERR = "cannot read file";
 directory.prototype.ERROR.ENCODING_ERR = "file has inproper encoding";
 directory.prototype.ERROR.NO_MODIFICATION_ALLOWED_ERR = "modification not allowed";
-directory.prototype.ERROR.INVALID_STATE_ERR = "invalid state";
+directory.prototype.ERROR.INVALID_STATE_ERR = "invalid state (storage might be full)";
 directory.prototype.ERROR.SYNTAX_ERR = "syntax error";
 directory.prototype.ERROR.INVALID_MODIFICATION_ERR = "invalid modification";
 directory.prototype.ERROR.QUOTA_EXCEEDED_ERR = "storage quota exceeded";

@@ -1,10 +1,14 @@
 bugs
+	save yaw of current panorama with northOffset /= 0
 	item deselected when selecting group in editor
 	control group in map not selected when selecting item
+	exporting panoramas deletes width and height
+	recreating existing panoramas when exporting gets stuck
+	
 
 add functionality
-	save selected layers, collapsed timeline groups
-	panorama editor: haov, vaov, horizonPitch, horizonRoll
+	save selected layers
+	panorama editor: horizonPitch, horizonRoll
 	
 	capture panoramas on mobile devices
 		apps: Panorama camera, Google Maps (https://gbksoft.com/blog/best-360-camera-apps-for-iphone-android-development/)

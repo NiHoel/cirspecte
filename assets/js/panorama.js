@@ -726,7 +726,7 @@ class panoramaViewer extends observable {
                     observer.complete();
                 });
                 vertex.img.addEventListener('error', (err) => observer.error(err));
-                vertex.img.src = resizeCanvas.toDataURL("image/jpeg", 0.8);
+                vertex.img.src = resizeCanvas.toDataURL("image/jpeg", 0.9);
             } else {
                 observer.next(vertex);
                 observer.complete();

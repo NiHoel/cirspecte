@@ -24,3 +24,6 @@ platform.isMobile = navigator.userAgent.toLowerCase().indexOf('mobi') >= 0;
 platform.hasOrientationSensor = window.DeviceOrientationEvent && (location.protocol == 'https:' || navigator.userAgent.toLowerCase().indexOf('android') &&
     navigator.userAgent.toLowerCase().indexOf('mobi') >= 0) //from pannellum.js
 platform.hasGPSSensor = !!navigator.geolocation;
+
+if (window.electron && window.electron.ipcRenderer && window.electron.ipcRenderer.on)
+    window.electron.ipcRenderer.on("main-proc-error", console.error);

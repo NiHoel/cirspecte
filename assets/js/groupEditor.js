@@ -926,7 +926,7 @@ class groupEditor extends observable {
 
             if (cfg.oldV) {
                 cfg.oldV.forEach(e => {
-                    let eConfig = Object.assign({}, e.toJSON(), { from: vert, id: null, type: null });
+                    let eConfig = Object.assign({}, e.toJSON(), { from: v, id: null, type: null });
                     modules.model.createEdge(eConfig);
                 })
                 modules.model.deleteVertex(cfg.oldV);

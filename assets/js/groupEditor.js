@@ -56,7 +56,7 @@ class groupEditor extends observable {
             path: "%f/%l0/%x_%y"
         }];
         this.extensionOptionsSDR = ["jpg", "webp", "png", "avif"];
-        this.extensionOptionsHDR = ["hdr", "exr"];
+        this.extensionOptionsHDR = ["exr", "hdr"];
         this.cubeSides = ['f', 'b', 'u', 'd', 'l', 'r']
 
         this.default = {

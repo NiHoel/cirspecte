@@ -53,7 +53,7 @@ class groupEditor extends observable {
             type: "multires",
             name: "Tiled six faces of a cube map",
             attributes: new Set(["cubeResolution"]),
-            path: "%f/%l0/%x_%y"
+            path: "%s/%l0/%x_%y"
         }];
         this.extensionOptionsSDR = ["jpg", "webp", "png", "avif"];
         this.extensionOptionsHDR = ["exr", "hdr"];

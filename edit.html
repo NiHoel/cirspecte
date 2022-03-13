@@ -1333,14 +1333,14 @@
 
                         <h5>Placeholders</h5>
                         <ul>
-                            <li data-bind="visible: sceneType().type === 'multires' || sceneType().type === 'cubemap'">%s - side of the cube (<b>f</b>ront, <b>b</b>ack, <b>u</b>p, <b>d</b>down, <b>l</b>eft, <b>r</b>ight)</li>
+                            <li data-bind="visible: sceneType().type === 'multires' || sceneType().type === 'cubemap'">%s - side of the cube (<b>f</b>ront, <b>b</b>ack, <b>u</b>p, <b>d</b>own, <b>l</b>eft, <b>r</b>ight)</li>
                             <li data-bind="visible: sceneType().type.startsWith('multires')">%l0 - level index (starting at 0)</li>
                             <li data-bind="visible: sceneType().type.startsWith('multires')">%l - level index (starting at 1)</li>
                             <li data-bind="visible: sceneType().type.startsWith('multires')">%x - tile index along the x-axis (left to right)</li>
                             <li data-bind="visible: sceneType().type.startsWith('multires')">%y - tile index along the y-axis (top to bottom)</li>
                         </ul>
 
-                        <div class="control-group" style="width: 100%" data-bind="visible: sceneType().attributes.has('originalWidth')">
+                        <div class="control-group" style="width: 100%">
                             <label class="control-label">Tiling properties</label>
                             <div class="input-group">
                                 <input class="form-control" type="number" min="0" data-bind="value: maxLevel">

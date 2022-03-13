@@ -1009,6 +1009,14 @@ class panoramaViewer extends observable {
      * 
      */
     loadingFinished() {
+        if (!this.viewer) {
+            this.loading = false;
+            clearTimeout(this.loadingTimeout);
+            delete this.loadingTimeout;
+
+            return;
+        }
+
         if (this.modules.settings.autoRotateInactivityEnabled())
             this.viewer.setAutoRotateInactivityDelay(this.modules.settings.autoRotateInactivityDelay() * 1000);
         else
@@ -1358,7 +1366,7 @@ class panoramaViewer extends observable {
                     this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.thumb.file.getPath(), err));
                     return Rx.Observable.empty();
                 })
-                .subscribe(blob => this.worker.postMessage({ thumb: blob, type: "thumb", sceneId : id }));
+                .subscribe(blob => this.worker.postMessage({ thumb: blob, type: "thumb", sceneId: id }));
         }
 
         s.base.file.readAsBlob()
@@ -1366,7 +1374,7 @@ class panoramaViewer extends observable {
                 this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.base.file.getPath(), err));
                 return Rx.Observable.empty();
             })
-            .subscribe(blob => this.worker.postMessage({ img: blob, type: "img", sceneId : id }));
+            .subscribe(blob => this.worker.postMessage({ img: blob, type: "img", sceneId: id }));
 
 
         return subject.mapTo(loader);

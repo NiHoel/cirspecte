@@ -701,8 +701,8 @@ class exporter extends observable {
             .mergeMap(b => this.workerToObservable(worker, b))
             .mergeMap(tile => {
                 if (tile.maxLevel) { //init params
-                    oldV.image.width = tile.width;
-                    oldV.image.height = tile.height;
+                    //oldV.image.width = tile.width;
+                    //oldV.image.height = tile.height;
                     newV.data.type = 'multiresrec';
                     newV.data.multiRes = tile;
                     newV.data.multiRes.path = this.tilePathPattern();

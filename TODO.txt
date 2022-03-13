@@ -2,7 +2,6 @@ bugs
 	save yaw of current panorama with northOffset /= 0
 	item deselected when selecting group in editor
 	control group in map not selected when selecting item
-	exporting panoramas deletes width and height
 	recreating existing panoramas when exporting gets stuck
 	
 

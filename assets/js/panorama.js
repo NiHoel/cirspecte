@@ -1485,6 +1485,7 @@ class panoramaViewer extends observable {
                                 if (node.uri.endsWith('.exr'))
                                     loader = new THREE.EXRLoader();
 
+                                var evBuckets = new Map();
 
                                 if (node.level == 1) {
                                     loader.type = THREE.FloatType;
@@ -1493,16 +1494,54 @@ class panoramaViewer extends observable {
 
                                     var min = Infinity; // smallest value > 0
                                     var max = 0;
+                                    var count = 0;
 
                                     for (var i = 0; i < buf.length / 4; i++) {
                                         var l = 0.299 * buf[4 * i] + 0.587 * buf[4 * i + 1] + 0.114 * buf[4 * i + 2];
+                                        if (l <= 0)
+                                            continue;
+
+                                        count++;
+
                                         max = Math.max(l, max);
 
-                                        if (l > 0 && l < min)
+                                        if (l < min)
                                             min = l;
 
+                                        var ev = parseInt(Math.log2(l));
+                                        if (evBuckets.has(ev))
+                                            evBuckets.set(ev, evBuckets.get(ev) + 1);
+                                        else
+                                            evBuckets.set(ev, 1);
                                     }
 
+                                    if (count > 100) {
+                                        var evRange = [0, 0];
+
+                                        var countOutliers = 0.05 * count;
+                                        var ev = parseInt(Math.log2(min));
+                                        while (countOutliers > 0) {
+                                            if (evBuckets.has(ev))
+                                                countOutliers -= evBuckets.get(ev);
+
+                                            ev++;
+                                        }
+
+                                        evRange[0] = ev - 1;
+
+                                        countOutliers = 0.05 * count;
+                                        ev = parseInt(Math.log2(max));
+                                        while (countOutliers > 0) {
+                                            if (evBuckets.has(ev))
+                                                countOutliers -= evBuckets.get(ev);
+
+                                            ev--;
+                                        }
+
+                                        evRange[1] = ev + 1;
+                                        texture.mainEVRange = evRange;
+                                     }
+                                    
                                     texture.minIntensity = min;
                                     texture.maxIntensity = max;
                                 } else {

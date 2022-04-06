@@ -298,18 +298,22 @@
                             <div class="input-group-addon">
                                 <label for="autoRotateInactivityEnabled" title="If there is no user interaction with the panorama, the view begins to turn automatically after the specified time.">Always start after</label>
                             </div>
-                            <input type="number" class="form-control" id="colocatedRadius" value="1" min="0" data-bind="value: autoRotateInactivityDelay, enable: autoRotateInactivityEnabled">
-                            <div class="input-group-addon">
-                                <label for="colocatedRadius">s of inactivity</label>
-                            </div>
                         </div>
 
                     </form>
-                    <div class="inline-list-stretched" style="margin-bottom: 1rem !important;">
-                        <label class="col-sm-1 control-label">Speed</label>
-                        <div class="col-sm-11">
-                            <input type="range" class="form-range" min="-20" max="20" step="0.25" data-bind="value: autoRotateSpeed">
+
+                    <div class="input-group inline-list-stretched" style="margin-bottom: 1rem !important;">
+                        <input type="range" class="form-range form-control" value="1" min="1" max="30" data-bind="value: autoRotateInactivityDelay, enable: autoRotateInactivityEnabled" style="margin-right: 2rem;">
+                        <input type="number" class="form-control" min="1" step="1" data-bind="value: autoRotateInactivityDelay, enable: autoRotateInactivityEnabled">
+                        <div class="input-group-addon" style="min-width: 11rem;">
+                            <label>s of inactivity</label>
                         </div>
+                    </div>
+
+
+                    <div class="inline-list-stretched" style="margin-bottom: 2rem !important;">
+                        <label class="control-label">Speed</label>
+                        <input type="range" class="form-range" min="-20" max="20" step="0.25" data-bind="value: autoRotateSpeed" style="max-width:70%">
                     </div>
 
                     <h4>Cycle through panoramas</h4>
@@ -325,17 +329,19 @@
 
                     </form>
 
-                    <div class="input-group">
-                        <div class="input-group-addon">
-                            <label for="autoRotateInactivityEnabled">Blend panoramas for</label>
+                    <div class="input-group inline-list-stretched" style="margin-bottom: 1rem !important;">
+                        <input type="range" class="form-range form-control" value="1" min="1" max="10" data-bind="value: cycleTimepointsFadeDuration" style="margin-right: 2rem;">
+                        <input type="number" class="form-control" min="1" step="1" data-bind="value: cycleTimepointsFadeDuration">
+                        <div class="input-group-addon" style="min-width: 9rem;">
+                            <label>s blending</label>
                         </div>
-                        <input type="number" class="form-control" value="1" min="0" max="10" data-bind="value: cycleTimepointsFadeDuration">
-                        <div class="input-group-addon">
-                            <label for="autoRotateInactivityEnabled">s and wait for</label>
-                        </div>
-                        <input type="number" class="form-control" value="1" min="1" data-bind="value: cycleTimepointsDelay">
-                        <div class="input-group-addon">
-                            <label for="colocatedRadius">s before loading next.</label>
+                    </div>
+
+                    <div class="input-group inline-list-stretched" style="margin-bottom: 2rem !important;">
+                        <input type="range" class="form-range form-control" value="1" min="1" max="10" data-bind="value: cycleTimepointsDelay" style="margin-right: 2rem;">
+                        <input type="number" class="form-control" min="1" step="1" data-bind="value: cycleTimepointsDelay">
+                        <div class="input-group-addon" style="min-width: 9rem;">
+                            <label>s waiting</label>
                         </div>
                     </div>
                 </div>

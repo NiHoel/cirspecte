@@ -37,6 +37,7 @@ class configurator {
                 data: {
                     northOffset: false,
                     vOffset: false,
+                    haov: false,
                     vaov: false,
                     type: false,
                     hdr: false,

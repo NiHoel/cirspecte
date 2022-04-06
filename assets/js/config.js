@@ -19,7 +19,7 @@ var config = {
         "tileLayers": [
             {
                 label: "OpenStreetMap", // can be freely chosen, displayed to the user in the layers dropdown
-                url: 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                 options: {
                     maxZoom: 19,
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -233,7 +233,7 @@ var config = {
             "showControls": false,
             "draggable": false
         },
-        maxZoomFactor: 4,
+        maxZoomFactor: 2,
         navigationHotspotPitch: -15,
         tileResolution: 1024,
         decodeThreads: 4

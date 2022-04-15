@@ -1439,7 +1439,7 @@ class panoramaViewer extends observable {
             if (lastSlash >= 0 && lastPoint > lastSlash)
                 applicationDir = applicationDir.substring(0, lastSlash);
 
-            var scripts = ["fflate.min.js", "threejs/three.js", "threejs/DataUtils.js", "threejs/RGBELoader.js", "threejs/EXRLoader.js"]
+            var scripts = ["fflate.min.js", "threejs/three.js", "threejs/DataUtils.js", "threejs/RGBELoader.js", "threejs/EXRLoader.js", "exr-wrap.js"]
                 .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
                 .join(",");
 
@@ -1483,7 +1483,7 @@ class panoramaViewer extends observable {
                             req = req.then(function (arrayBuffer) {
                                 var loader = new THREE.RGBELoader();
                                 if (node.uri.endsWith('.exr'))
-                                    loader = new THREE.EXRLoader();
+                                    loader = self.wasmEXRLoader ? self.wasmEXRLoader : new THREE.EXRLoader();
 
                                 var evBuckets = new Map();
 
@@ -1545,8 +1545,10 @@ class panoramaViewer extends observable {
                                     texture.minIntensity = min;
                                     texture.maxIntensity = max;
                                 } else {
+                                    //console.time("Decode EXR");
                                     var texture = loader.parse(arrayBuffer);
                                     var buf = texture.data;
+                                    //console.timeEnd("Decode EXR");
                                 }
 
                                 node.img = texture;
@@ -1569,8 +1571,9 @@ class panoramaViewer extends observable {
                                 postMessage(node);
                             });
 
-                    }, ["self.window = self;",
-                        "importScripts(" + scripts + ");"])
+                    }, ["importScripts(" + scripts + ");",
+                        WasmEXRLoader,
+                        "try{if(typeof EXR === 'function')EXR(null,'" + self.location.origin + "/assets/js/lib/').then(exrWrapper => {self.wasmEXRLoader = new WasmEXRLoader(exrWrapper)});}catch(e){console.error(e);}"])
                 });
         }
 

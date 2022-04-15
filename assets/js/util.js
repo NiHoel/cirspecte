@@ -909,3 +909,61 @@ class imageConverter extends observable {
 }
 
 imageConverter.prototype.ERROR.CONVERSION_ERROR = "unable to convert image";
+
+class WasmEXRLoader {
+    constructor(exrWrapper) {
+        this.OpenEXR = exrWrapper;
+    }
+
+    // function adapted from: https://github.com/disneyresearch/jeri/blob/master/src/utils/exr-parser.worker.js
+    parse(data) {
+        let exrImage = null; // tslint:disable-line:no-any
+        try {
+            exrImage = this.OpenEXR.loadEXRStr(data);
+            const channels = exrImage.channels();
+            const {
+                width,
+                height
+            } = exrImage;
+            let nChannels = channels.length;
+            let exrData;
+            if (nChannels === 1) {
+                const z = exrImage.plane(exrImage.channels()[0]);
+                exrData = new Float32Array(width * height);
+                for (let i = 0; i < width * height; i++) {
+                    exrData[i] = z[i];
+                }
+            } else if (exrImage.channels().includes('R') &&
+                exrImage.channels().includes('G') &&
+                exrImage.channels().includes('B')) {
+                const r = exrImage.plane('R');
+                const g = exrImage.plane('G');
+                const b = exrImage.plane('B');
+                var a;
+                if (exrImage.channels().includes('A'))
+                    a = exrImage.plane('A');
+                exrData = new Float32Array(width * height * 4);
+                for (let i = 0; i < width * height; i++) {
+                    exrData[i * 4] = r[i];
+                    exrData[i * 4 + 1] = g[i];
+                    exrData[i * 4 + 2] = b[i];
+                    exrData[i * 4 + 3] = a ? a[i] : 1;
+                }
+                nChannels = 4;
+            } else {
+                throw new Error('EXR image not supported');
+            }
+            return {
+                height: height,
+                width: width,
+                channels: nChannels,
+                data: exrData,
+                type: THREE.FloatType,
+            };
+        } finally {
+            if (exrImage) {
+                exrImage.delete();
+            }
+        }
+    }
+}

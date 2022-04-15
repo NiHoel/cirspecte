@@ -1,4 +1,9 @@
-( function () {
+/*!
+  * DataUtils.js (https://github.com/mrdoob/three.js/blob/master/src/extras/DataUtils.js)
+  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+  */
+
+(function () {
 
 const _floatView = new Float32Array( 1 );
 const _int32View = new Int32Array( _floatView.buffer );

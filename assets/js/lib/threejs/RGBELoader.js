@@ -1,4 +1,9 @@
-( function () {
+/*!
+  * RGBELoader.js (https://github.com/mrdoob/three.js/blob/dev/examples/js/loaders/RGBELoader.js)
+  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+  */
+
+(function () {
 
 	// http://en.wikipedia.org/wiki/RGBE_image_format
 

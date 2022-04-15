@@ -1,4 +1,9 @@
-( function () {
+/*!
+  * EXRLoader.js (https://github.com/mrdoob/three.js/blob/dev/examples/js/loaders/EXRLoader.js)
+  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+  */
+
+(function () {
 
 	/**
  * OpenEXR loader currently supports uncompressed, ZIP(S), RLE, PIZ and DWA/B compression.

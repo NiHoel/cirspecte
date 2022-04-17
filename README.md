@@ -4,6 +4,8 @@ Circumspectus in tempore - A panorama through time.
 [![Demo](screenshot.jpg?raw=true "Screenshot")](https://nihoel.github.io/cirspecte/index.html?tour=https%3A%2F%2Fnihoel.github.io%2Fcirspecte-demo%2Ftour.json)
 [Demo](https://nihoel.github.io/cirspecte/index.html?tour=https%3A%2F%2Fnihoel.github.io%2Fcirspecte-demo%2Ftour.json)
 
+[Demo with HDR panoramas](https://nihoel.github.io/cirspecte/index.html?tour=https%3A%2F%2Fnihoel.github.io%2Fcirspecte-hdr-demo%2Ftour.json) (requires 2 MB/s of download speed and an up-to-date browser - preferably  Chrome)
+
 https://github.com/NiHoel/cirspecte
 
 Pre-built binaries of the editor software can be found here: [https://github.com/NiHoel/cirspecte-cordova/releases/latest](https://github.com/NiHoel/cirspecte-cordova/releases/latest)

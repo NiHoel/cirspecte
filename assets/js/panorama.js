@@ -1573,7 +1573,7 @@ class panoramaViewer extends observable {
 
                     }, ["importScripts(" + scripts + ");",
                         WasmEXRLoader,
-                        "try{if(typeof EXR === 'function')EXR(null,'" + self.location.origin + "/assets/js/lib/').then(exrWrapper => {self.wasmEXRLoader = new WasmEXRLoader(exrWrapper)});}catch(e){console.error(e);}"])
+                        "try{if(typeof EXR === 'function')EXR(null,'" + applicationDir + "/assets/js/lib/').then(exrWrapper => {self.wasmEXRLoader = new WasmEXRLoader(exrWrapper)});}catch(e){console.error(e);}"])
                 });
         }
 

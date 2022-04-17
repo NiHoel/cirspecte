@@ -1342,7 +1342,7 @@ class webkitfile extends file {
      */
     constructor(fileHandle) {
         super(fileHandle.name);
-        if (fileHandle instanceof File)
+        if (fileHandle instanceof File || typeof fileHandle.file !== "function")
             this.file = fileHandle;
         else
             this.fileHandle = fileHandle;

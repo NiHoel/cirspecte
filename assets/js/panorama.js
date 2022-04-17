@@ -798,16 +798,16 @@ class panoramaViewer extends observable {
             // first load event is fired before viewer construction completes
             this.loadingFinished();
         } catch (e) {
-            var error = new error(this.ERROR.INIT_RENDERER, null, e);
+            var err = new error(this.ERROR.INIT_RENDERER, null, e);
             if (this.viewer && newScene.hdr && !this.viewer.canDisplayHDR())
-                throw new error(this.ERROR.NO_HDR);
+                err = new error(this.ERROR.NO_HDR);
 
             if (this.viewer)
                 this.viewer.destroy();
 
             delete this.viewer;
 
-            throw error;
+            throw err;
         }
     }
 

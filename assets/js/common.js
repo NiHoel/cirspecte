@@ -408,12 +408,17 @@ function createCommonRoutines(modules, settings) {
             })
             .catch(() => {
                 var tourParam = new URLSearchParams(window.location.search).get("tour");
-                if (tourParam) // check query parameter
-                    return modules.filesys.getApplicationDirectory()
-                        .mergeMap(dir => {
-                            return dir.searchFile(tourParam)
-                                .map(f => [f, f.getParent()]);
-                        });
+                if (tourParam) {// check query parameter
+
+                    var obs;
+                    if (directory.isAbsolutePath(tourParam))
+                        obs = remotefile.fromPath(tourParam)
+                    else
+                        obs = modules.filesys.getApplicationDirectory()
+                            .mergeMap(dir => dir.searchFile(tourParam));
+                                
+                    return obs.map(f => [f, f.getParent()]);
+                }
                 else
                     return Rx.Observable.throw();
             })

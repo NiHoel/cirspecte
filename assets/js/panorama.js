@@ -741,61 +741,74 @@ class panoramaViewer extends observable {
      * @param {scene} First scene to be shown
      */
     initViewer(newScene) {
-        if (this.viewer != null) { //viewer displays error
-            this.viewer.destroy();
-            this.viewer = null;
-            this.scene = null;
-        }
-        let cfg = { 'default': {}, 'scenes': {} };
-        Object.assign(cfg.default, this.config.default,
-            {
-                firstScene: newScene.id,
-                orientationOnByDefault: this.modules.settings.enableOrientation(),
-                autoRotate: this.modules.settings.autoRotateSpeed(),
-                autoRotateInactivityDelay: this.modules.settings.autoRotateInactivityEnabled() ? this.modules.settings.autoRotateInactivityDelay() * 1000 : -1
-            });
-        cfg['scenes'][newScene.id] = newScene;
-
-        if (this.config.default.interpolateBetweenTiles == null) {
-            //cfg['default']['interpolateBetweenTiles'] = !platform.isMobile;
-        }
-
-
-        /** @type {pannellum.Viewer} */
-        this.viewer = pannellum.viewer(this.domElement, cfg);
-        this.scene = newScene;
-        this.sceneCache = new Map();
-        this.sceneCache.set(newScene.id, newScene);
-
-        if (cfg.default.sceneFadeDuration) {
-            this.viewer.on('scenechangefadedone', () => { this.loadingFinished(); });
-        } else {
-            this.viewer.on('load', () => { this.loadingFinished(); });
-        }
-
-        this.viewer.on('autorotatestart', () => this.isAutoRotating(true));
-        this.viewer.on('autorotatefinished', () => this.isAutoRotating(false));
-
-        this.autoRotateSubscription = ko.computed(() => {
-            var speed = this.modules.settings.autoRotateSpeed();
-            if (this.isAutoRotating())
-                this.viewer.startAutoRotate(speed);
-
-            if (this.modules.settings.autoRotateInactivityEnabled())
-                this.viewer.setAutoRotateInactivityDelay(this.modules.settings.autoRotateInactivityDelay() * 1000);
-            else
-                this.viewer.setAutoRotateInactivityDelay(-1);
-        });
-
-        this.viewerSettableProperties = new Set();
-        for (var f in this.viewer) {
-            if (f.startsWith("set") && typeof this.viewer[f] === "function") {
-                this.viewerSettableProperties.add(f[3].toLocaleLowerCase() + f.substr(4));
+        try {
+            if (this.viewer != null) { //viewer displays error
+                this.viewer.destroy();
+                this.viewer = null;
+                this.scene = null;
             }
-        }
+            let cfg = { 'default': {}, 'scenes': {} };
+            Object.assign(cfg.default, this.config.default,
+                {
+                    firstScene: newScene.id,
+                    orientationOnByDefault: this.modules.settings.enableOrientation(),
+                    autoRotate: this.modules.settings.autoRotateSpeed(),
+                    autoRotateInactivityDelay: this.modules.settings.autoRotateInactivityEnabled() ? this.modules.settings.autoRotateInactivityDelay() * 1000 : -1
+                });
+            cfg['scenes'][newScene.id] = newScene;
 
-        // first load event is fired before viewer construction completes
-        this.loadingFinished();
+            if (this.config.default.interpolateBetweenTiles == null) {
+                //cfg['default']['interpolateBetweenTiles'] = !platform.isMobile;
+            }
+
+
+            /** @type {pannellum.Viewer} */
+            this.viewer = pannellum.viewer(this.domElement, cfg);
+            this.scene = newScene;
+            this.sceneCache = new Map();
+            this.sceneCache.set(newScene.id, newScene);
+
+            if (cfg.default.sceneFadeDuration) {
+                this.viewer.on('scenechangefadedone', () => { this.loadingFinished(); });
+            } else {
+                this.viewer.on('load', () => { this.loadingFinished(); });
+            }
+
+            this.viewer.on('autorotatestart', () => this.isAutoRotating(true));
+            this.viewer.on('autorotatefinished', () => this.isAutoRotating(false));
+
+            this.autoRotateSubscription = ko.computed(() => {
+                var speed = this.modules.settings.autoRotateSpeed();
+                if (this.isAutoRotating())
+                    this.viewer.startAutoRotate(speed);
+
+                if (this.modules.settings.autoRotateInactivityEnabled())
+                    this.viewer.setAutoRotateInactivityDelay(this.modules.settings.autoRotateInactivityDelay() * 1000);
+                else
+                    this.viewer.setAutoRotateInactivityDelay(-1);
+            });
+
+            this.viewerSettableProperties = new Set();
+            for (var f in this.viewer) {
+                if (f.startsWith("set") && typeof this.viewer[f] === "function") {
+                    this.viewerSettableProperties.add(f[3].toLocaleLowerCase() + f.substr(4));
+                }
+            }
+
+            // first load event is fired before viewer construction completes
+            this.loadingFinished();
+        } catch (e) {
+            var error = new error(this.ERROR.INIT_RENDERER, null, e);
+            if (this.viewer && newScene.hdr && !this.viewer.canDisplayHDR())
+                throw new error(this.ERROR.NO_HDR);
+
+            if (this.viewer)
+                this.viewer.destroy();
+
+            delete this.viewer;
+
+            throw error;
+        }
     }
 
     /**
@@ -829,6 +842,9 @@ class panoramaViewer extends observable {
 
         if (!v.data.panorama && !v.image && !v.image.file)
             throw new error(this.ERROR.NO_IMAGE, "", v);
+
+        if (this.viewer && v.data.hdr && !this.viewer.canDisplayHDR())
+            throw new error(this.ERROR.NO_HDR);
 
         if (this.loading)
             return Rx.Observable.empty();
@@ -1485,9 +1501,10 @@ class panoramaViewer extends observable {
                                     loader = self.wasmEXRLoader ? self.wasmEXRLoader : new THREE.EXRLoader();
 
                                 var evBuckets = new Map();
+                                loader.type = THREE.FloatType;
 
                                 if (node.level == 1) {
-                                    loader.type = THREE.FloatType;
+                                    
                                     var texture = loader.parse(arrayBuffer);
                                     var buf = texture.data;
 
@@ -1678,3 +1695,5 @@ panoramaViewer.prototype.ERROR.NO_IMAGE = 'no image associated to vertex'
 panoramaViewer.prototype.ERROR.IMAGE_TOO_BIG = 'image resolution too high'
 panoramaViewer.prototype.ERROR.UNSUPPORTED_VERTEX_TYPE = 'unsupported vertex type'
 panoramaViewer.prototype.ERROR.MISSING_PARAMETERS = 'missing parameters'
+panoramaViewer.prototype.ERROR.INIT_RENDERER = 'initializing the panorama viewer failed'
+panoramaViewer.prototype.ERROR.NO_HDR = 'the browser does not support displaying high dynamic range images'

@@ -1414,8 +1414,7 @@ class panoramaViewer extends observable {
                 else
                     reject();
             });
-        }
-}
+     }
 
 
     /**

@@ -1,5 +1,7 @@
 'use strict';
 
+
+
 /**
  * Classes: scene, hotspot, panoramaViewer
  * 
@@ -125,6 +127,16 @@ class hotspot {
         this.text = this.text || e.id;
         this.draggable = this.draggable;
     }
+
+    updateNorthOffset(northOffset) {
+        this.northOffset = northOffset;
+
+        var e = this.edge;
+        if (e.data.yaw == null)
+            this.yaw = algorithms.getAzimuth(e.from, e.to) + this.northOffset;
+        else
+            this.yaw = e.data.yaw + this.northOffset;
+    }
 }
 
 hotspot.prototype.ROUTE = 'scene'; // edge is part of a tour
@@ -146,8 +158,8 @@ hotspot.prototype.POSITION = 'position';
 /**
  * Listen to events: this.observe(<class>, <action>).subscribe(elem => / do something with element here /)
  * where <class> in {scene, hotspot, this.NORTHHOTSPOT}
- * <action> in {this.CREATE, this.DELETE, this.DRAG, this.CLICK}
- * click and drag not available for scene
+ * <action> in {this.CREATE, this.DELETE, this.DRAG, this.CLICK, this.LOADED}
+ * click and drag not available for scene, loaded not available for hotspot
  * */
 class panoramaViewer extends observable {
     get [Symbol.toStringTag]() {
@@ -181,11 +193,29 @@ class panoramaViewer extends observable {
                 else
                     this.viewer.stopOrientation();
             }
-        })
+        });
 
         // the settings from the tour file are applied in common.js after reading the file
 
+        this.isAutoRotating = ko.observable(false);
+        var startButton = $('#start-auto-rotate-button')[0];
+        var stopButton = $('#stop-auto-rotate-button')[0];
 
+        if (startButton)
+            startButton.onclick = () => this.startAutoRotate();
+
+        if (stopButton) {
+            stopButton.style.display = 'none';
+            stopButton.onclick = () => this.stopAutoRotate();
+    }
+
+        this.isAutoRotating.subscribe(enabled => {
+            if (startButton)
+                startButton.style.display = enabled ? 'none' : 'inherit';
+
+            if (stopButton)
+                stopButton.style.display = enabled ? 'inherit' : 'none';
+        });
     }
 
     /**
@@ -247,6 +277,7 @@ class panoramaViewer extends observable {
         var cfg = Object.assign({}, v.data, config);
         delete cfg.reload;
         let width = v.getImageConfig().width;
+
         if (!width) {
             if (v.data.multiRes) {
                 width = v.data.multiRes.originalWidth || 4 * v.data.multiRes.cubeResolution;
@@ -254,13 +285,22 @@ class panoramaViewer extends observable {
                 width = 4096;
             }
         }
+
         cfg.northOffset = cfg.northOffset || 0;
         cfg.vOffset = cfg.vOffset || 0;
-        cfg.pitch = cfg.pitch || (this.scene ? this.viewer.getPitch() : 0);
-        cfg.yaw = cfg.yaw + cfg.northOffset || (this.scene ? this.viewer.getYaw() - this.getNorthOffset() + cfg.northOffset : cfg.northOffset);
+        cfg.pitch = cfg.pitch || (this.scene ? "same" : 0);
+        cfg.yaw = cfg.yaw + cfg.northOffset || (this.scene ? "sameAzimuth" : cfg.northOffset);
         cfg.vaov = cfg.vaov || (this.scene ? this.scene.vaov : 120);
         cfg.minHfov = Math.min(120, config.minHfov || $(this.domElement).innerWidth() / width / this.config.maxZoomFactor * 360);
-        cfg.hfov = cfg.hfov || (this.scene ? this.viewer.getHfov() : Math.min(cfg.vaov, 170));
+        cfg.hfov = cfg.hfov || (this.scene ? "same" : Math.min(cfg.vaov, 170));
+
+        if (cfg.autoRotate == null)
+            cfg.autoRotate = this.isAutoRotating() ? this.modules.settings.autoRotateSpeed() : false;
+
+        if (v.image && v.image.file && v.image.file.isType([file.prototype.HDR, file.prototype.EXR]) ||
+            cfg.mutiRes && (cfg.multiRes.extension === "hdr" || cfg.multiRes.extension === "exr"))
+            cfg.hdr = true;
+
         return cfg;
     }
 
@@ -295,10 +335,14 @@ class panoramaViewer extends observable {
 
         // (event, clickHandlerArgs) => {...}
         if (!hs.draggable)
-            hs.clickHandlerFunc = () => this.emit(hs, this.CLICK);
+            hs.clickHandlerFunc = (event) => { if (event.type == 'click') this.emit(hs, this.CLICK); }
         else {
-            hs.dragStartHandlerFunc = () => this.startUpdate(hs, hs.POSITION);
-            hs.dragHandlerFunc = () => this.endUpdate(hs, hs.POSITION);
+            hs.dragHandlerFunc = (e) => {
+                if (e.type === 'mousedown' || e.type === 'pointerdown')
+                    this.startUpdate(hs, hs.POSITION);
+                else if (e.type === 'touchend' || e.type === 'pointerup' || e.type === 'pointerleave' || e.type === 'mouseup' || e.type === 'mouseleave')
+                    this.endUpdate(hs, hs.POSITION);
+            }
         }
         let sceneId = this.getScene().id;
         this.viewer.addHotSpot(hs, sceneId);
@@ -411,7 +455,7 @@ class panoramaViewer extends observable {
     getNorthOffset() {
         if (this.scene == null)
             return 0;
-        return this.scene.northOffset;
+        return this.scene.northOffset || 0;
     }
 
     /**
@@ -431,18 +475,40 @@ class panoramaViewer extends observable {
     updateScene(v) {
         if (!this.scene || this.scene.vertex !== v)
             return;
-        var modified = new Set();
 
-        for (var prop in v.data) {
-            if (this.scene[prop] !== v.data[prop])
-                modified.add(prop);
+        var changed = (prop) => {
+            if (prop === "type" || prop === "object")
+                return false;
+
+            if (typeof v.data[prop] === "number")
+                return Math.abs(this.scene[prop] - v.data[prop]) >= 1e-6;
+            else
+                return this.scene[prop] !== v.data[prop];
+
         }
 
-        if (modified.has("northOffset") && modified.size === 1) {
-            this.setNorthOffset(v.data.northOffset);
-            return Rx.Observable.of(this.scene);
-        } else
-            return this.reloadScene(v.data);
+        if (changed("northOffset")) {
+            this.scene.northOffset = v.data.northOffset;
+            if (this.northHotspot)
+                this.northHotspot.yaw = this.getNorthOffset();
+            this.scene.hotSpots.forEach(hs => {
+                if (hs.updateNorthOffset)
+                    hs.updateNorthOffset(v.data.northOffset);
+            });
+            this.invalidateSize();
+        }
+
+        for (var prop in v.data) {
+            if (changed(prop) && !this.viewerSettableProperties.has(prop))
+                return this.reloadScene(v.data);
+        }
+
+        for (var prop in v.data) {
+            if (changed(prop))
+                this.viewer["set" + prop[0].toLocaleUpperCase() + prop.substr(1)](v.data[prop]);
+        }
+
+        return Rx.Observable.of(this.scene);
     }
 
 
@@ -591,6 +657,25 @@ class panoramaViewer extends observable {
     }
 
 
+    startAutoRotate() {
+        if (!this.viewer)
+            return;
+
+        this.viewer.startAutoRotate(this.modules.settings.autoRotateSpeed(),
+            undefined,
+            undefined,
+            this.modules.settings.autoRotateInactivityEnabled()
+                ? this.modules.settings.autoRotateInactivityDelay() * 1000
+                : -1);
+    }
+
+    stopAutoRotate() {
+        if (!this.viewer)
+            return;
+
+        this.viewer.stopAutoRotate();
+    }
+
     /**
      * Loads the image associated to vertex, resizes it to the specified resolution
      * Stores the result in vertex.img.
@@ -605,6 +690,10 @@ class panoramaViewer extends observable {
                 let canvas = document.createElement('canvas');
                 let gl = canvas.getContext('experimental-webgl', { alpha: false, depth: false });
                 panoramaViewer.maxWidth = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+
+                var extension = gl.getExtension('WEBGL_lose_context');
+                if (extension)
+                    extension.loseContext();
             }
 
             if (width == null)
@@ -637,7 +726,7 @@ class panoramaViewer extends observable {
                     observer.complete();
                 });
                 vertex.img.addEventListener('error', (err) => observer.error(err));
-                vertex.img.src = resizeCanvas.toDataURL("image/jpeg", 0.8);
+                vertex.img.src = resizeCanvas.toDataURL("image/jpeg", 0.9);
             } else {
                 observer.next(vertex);
                 observer.complete();
@@ -647,7 +736,80 @@ class panoramaViewer extends observable {
         });
     }
 
+    /**
+     * Creates a new pannellum viewer, merges initital configurations and sets up event handlers
+     * @param {scene} First scene to be shown
+     */
+    initViewer(newScene) {
+        try {
+            if (this.viewer != null) { //viewer displays error
+                this.viewer.destroy();
+                this.viewer = null;
+                this.scene = null;
+            }
+            let cfg = { 'default': {}, 'scenes': {} };
+            Object.assign(cfg.default, this.config.default,
+                {
+                    firstScene: newScene.id,
+                    orientationOnByDefault: this.modules.settings.enableOrientation(),
+                    autoRotate: this.modules.settings.autoRotateSpeed(),
+                    autoRotateInactivityDelay: this.modules.settings.autoRotateInactivityEnabled() ? this.modules.settings.autoRotateInactivityDelay() * 1000 : -1
+                });
+            cfg['scenes'][newScene.id] = newScene;
 
+            if (this.config.default.interpolateBetweenTiles == null) {
+                //cfg['default']['interpolateBetweenTiles'] = !platform.isMobile;
+            }
+
+
+            /** @type {pannellum.Viewer} */
+            this.viewer = pannellum.viewer(this.domElement, cfg);
+            this.scene = newScene;
+            this.sceneCache = new Map();
+            this.sceneCache.set(newScene.id, newScene);
+
+            if (cfg.default.sceneFadeDuration) {
+                this.viewer.on('scenechangefadedone', () => { this.loadingFinished(); });
+            } else {
+                this.viewer.on('load', () => { this.loadingFinished(); });
+            }
+
+            this.viewer.on('autorotatestart', () => this.isAutoRotating(true));
+            this.viewer.on('autorotatefinished', () => this.isAutoRotating(false));
+
+            this.autoRotateSubscription = ko.computed(() => {
+                var speed = this.modules.settings.autoRotateSpeed();
+                if (this.isAutoRotating())
+                    this.viewer.startAutoRotate(speed);
+
+                if (this.modules.settings.autoRotateInactivityEnabled())
+                    this.viewer.setAutoRotateInactivityDelay(this.modules.settings.autoRotateInactivityDelay() * 1000);
+                else
+                    this.viewer.setAutoRotateInactivityDelay(-1);
+            });
+
+            this.viewerSettableProperties = new Set();
+            for (var f in this.viewer) {
+                if (f.startsWith("set") && typeof this.viewer[f] === "function") {
+                    this.viewerSettableProperties.add(f[3].toLocaleLowerCase() + f.substr(4));
+                }
+            }
+
+            // first load event is fired before viewer construction completes
+            this.loadingFinished();
+        } catch (e) {
+            var error = new error(this.ERROR.INIT_RENDERER, null, e);
+            if (this.viewer && newScene.hdr && !this.viewer.canDisplayHDR())
+                throw new error(this.ERROR.NO_HDR);
+
+            if (this.viewer)
+                this.viewer.destroy();
+
+            delete this.viewer;
+
+            throw error;
+        }
+    }
 
     /**
      * Center view in the direction the hotspot points to.
@@ -661,7 +823,7 @@ class panoramaViewer extends observable {
             throw new error(panoramaViewer.ERROR.UNSUPPORTED_VERTEX_TYPE, e.to.type, e);
 
         if (this.scene && e.from === this.scene.vertex && e.type !== edge.prototype.TEMPORAL) {
-            return this.loadScene(e.to, { yaw: algorithms.getAzimuth(e.from, e.to), pitch: 0 });
+            return this.loadScene(e.to, { autoRotate: false });
         } else {
             return this.loadScene(e.to);
         }
@@ -681,19 +843,25 @@ class panoramaViewer extends observable {
         if (!v.data.panorama && !v.image && !v.image.file)
             throw new error(this.ERROR.NO_IMAGE, "", v);
 
+        if (this.viewer && v.data.hdr && !this.viewer.canDisplayHDR())
+            throw new error(this.ERROR.NO_HDR);
+
         if (this.loading)
             return Rx.Observable.empty();
 
         this.loading = true;
-        setTimeout(() => this.loadingFinished(), 15000);
+        this.loadingTimeout = setTimeout(this.loadingFinished.bind(this), 10000);
+
+        if (!v.data.type)
+            this.modules.model.updateData(v, { type: "equirectangular" });
 
         var obs = this.modules.filesys.prepareFileAccess(v);
-        if (this.config.tileResolution && (v.data.type == "equirectangular" || !v.data.type))
+        if (this.config.tileResolution && v.data.type == "equirectangular")
             obs = obs.mergeMap(() => this.autoTile(v, config));
         else if (v.data.type.startsWith('multires'))
             obs = obs.map(v => {
                 var s = new scene(v, this.generatePanoramaConfig(v, config));
-                s.multiRes.loader = this.createMultiresLoader(s);
+                s.multiRes.loader = window.Worker ? this.createWebworkerMultiresLoader(s) : this.createMultiresLoader(s);
                 return s;
             })
         else
@@ -703,34 +871,9 @@ class panoramaViewer extends observable {
 
         return obs.map(newScene => {
             if (this.viewer == null || !this.viewer.getScene() || !this.viewer.isLoaded()) {
-                if (this.viewer != null) { //viewer displays error
-                    this.viewer.destroy();
-                    this.viewer = null;
-                    this.scene = null;
-                }
-                let cfg = { 'default': {}, 'scenes': {} };
-                Object.assign(cfg.default, this.config.default);
-                cfg['scenes'][newScene.id] = newScene;
-                cfg['default']['firstScene'] = newScene.id;
-                cfg['default']['orientationOnByDefault'] = this.modules.settings.enableOrientation();
-
-                if (this.config.default.interpolateBetweenTiles == null) {
-                    cfg['default']['interpolateBetweenTiles'] = !platform.isMobile;
-                }
-
-
-                /** @type {pannellum.Viewer} */
-                this.viewer = pannellum.viewer(this.domElement, cfg);
-                this.scene = newScene;
-
-                if (cfg.default.sceneFadeDuration) {
-                    this.viewer.on('scenechangefadedone', () => { this.loadingFinished(); });
+                this.initViewer(newScene);
                 } else {
-                    this.viewer.on('load', () => { this.loadingFinished(); })
-                }
-
-            } else {
-                this.viewer.addScene(newScene.id, newScene);
+                this.viewer.addScene(newScene.id, $.extend({}, newScene, { northOffset: -newScene.northOffset }));
 
                 if (this.scene != null) {
                     this.scene.forEach(hs => {
@@ -745,31 +888,51 @@ class panoramaViewer extends observable {
                         delete this.scene.thumb;
                         if (this.scene.multiRes && this.scene.multiRes.loader) {
                             var obj = this.scene.multiRes;
-                            if (obj.base) {
-                                delete obj.base.file.img;
-                                delete obj.base.img;
-                                delete obj.base.imgObs;
-                            }
 
-                            if (obj.thumb) {
-                                delete obj.thumb.file.img;
-                                delete obj.thumb.img;
-                                delete obj.thumb.imgObs;
-                            }
+                            setTimeout(obj => {
+                                if (obj.base) {
+                                    delete obj.base.file.img;
+                                    delete obj.base.img;
+                                    delete obj.base.imgObs;
+                                }
 
-                            delete this.scene.multiRes.loader;
+                                if (obj.thumb) {
+                                    delete obj.thumb.file.img;
+                                    delete obj.thumb.img;
+                                    delete obj.thumb.imgObs;
+                                }
+
+                                delete obj.loader;
+                            },
+                                this.modules.settings.cycleTimepointsFadeDuration() * 1000,
+                                obj);
                         }
 
                     }
 
                     this.viewer.removeScene(this.scene.id);
+                    setTimeout(id => {
+                        var s = this.sceneCache.get(id);
+
+                        if (s && s.promises) {
+                            for (var promise of s.promises.values())
+                                promise.reject();
+
+                            delete s.promises;
+                        }
+
+                        this.sceneCache.delete(id);
+                    },
+                        this.modules.settings.cycleTimepointsFadeDuration() * 1000,
+                        this.scene.id);
 
                     if (!config.reload)
                         this.emit(this.scene, this.DELETE);
                 }
 
-                this.viewer.loadScene(newScene.id);
+                this.sceneCache.set(newScene.id, newScene);
                 this.scene = newScene;
+                this.viewer.loadScene(newScene.id, newScene.pitch, newScene.yaw, newScene.hfov, false);
 
                 if (this.northHotspot != null) {
                     this.northHotspot.yaw = this.getNorthOffset();
@@ -778,8 +941,6 @@ class panoramaViewer extends observable {
                 }
             }
             this.setNorthOffset(newScene.northOffset); // scene and viewer northOffset differ in sign
-
-            this.loading = false;
 
             if (!config.reload)
                 this.emit(newScene, this.CREATE);
@@ -831,8 +992,12 @@ class panoramaViewer extends observable {
             };
 
             hs.draggable = true;
-            hs.dragStartHandlerFunc = () => this.startUpdate(hs, hotspot.prototype.POSITION, this.NORTHHOTSPOT);
-            hs.dragHandlerFunc = () => this.endUpdate(hs, hotspot.prototype.POSITION, this.NORTHHOTSPOT);
+            hs.dragHandlerFunc = (e) => {
+                if (e.type === 'mousedown' || e.type === 'pointerdown')
+                    this.startUpdate(hs, hotspot.prototype.POSITION, this.NORTHHOTSPOT);
+                else if (e.type === 'touchend' || e.type === 'pointerup' || e.type === 'pointerleave' || e.type === 'mouseup' || e.type === 'mouseleave')
+                    this.endUpdate(hs, hotspot.prototype.POSITION, this.NORTHHOTSPOT);
+            }
             this.northHotspot = hs;
             return this.reloadScene();
         } else if (!enable && this.northHotspot) {
@@ -860,11 +1025,27 @@ class panoramaViewer extends observable {
      * 
      */
     loadingFinished() {
+        if (!this.viewer) {
+            this.loading = false;
+            clearTimeout(this.loadingTimeout);
+            delete this.loadingTimeout;
+
+            return;
+        }
+
+        if (this.modules.settings.autoRotateInactivityEnabled())
+            this.viewer.setAutoRotateInactivityDelay(this.modules.settings.autoRotateInactivityDelay() * 1000);
+        else
+            this.viewer.setAutoRotateInactivityDelay(-1);
+
         if (!this.loading)
             return;
 
         this.loading = false;
         clearTimeout(this.loadingTimeout);
+        delete this.loadingTimeout;
+
+        this.emit(this.scene, this.LOADED);
     }
 
     /**
@@ -931,7 +1112,7 @@ class panoramaViewer extends observable {
         }
 
         let promise = (node, img) => new Promise((resolve, reject) => {
-            if (node.level > maxLevel || node.level < 0 || !s.thumb || !s.base) {
+            if (node.sceneId !== this.scene.id || node.level > maxLevel || node.level < 0 || !s.thumb || !s.base) {
                 reject();
                 return;
             }
@@ -1063,15 +1244,9 @@ class panoramaViewer extends observable {
             console.warn(this.ERROR.IMAGE_TOO_BIG, s);
         }
 
-        if (this.promises) {
-            for (var promise of this.promises.values())
-                promise.reject();
-
-            delete this.promises;
-        }
-
         if (!this.worker)
             this.worker = algorithms.createInlineWorker(async function (node) {
+                /* eslint require-atomic-updates: 0 */
                 var processRequest = async node => {
                     let f = Math.pow(2, node.level - this.maxLevel);
                     var img;
@@ -1084,6 +1259,9 @@ class panoramaViewer extends observable {
                     if (!img) {
                         this.requestQueue.push(node);
                         return;
+                    } else if (this.sceneId !== node.sceneId) {
+                        self.postMessage(node);
+                        return;
                     }
 
                     this.canvas.width = Math.min(this.tileResolution, Math.ceil(this.width * f) - this.tileResolution * node.x);
@@ -1095,7 +1273,7 @@ class panoramaViewer extends observable {
                     }
                     try {
                         this.ctx.drawImage(img, -this.tileResolution * node.x, -this.tileResolution * node.y, Math.ceil(this.width * f), Math.ceil(this.height * f));
-                        node.img = await createImageBitmap(canvas);
+                        node.img = await createImageBitmap(this.canvas);
                         self.postMessage(node);
                     } catch (e) {
                         node.error = e;
@@ -1115,12 +1293,14 @@ class panoramaViewer extends observable {
                     delete this.thumb;
                     delete this.creatingThumb;
                     delete this.img;
+                    delete this.sceneId;
                 } else if (node.type === "thumb") {
                     if (this.thumb || this.creatingThumb)
                         return;
 
                     this.creatingThumb = true;
                     this.thumb = await createImageBitmap(node.thumb);
+                    this.sceneId = node.sceneId;
                     this.creatingThumb = false;
                     self.postMessage("init");
                 } else if (node.type === "img") {
@@ -1128,6 +1308,7 @@ class panoramaViewer extends observable {
                         return;
 
                     this.img = await createImageBitmap(node.img);
+                    this.sceneId = node.sceneId;
 
                     if (!this.thumb && !this.creatingThumb) {
                         this.creatingThumb = true;
@@ -1153,19 +1334,18 @@ class panoramaViewer extends observable {
         this.worker.postMessage(init);
 
 
-
-
-
         let loader = (node, img) => new Promise((resolve, reject) => {
-            if (!this.promises || node.level > init.maxLevel || node.level < 0) {
+            var s = this.sceneCache.get(node.sceneId);
+
+            if (!s || s !== this.scene || node.level > init.maxLevel || node.level < 0) {
                 reject();
                 return;
             }
 
-            if (this.promises.has(node.path))
-                this.promises.get(node.path).reject();
+            if (!s.promises)
+                s.promises = new Map();
 
-            this.promises.set(node.path, { resolve: resolve, reject: reject });
+            s.promises.set(node.path, { resolve: resolve, reject: reject });
 
             this.worker.postMessage(node);
         });
@@ -1175,32 +1355,34 @@ class panoramaViewer extends observable {
         this.worker.onmessage = e => {
             var node = e.data;
             if (node === "init") {
-                this.promises = new Map();
                 subject.next(true);
                 subject.complete();
                 return;
             }
-            if (this.promises && this.promises.get(node.path)) {
-                var prom = this.promises.get(node.path);
+
+            var s = this.sceneCache.get(node.sceneId);
+
+            if (s && s.promises && s.promises.get(node.path)) {
+                var prom = s.promises.get(node.path);
                 if (node.img) {
                     prom.resolve(node.img);
                 } else {
                     prom.reject();
                     console.log(node.error);
                 }
-                this.promises.delete(node.path);
+                s.promises.delete(node.path);
             }
         }
 
 
-
+        var id = s.id;
         if (s.thumb.file && !s.thumb.file.equals(s.base.file)) {
             s.thumb.file.readAsBlob()
                 .catch(err => {
                     this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.thumb.file.getPath(), err));
                     return Rx.Observable.empty();
                 })
-                .subscribe(blob => this.worker.postMessage({ thumb: blob, type: "thumb" }));
+                .subscribe(blob => this.worker.postMessage({ thumb: blob, type: "thumb", sceneId: id }));
         }
 
         s.base.file.readAsBlob()
@@ -1208,7 +1390,7 @@ class panoramaViewer extends observable {
                 this.modules.logger.log(new error(file.prototype.ERROR.READING_FILE_EXCEPTION, s.base.file.getPath(), err));
                 return Rx.Observable.empty();
             })
-            .subscribe(blob => this.worker.postMessage({ img: blob, type: "img" }));
+            .subscribe(blob => this.worker.postMessage({ img: blob, type: "img", sceneId: id }));
 
 
         return subject.mapTo(loader);
@@ -1223,9 +1405,23 @@ class panoramaViewer extends observable {
  */
     createMultiresLoader(s) {
             return (node, img) => new Promise((resolve, reject) => {
+                var s = this.sceneCache.get(node.sceneId);
+
+                if (!s) {
+                    reject();
+                    return;
+                }
+
                 if (s.vertex && s.vertex.image.directory)
                     s.vertex.image.directory.searchFile(node.uri)
-                        .mergeMap(f => f.readAsImage())
+                        .mergeMap(f => {
+                            if (f.isType(file.prototype.HDR))
+                                return f.readAsArrayBuffer().map(b => new RGBELoader().parse(b));
+                            else if (f.isType(file.prototype.EXR))
+                                return f.readAsArrayBuffer().map(b => new EXRLoader().parse(b));
+                            else
+                                return f.readAsImage();
+                        })
                         .subscribe({
                             next: img => resolve(img),
                             error: () => reject(),
@@ -1234,7 +1430,258 @@ class panoramaViewer extends observable {
                 else
                     reject();
             });
+     }
+
+
+    /**
+* 
+* @param {scene} s
+* @returns {function(object, Image) : Promise<Image>} - A function that returns the specified tile from a hierarchy of tiles that is created on the file from the image.
+*/
+    createWebworkerMultiresLoader(s) {
+        if (!s.vertex || !s.vertex.image.directory) {
+            return (node, img) => new Promise((resolve, reject) => {
+                reject();
+            });
         }
+
+        if (!this.workerMultires) {
+            var threads = this.config.decodeThreads || 1;
+
+            var applicationDir = window.location.href;
+            var lastSlash = applicationDir.lastIndexOf('/');
+            var lastPoint = applicationDir.lastIndexOf('.');
+            if (lastSlash >= 0 && lastPoint > lastSlash)
+                applicationDir = applicationDir.substring(0, lastSlash);
+
+            var scripts = ["fflate.min.js", "threejs/three.js", "threejs/DataUtils.js", "threejs/RGBELoader.js", "threejs/EXRLoader.js", "exr-wrap.js"]
+                .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
+                .join(",");
+
+            this.workerMultires = [];
+
+            for (var i = 0; i < threads; i++)
+                this.workerMultires.push({
+                    workerId: i,
+                    pending: 0,
+                    lastSent: 0,
+                    worker: algorithms.createInlineWorker(async function (node) {
+
+                        var req = Promise.resolve(node.blob);
+                        if (!node.blob) {
+                            props = {
+                                mode: 'cors',
+                                credentials: node.crossOrigin == 'use-credentials' ? 'include' : 'same-origin'
+                            }
+
+                            if (node.hdr)
+                                props.responseType = 'arraybuffer';
+
+                            req = fetch(node.absURI, props).then(function (response) {
+                                return node.hdr ? response.arrayBuffer() : response.blob();
+                            });
+                        } else if (node.hdr) {
+                            req = new Promise((resolve, reject) => {
+                                var fileReader = new FileReader();
+                                fileReader.readAsArrayBuffer(node.blob);
+
+                                fileReader.onload = function (event) {
+                                    resolve(event.target.result || event.currentTarget.result);
+                                };
+                                fileReader.onerror = (err) => {
+                                    reject();
+                                };
+                            });
+                        }
+
+                        if (node.hdr)
+                            req = req.then(function (arrayBuffer) {
+                                var loader = new THREE.RGBELoader();
+                                if (node.uri.endsWith('.exr'))
+                                    loader = self.wasmEXRLoader ? self.wasmEXRLoader : new THREE.EXRLoader();
+
+                                var evBuckets = new Map();
+                                loader.type = THREE.FloatType;
+
+                                if (node.level == 1) {
+                                    
+                                    var texture = loader.parse(arrayBuffer);
+                                    var buf = texture.data;
+
+                                    var min = Infinity; // smallest value > 0
+                                    var max = 0;
+                                    var count = 0;
+
+                                    for (var i = 0; i < buf.length / 4; i++) {
+                                        var l = 0.299 * buf[4 * i] + 0.587 * buf[4 * i + 1] + 0.114 * buf[4 * i + 2];
+                                        if (l <= 0)
+                                            continue;
+
+                                        count++;
+
+                                        max = Math.max(l, max);
+
+                                        if (l < min)
+                                            min = l;
+
+                                        var ev = parseInt(Math.log2(l));
+                                        if (evBuckets.has(ev))
+                                            evBuckets.set(ev, evBuckets.get(ev) + 1);
+                                        else
+                                            evBuckets.set(ev, 1);
+                                    }
+
+                                    if (count > 100) {
+                                        var evRange = [0, 0];
+
+                                        var countOutliers = 0.05 * count;
+                                        var ev = parseInt(Math.log2(min));
+                                        while (countOutliers > 0) {
+                                            if (evBuckets.has(ev))
+                                                countOutliers -= evBuckets.get(ev);
+
+                                            ev++;
+                                        }
+
+                                        evRange[0] = ev - 1;
+
+                                        countOutliers = 0.05 * count;
+                                        ev = parseInt(Math.log2(max));
+                                        while (countOutliers > 0) {
+                                            if (evBuckets.has(ev))
+                                                countOutliers -= evBuckets.get(ev);
+
+                                            ev--;
+                                        }
+
+                                        evRange[1] = ev + 1;
+                                        texture.mainEVRange = evRange;
+                                     }
+                                    
+                                    texture.minIntensity = min;
+                                    texture.maxIntensity = max;
+                                } else {
+                                    //console.time("Decode EXR");
+                                    var texture = loader.parse(arrayBuffer);
+                                    var buf = texture.data;
+                                    //console.timeEnd("Decode EXR");
+                                }
+
+                                node.img = texture;
+
+                                postMessage(node, [buf.buffer]);
+                            }).catch(function (e) {
+                                node.error = e;
+                                delete node.img;
+                                postMessage(node);
+                            });
+                        else
+                            req = req.then(function (blob) {
+                                return createImageBitmap(blob);
+                            }).then(function (bitmap) {
+                                node.img = bitmap;
+                                postMessage(node, [bitmap]);
+                            }).catch(function (e) {
+                                node.error = e;
+                                delete node.img;
+                                postMessage(node);
+                            });
+
+                    }, ["importScripts(" + scripts + ");",
+                        WasmEXRLoader,
+                        "try{if(typeof EXR === 'function')EXR(null,'" + applicationDir + "/assets/js/lib/').then(exrWrapper => {self.wasmEXRLoader = new WasmEXRLoader(exrWrapper)});}catch(e){console.error(e);}"])
+                });
+        }
+
+        let loader = (node, img) => new Promise((resolve, reject) => {
+            var s = this.sceneCache.get(node.sceneId);
+
+            if (!s) {
+                reject();
+                return;
+            }
+
+            if (!s.promises)
+                s.promises = new Map();
+
+            s.promises.set(node.path, { resolve: resolve, reject: reject });
+
+            var myNode = {
+                sceneId: node.sceneId,
+                path: node.path,
+                level: node.level,
+                x: node.x,
+                y: node.y,
+                uri: node.uri,
+                crossOrigin: node.crossOrigin
+            };
+
+            s.vertex.image.directory.searchFile(node.uri)
+                .mergeMap(f => {
+                    if (f.isType([file.prototype.HDR, file.prototype.EXR]))
+                        myNode.hdr = true;
+
+                    if (f instanceof remotefile) {
+                        myNode.absURI = f.getPath();
+                        return Rx.Observable.of(myNode);
+                    } else {
+                        return f.readAsBlob().map(b => {
+                            myNode.blob = b;
+                        }).mapTo(myNode);
+                    }
+
+
+                })
+                .subscribe({
+                    next: myNode => {
+                        var s = this.sceneCache.get(node.sceneId);
+
+                        if (!s || !s.promises || !s.promises.has(node.path))
+                            return;
+
+                        var best = this.workerMultires[0];
+                        for (var worker of this.workerMultires) {
+                            if (!worker.pending) {
+                                best = worker;
+                                break;
+                            }
+
+                            if (worker.pending < best.pending ||
+                                worker.pending === best.pending && worker.lastSent < best.lastSent)
+                                best = worker;
+                        }
+
+                        myNode.workerId = best.workerId;
+                        best.worker.postMessage(myNode);
+                        best.pending += 1;
+                        best.lastSent = new Date();
+                    },
+                    error: () => reject()
+                });
+
+        });
+
+        for (var worker of this.workerMultires)
+            worker.worker.onmessage = e => {
+                var node = e.data;
+                this.workerMultires[node.workerId].pending -= 1;
+
+                var s = this.sceneCache.get(node.sceneId);
+
+                if (s && s.promises && s.promises.get(node.path)) {
+                    var prom = s.promises.get(node.path);
+                    if (node.img) {
+                        prom.resolve(node.img);
+                    } else {
+                        prom.reject();
+                        console.log(node.error);
+                    }
+                    s.promises.delete(node.path);
+                }
+            }
+
+        return loader;
+    }
 }
 
 panoramaViewer.prototype.CLICK = 'click';
@@ -1242,8 +1689,11 @@ panoramaViewer.prototype.DRAG = 'drag';
 panoramaViewer.prototype.CREATE = 'create';
 panoramaViewer.prototype.NORTHHOTSPOT = 'north hotspot';
 panoramaViewer.prototype.DELETE = 'delete';
+panoramaViewer.prototype.LOADED = 'loaded';
 
 panoramaViewer.prototype.ERROR.NO_IMAGE = 'no image associated to vertex'
 panoramaViewer.prototype.ERROR.IMAGE_TOO_BIG = 'image resolution too high'
 panoramaViewer.prototype.ERROR.UNSUPPORTED_VERTEX_TYPE = 'unsupported vertex type'
 panoramaViewer.prototype.ERROR.MISSING_PARAMETERS = 'missing parameters'
+panoramaViewer.prototype.ERROR.INIT_RENDERER = 'initializing the panorama viewer failed'
+panoramaViewer.prototype.ERROR.NO_HDR = 'the browser does not support displaying high dynamic range images'

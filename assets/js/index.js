@@ -58,15 +58,19 @@
 
                     modules.panorama.observe(scene, modules.panorama.CREATE)
                         .do(s => {
-                            modules.timeline.setAllActive(false);
-                            modules.timeline.setActive(s.vertex.spatialGroup, true);
+                            modules.timeline.setAllActive(false, false);
+                            modules.timeline.setActive(s.vertex.spatialGroup, true, false);
                             modules.timeline.center(s.vertex.spatialGroup);
-                        })
-                        .mergeMap(s => s.vertex.toObservable())
-                        .filter(e => e.type === edge.prototype.TEMPORAL)
-                        .map(e => modules.timeline.setActive(e.to.spatialGroup, true)),
 
-                    modules.model.observe(edge, modules.model.CREATE)
+                            s.vertex.forEach(e => {
+                                if (e.type === edge.prototype.TEMPORAL)
+                                    modules.timeline.setActive(e.to.spatialGroup, true, false)
+                            });
+
+                            modules.timeline.refreshItems(true);
+                        }),
+
+                    modules.model.observe(edge, modules.model.CREATE, Rx.Scheduler.queue)
                         .filter(e => modules.panorama.getVertex() === e.from && e.type === edge.prototype.TEMPORAL)
                         .map(e => modules.timeline.setActive(e.to.spatialGroup, true))
                 ]);

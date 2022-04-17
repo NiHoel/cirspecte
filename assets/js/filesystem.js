@@ -237,7 +237,7 @@ directory.prototype.REMOTE_PATH_TESTER = new RegExp('^\\s*((https?)|(ftp)):.*', 
 
 directory.prototype.CREATE = "create";
 
-directory.prototype.ERROR.FILE_NOT_FOUND = "file not found";
+directory.prototype.ERROR.FILE_NOT_FOUND = "file not found or permission denied";
 directory.prototype.ERROR.DIRECTORY_NOT_FOUND = "directory not found";
 directory.prototype.ERROR.INVALID_PATH = "invalid path";
 directory.prototype.ERROR.NO_DIRECTORY_HANDLE = "no directory handle";
@@ -247,7 +247,7 @@ directory.prototype.ERROR.ABORT_ERR = "failed to abort";
 directory.prototype.ERROR.NOT_READABLE_ERR = "cannot read file";
 directory.prototype.ERROR.ENCODING_ERR = "file has inproper encoding";
 directory.prototype.ERROR.NO_MODIFICATION_ALLOWED_ERR = "modification not allowed";
-directory.prototype.ERROR.INVALID_STATE_ERR = "invalid state";
+directory.prototype.ERROR.INVALID_STATE_ERR = "invalid state (storage might be full)";
 directory.prototype.ERROR.SYNTAX_ERR = "syntax error";
 directory.prototype.ERROR.INVALID_MODIFICATION_ERR = "invalid modification";
 directory.prototype.ERROR.QUOTA_EXCEEDED_ERR = "storage quota exceeded";
@@ -318,9 +318,10 @@ class cordovadirectory extends directory {
     /**
  * 
  * @param {string} path
+ * @param {bool} isFile - last path component is a file
  * @returns {Rx.Observable<DirectoryEntry|FileEntry>}
  */
-    createPath(path) {
+    createPath(path, isFile = false) {
         var obs = cordovadirectory.resolve(this.path);
         var pathComponents = path.split('/');
         if (directory.isAbsolutePath(path)) {
@@ -342,18 +343,18 @@ class cordovadirectory extends directory {
 
                 var name = pathComponents.shift();
 
-                if (pathComponents.length || name.indexOf('.') == -1)
+                if (pathComponents.length || !isFile)
 
                     return Rx.Observable.create(obs => {
                         handle.getDirectory(name, { create: true, exclusive: false },
                             (entry) => { obs.next(entry); obs.complete(); },
-                            (err) => { obs.error(cordovadirectory.toError(err, path)) });
+                            (err) => { obs.error(cordovadirectory.toError(err, filesystem.concatPaths(this.getPath(), path))) });
                     }).map(handle => [handle, [...pathComponents]]);
                 else
                     return Rx.Observable.create(obs => {
                         handle.getFile(name, { create: true, exclusive: false },
                             (entry) => { obs.next(entry); obs.complete(); },
-                            (err) => { obs.error(cordovadirectory.toError(err, path)) }
+                            (err) => { obs.error(cordovadirectory.toError(err, filesystem.concatPaths(this.getPath(), path))) }
                         );
                     }).map(handle => [handle, [...pathComponents]]);
             })
@@ -499,7 +500,7 @@ class cordovadirectory extends directory {
     write(path, content) {
         path = path instanceof file ? file.getPath(this) : path;
 
-        return this.createPath(path)
+        return this.createPath(path, true)
             .mergeMap(handle => Rx.Observable.create(obs => {
                 handle.createWriter(writer => { obs.next(writer); obs.complete(); },
                     err => obs.error(cordovadirectory.toError(err, filesystem.concatPaths(this.getPath(), path)))
@@ -562,7 +563,15 @@ class cordovadirectory extends directory {
     * @param {string} path
     */
     static toError(err, path) {
-        switch (err.code) {
+        var code = 0;
+        if (typeof err === "number")
+            code = err;
+        else if (err.code)
+            code = err.code;
+        else
+            return new error(directory.prototype.ERROR.INVALID_STATE_ERR, "", path);
+
+        switch (code) {
             case FileError.NOT_FOUND_ERR:
                 if (path && path.split('/').pop().indexOf('.') != -1)
                     return new error(directory.prototype.ERROR.FILE_NOT_FOUND, "", path);
@@ -1168,6 +1177,13 @@ class file {
     }
 
     /**
+     * @returns {string}
+     * */
+    getExtension() {
+        return this.name.split('.').pop();
+    }
+
+    /**
     * 
     * @param {FileSystemFileEntry | FileEntry} entry
     * @returns {Rx.Observable<File>}
@@ -1248,6 +1264,11 @@ class file {
                 this.name.endsWith(".JPG")
             ))
                 return true;
+
+            if (type === file.prototype.HDR) 
+                for (var extension of ['.hdr', '.xyz', '.rgbe'])
+                    if (this.name.toLowerCase().endsWith(extension))
+                        return true;
         }
         return false;
     }
@@ -1259,6 +1280,10 @@ class file {
         for (var type of [file.prototype.JPG,
         file.prototype.PNG,
         file.prototype.TXT,
+        file.prototype.WEBP,
+        file.prototype.AVIF,
+        file.prototype.HDR,
+        file.prototype.EXR,
         file.prototype.JSON]) {
             if (this.isType(type))
                 return type;
@@ -1283,13 +1308,19 @@ class file {
 
 file.prototype.JPG = "image/jpeg";
 file.prototype.PNG = "image/png";
+file.prototype.WEBP = "image/webp"
+file.prototype.AVIF = "image/avif";
+file.prototype.HDR = "image/vnd.radiance"
+file.prototype.EXR = "image/exr";
+file.prototype.IMAGE = [file.prototype.JPG, file.prototype.PNG, file.prototype.WEBP, file.prototype.AVIF]
 file.prototype.TXT = "text/plain";
 file.prototype.JSON = "application/json";
 
 file.prototype.ERROR = {};
 file.prototype.ERROR.JSON_PARSE_EXCEPTION = "Syntax Error in JSON";
 file.prototype.ERROR.READING_FILE_EXCEPTION = "Error reading file";
-file.prototype.ERROR.UNSUPPORTED_OPERATION = "operation cannot be performed on this file";
+file.prototype.ERROR.UNSUPPORTED_OPERATION = "Operation cannot be performed on this file";
+file.prototype.ERROR.LOAD_IMAGE = "Could not load image";
 
 file.prototype.usedFiles = new Set();
 
@@ -1311,7 +1342,7 @@ class webkitfile extends file {
      */
     constructor(fileHandle) {
         super(fileHandle.name);
-        if (fileHandle instanceof File)
+        if (fileHandle instanceof File || typeof fileHandle.file !== "function")
             this.file = fileHandle;
         else
             this.fileHandle = fileHandle;
@@ -1451,7 +1482,7 @@ class webkitfile extends file {
                         observer.complete();
                     };
                     img.onerror = (err) => {
-                        observer.error(cordovadirectory.toError(err.target.error, this.getPath()));
+                        observer.error(err.target.error || file.prototype.ERROR.LOAD_IMAGE, this.getPath());
                     };
 
                     img.src = src;
@@ -1600,7 +1631,7 @@ class cordovafile extends webkitfile {
         return Rx.Observable.create(obs => {
             window.resolveLocalFileSystemURL(this.path,
                 (entry) => { obs.next(entry); obs.complete(); },
-                (err) => { obs.error(cordovadirectory.toError(err, this.path)) }
+                (err) => { obs.error(cordovadirectory.toError(err, this.getPath())) }
             )
         }).mergeMap(handle => {
 
@@ -1807,6 +1838,13 @@ class remotefile extends file {
             if (this.contentType.startsWith(type))
                 return true;
 
+            if (type === file.prototype.HDR)
+                for (var extension of ['.hdr', '.xyz', '.rgbe'])
+                    if (this.name.toLowerCase().endsWith(extension))
+                        return true;
+
+            if (type === file.prototype.EXR && this.name.toLowerCase().endsWith(".exr"))
+                return true;
         }
         return false;
     }
@@ -2118,7 +2156,7 @@ class fileTree {
 
 
                     dir.scan()
-                        .filter(e => !(e instanceof file) || e.isType([file.prototype.JPG, file.prototype.PNG, file.prototype.JSON]))
+                        .filter(e => !(e instanceof file) || e.isType(file.prototype.IMAGE))
                         .map(e => {
                             let cNode = e.toNode();
                             self.nodeIdToEntry.set(cNode.id, e);
@@ -2538,8 +2576,8 @@ class electronAccessor extends observable {
      * */
     getDialogResponse() {
         return Rx.Observable.create(obs => {
-            var responseHandler = (emitter, paths) => {
-                for (var path of (paths || []))
+            var responseHandler = (emitter, result) => {
+                for (var path of (result.filePaths || result.paths || []))
                     obs.next(path.replace(/\\/g, '/'));
 
                 obs.complete();
@@ -3067,7 +3105,7 @@ class filesystem extends observable {
             if (folders.length > 1) {
                 var lastFolder = folders.pop() || folders.pop();
                 if (lastFolder !== 'www' && lastFolder !== 'app.asar')
-                    path = filesystem.concatPaths(path, 'www');
+                    path = filesystem.concatPaths(path, platform.isElectron ? 'app.asar' : 'www');
             }
 
             return this.resolvePath(path);

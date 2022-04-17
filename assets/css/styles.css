@@ -142,6 +142,16 @@ section {
     margin-bottom: 0;
 }
 
+.description label {
+    margin-right: 20px;
+    font-weight: 700;
+}
+
+.sidebar-nav li .checkbox.description {
+    margin: unset;
+    margin-bottom: 5px;
+}
+
 
 /****************/
 /*** panorama ***/
@@ -223,45 +233,45 @@ div.hotspot-container:hover div.preview-tooltip:after {
 /*** timeline ***/
 /****************/
 
-.timeline-grid {
+.vis-grid {
     border-color: dimgray;
 }
 
-.timeline-labelset .timeline-label {
+.vis-labelset .vis-label {
     color: white;
 }
 
-.timeline-time-axis .timeline-text {
+.vis-time-axis .vis-text {
     color: white;
 }
 
-.timeline-item-content {
+.vis-item-content {
     color: white;
     text-shadow: 1px 1px 1px #979797;
 }
 
-.timeline-item.timeline-range {
+.vis-item.vis-range {
     background-color: #2E3A5E;
     border-color: #2E3A5E;
     text-shadow: none;
-    cursor:pointer;
+    cursor: pointer;
 }
 
-.timeline-item.timeline-selected, .timeline-item.timeline-point.timeline-selected, .timeline-nested-group {
+.vis-item.vis-selected, .vis-item.vis-point.vis-selected, .vis-nested-group {
     border-color: unset;
     background-color: unset;
 }
 
-.timeline-item.timeline-point.timeline-selected {
+.vis-item.vis-point.vis-selected {
     border-color: unset;
     background-color: unset;
 }
 
-.timeline-item.timeline-point {
-    cursor:pointer;
+.vis-item.vis-point {
+    cursor: pointer;
 }
 
-.timeline-item.timeline-dot {
+.vis-item.vis-dot {
     border-width: 3px;
     border-radius: 8px;
     width: 16px;
@@ -270,25 +280,25 @@ div.hotspot-container:hover div.preview-tooltip:after {
     background-color: white;
 }
 
-.timeline-item.timeline-dot.timeline-selected {
+.vis-item.vis-dot.vis-selected {
     border-color: #fff;
     background-color: #555;
 }
 
-.timeline-item.timeline-selected .timeline-item-content {
+.vis-item.vis-selected .vis-item-content {
     font-weight: bold;
 }
 
-.timeline-item.timeline-dot.timeline-inactive {
+.vis-item.vis-dot.vis-inactive {
     border-color: #555;
     background-color: #555;
 }
 
-.timeline-item.timeline-item-content.timeline-inactive {
+.vis-item.vis-item-content.vis-inactive {
     color: #555;
 }
 
-.timeline-item.timeline-inactive .timeline-item-content {
+.vis-item.vis-inactive .vis-item-content {
     color: #555;
     text-shadow: 1px 1px 1px #fff;
 }
@@ -315,3 +325,11 @@ div.hotspot-container:hover div.preview-tooltip:after {
 #sidebar-wrapper a {
     color: #d5d5d5;
 }
+
+.inline-list-stretched {
+    display: flex;
+    flex-flow: nowrap;
+    justify-content: space-between;
+    align-items: center;
+}
+

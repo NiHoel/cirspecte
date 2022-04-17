@@ -35,10 +35,10 @@ class exporter extends observable {
         this.maxHeight = ko.observable(2048);
         this.canThreads = ko.observable(typeof OffscreenCanvas !== 'undefined' && typeof Worker !== 'undefined');
         this.enableThreads = ko.observable(this.canThreads());
-        this.threads = ko.observable(8);
-        //       this.truncatePaths = ko.observable(false);
-        this.contentTypes = [file.prototype.JPG, file.prototype.PNG];
-        this.contentType = ko.observable(file.prototype.JPG);
+        this.threads = ko.observable(6);
+        this.truncatePaths = ko.observable(false);
+        this.contentTypes = file.prototype.IMAGE;
+        this.contentType = ko.observable(file.prototype.WEBP);
         this.quality = ko.observable(0.9);
         this.tilePathPattern = ko.observable("%l/%x_%y");
 
@@ -157,13 +157,30 @@ class exporter extends observable {
         for (var sg of Array.from(this.exportGraph.spatialGroups.values())) {
             if (sg.type === spatialGroup.prototype.LANDMARK)
                 this.exportGraph.deleteSpatialGroup(sg);
-            else
+            else if (this.truncatePaths()) {
+                delete sg.path;
+                if (sg.images) {
+                    delete sg.images.prefix;
+                    delete sg.images.path;
+                }
+                delete sg.thumbnails;
+            } else
                 sg.path = this.modules.model.getSpatialGroup(sg.id).images.directory.getPath(this.modules.filesys.getWorkspace());
+
+            if (sg.images)
+                delete sg.images.path;
 
             if (this.enableTiling()) {
                 delete sg.thumbnails;
-                if (sg.images)
+                if (sg.images) {
                     delete sg.images.prefix;
+
+                    if (sg.images.width && this.enableMaxWidth())
+                        sg.images.width = Math.min(sg.images.width, this.maxWidth());
+
+                    if (sg.images.height && this.enableMaxHeight())
+                        sg.images.height = Math.min(sg.images.height, this.maxHeight());
+                }
             }
         }
 
@@ -184,6 +201,23 @@ class exporter extends observable {
             })
             .catch(() => Rx.Observable.of(false))
             .mergeMap(() => {
+                if (this.truncatePaths()) {
+                    for (var sg of Array.from(this.destinationGraph.spatialGroups.values())) {
+                        delete sg.thumbnails;
+                        if (!sg.path && !sg.images.path)
+                            continue;
+
+                        var imgPath = filesystem.concatPaths(sg.path, sg.images.path);
+                        sg.forEach(v => {
+                            v.path = filesystem.concatPaths(v.path, imgPath);
+                            delete v.thumbnail;
+                        })
+
+                        delete sg.path;
+                        delete sg.images.path;
+                    }
+                }
+
                 var verticesToCreate = [];
                 // estimate files to create
                 for (var v of Array.from(this.exportGraph.vertices.values())) {
@@ -191,24 +225,26 @@ class exporter extends observable {
                         var dV = this.destinationGraph.getVertex(v.id);
                         $.extend(true, v.data, dV.data);
                         v.image = dV.image;
-                        v.thumbnail = dV.thumbnail;
                         v.path = dV.path;
 
                         continue;
                     }
 
+                    delete v.thumbnail;
                     verticesToCreate.push(v);
 
                     if (v.data && v.data.type) {
                         if (this.enableTiling() || v.data.type.startsWith('multires')) {
                             try {
-                                var width = v.image.width || v.data.multiRes.width;
-                                var height = v.image.height || v.data.multiRes.height;
+                                var width = v.image.width || v.data.multiRes.originalWidth;
+                                var height = v.image.height || v.data.multiRes.originalHeight;
 
-                                if (width && height)
-                                    this.setFilesToCreate(v.id, this.getTilesCount(width, height));
-                                else
-                                    this.setFilesToCreate(v.id, 100);
+                                if (!width || !height) {
+                                    width = 16384
+                                    height = 8192
+                                }                                
+
+                                this.setFilesToCreate(v.id, this.getTilesCount(width, height));                                
                             } catch (e) {
                                 this.setFilesToCreate(v.id, 1);
                             }
@@ -247,7 +283,11 @@ class exporter extends observable {
                 if (oldV.data.type && oldV.data.type.startsWith('multires')) {
 
                     obs = obs.mergeMap(oldV => {
-                        var newPath = oldV.image.directory.getPath(this.modules.filesys.getWorkspace());
+                        if (this.truncatePaths()) {
+                            newV.path = newV.id.replace(/\./g, '_');
+                            var newPath = newV.path;
+                        } else
+                            var newPath = oldV.image.directory.getPath(this.modules.filesys.getWorkspace());
 
                         var tries = 0;
                         return this.directory.searchDirectory(newPath)
@@ -260,18 +300,22 @@ class exporter extends observable {
                             })
                             .catch(() => this.directory.createDirectory(newPath)
                                 .do(dir => this.createdDirectories.set(newV.id, dir))) // only the last created directory is stored
-                            .retry(2)
+                            .retry(3)
                             .mergeMap(dir => this.copyMultipleFiles(newV, dir, worker))
                     });
 
                     // equirectangular to multiresrec
                 } else if (this.enableTiling()) {
                     obs = obs.mergeMap(() => {
-                        newV.path = filesystem.concatPaths(newV.path, newV.image.path);
-                        newV.path = newV.path.replace(/\./g, '_');
-                        delete newV.image.path;
-
-                        var newPath = filesystem.concatPaths(oldV.image.directory.getPath(this.modules.filesys.getWorkspace()), newV.path);
+                        if (this.truncatePaths()) {
+                            newV.path = newV.id.replace(/\./g, '_');
+                            var newPath = newV.path;
+                        } else {
+                            newV.path = filesystem.concatPaths(newV.path, newV.image.path);
+                            newV.path = newV.path.replace(/\./g, '_');
+                            var newPath = filesystem.concatPaths(oldV.image.directory.getPath(this.modules.filesys.getWorkspace()), newV.path.split('/').pop());
+                        }
+                        delete newV.image.path;                      
 
 
                         return this.directory.searchDirectory(newPath)
@@ -286,7 +330,12 @@ class exporter extends observable {
                     // copy euqirectangular
                 } else {
                     obs = obs.mergeMap(() => {
-                        var path = oldV.image.file.getPath(this.modules.filesys.getWorkspace());
+                        if (this.truncatePaths()) {
+                            var path = newV.id.replace(/\./g, '_') + '.' + oldV.image.file.getExtension();
+                            newV.image.path = path;
+                            delete newV.path;
+                        } else
+                            var path = oldV.image.file.getPath(this.modules.filesys.getWorkspace());
 
                         return this.directory.searchFile(path)
                             .filter(() => {
@@ -297,13 +346,16 @@ class exporter extends observable {
                                 return false;
                             })
                             .catch(() => Rx.Observable.of(newV))
-                            .mergeMap(() => this.copySingleFile(newV, worker))
+                            .mergeMap(() => this.copySingleFile(newV, path, worker))
                     });
                 }
 
                 return obs
                     .catch(err => {
-                        err.message = "excluding panorama from export";
+                        if(err instanceof error)
+                            err.message = "excluding panorama from export";
+                        else
+                            err = new error(err, "excluding panorama '" + newV.id + "' from export")
                         this.errors.log.push(err);
                         this.exportGraph.deleteVertex(newV);
                         return this.deleteCreatedFiles(newV.id);
@@ -381,7 +433,6 @@ class exporter extends observable {
             }, err => {
                 this.modules.logger.log(new error(this.ERROR.EXPORT_FAILED, "", err));
                 console.log(err);
-                this.abort();
             });
 
 
@@ -551,22 +602,16 @@ class exporter extends observable {
 
     /**
     *  @param {vertex} newV 
+    *  @param {string} path
     *  @param {Worker} worker
     *   
     *   Precondition: prepareFileAccess
     */
-    copySingleFile(newV, worker = null) {
+    copySingleFile(newV, path, worker = null) {
         var oldV = this.modules.model.getVertex(newV.id);
-
-        var path = oldV.image.file.getPath(this.modules.filesys.getWorkspace());
 
         var obs = this.directory.write(path, oldV.image.file).retry(2)
             .do(f => this.created(newV.id, f));
-        if (oldV.thumbnail && oldV.thumbnail.file && !oldV.thumbnail.file.equals(oldV.image.file)) {
-            var thumbPath = oldV.thumbnail.file.getPath(this.modules.filesys.getWorkspace());
-            obs = obs.mergeMap(() => this.directory.write(thumbPath, oldV.image.file).retry(2))
-                .do(f => this.created(newV.id, f));
-        }
 
         return obs.defaultIfEmpty(null)
             .last()
@@ -596,7 +641,7 @@ class exporter extends observable {
             var height = Math.ceil(originalHeight * f);
 
             for (var x = 0; x < Math.ceil(width / tileResolution); x++) {
-                for (var y = 0; x < Math.ceil(height / tileResolution); y++) {
+                for (var y = 0; y < Math.ceil(height / tileResolution); y++) {
                     if (newV.data.type === "multires")
                         for (var side of ['f', 'r', 'b', 'l', 'u', 'd'])
                             nodes.push({
@@ -629,8 +674,14 @@ class exporter extends observable {
                         this.created(newV.id, f);
                     }).catch(() => Rx.Observable.empty());
             })
+            .defaultIfEmpty(null)
             .last()
-            .do(() => this.finished(newV.id))
+            .do(node => {
+                if (!node)
+                    throw "No files found";
+
+                this.finished(newV.id)
+            })
             .mapTo(worker);
     }
 
@@ -650,8 +701,8 @@ class exporter extends observable {
             .mergeMap(b => this.workerToObservable(worker, b))
             .mergeMap(tile => {
                 if (tile.maxLevel) { //init params
-                    oldV.image.width = tile.width;
-                    oldV.image.height = tile.height;
+                    //oldV.image.width = tile.width;
+                    //oldV.image.height = tile.height;
                     newV.data.type = 'multiresrec';
                     newV.data.multiRes = tile;
                     newV.data.multiRes.path = this.tilePathPattern();
@@ -689,6 +740,7 @@ class exporter extends observable {
      */
     resolvePathPattern(multiRes, node) {
         var path = multiRes.path;
+        path = path.replace("%l0", node.l - 1);
         for (var param in node) {
             path = path.replace(new RegExp("%" + param, "gi"), "" + node[param]);
         }
@@ -712,6 +764,8 @@ class exporter extends observable {
         return this.directory.write(path, oldB.image.file)
             .retry(2)
             .do(f => {
+                newB.image.path = path;
+
                 this.created(newB.label, f);
                 this.finished(newB.label);
             })
@@ -749,12 +803,20 @@ class exporter extends observable {
 
         if (this.exportGraph.hasVertex(id)) {
             var v = this.exportGraph.getVertex(id);
+
+            var tGroups = [];
             var tg = v.spatialGroup.superGroup;
-            while (tg && !this.destinationGraph.hasTemporalGroup(tg.id)) {
-                this.destinationGraph.createTemporalGroup(tg.toJSON({
-                    ignoreSpatialGroups: true
-                }))
+            while (tg) {
+                tGroups.unshift(tg);
+                tg = tg.superGroup;
             }
+            for (tg of tGroups) {
+                if (tg && !this.destinationGraph.hasTemporalGroup(tg.id))
+                    this.destinationGraph.createTemporalGroup(tg.toJSON({
+                        ignoreSpatialGroups: true
+                    }))
+            }
+
             if (!this.destinationGraph.hasSpatialGroup(v.spatialGroup.id))
                 this.destinationGraph.createSpatialGroup(v.spatialGroup.toJSON({
                     ignoreVertices: true
@@ -904,7 +966,7 @@ class exporter extends observable {
             .last()
             .do(() => {
                 var files = this.createdFiles.get(id);
-                if (files.length) {
+                if (files && files.length) {
                     this.filesToCreateTotal(this.filesToCreateTotal() - files.length);
                     this.filesToCreateCount(this.filesToCreateCount() - files.length);
                 }

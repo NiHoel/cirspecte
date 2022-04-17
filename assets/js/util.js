@@ -18,7 +18,7 @@ class algorithms {
      */
     constructor(modules) {
         this.modules = modules;
-        this.filenamePattern = /([+-]?\d+(?:\.\d+)?),\s+([+-]?\d+(?:\.\d+)?)\.jpg/;
+        this.filenamePattern = /([+-]?\d+(?:\.\d+)?),\s+([+-]?\d+(?:\.\d+)?)\.(?:(?:jpe?g)|(?:png)|(?:webp)|(?:avif))/i;
     }
 
     /**
@@ -59,8 +59,11 @@ class algorithms {
                 .mergeMap(path => rootDirectory.searchFile(path))
                 .mergeMap(f =>
                     f.readAsJSON()
+                        .do(() => this.modules.model.updateHierarchical(true))
                         .mergeMap(t => this.readTour(t, f.getParent()))
-                );
+                )
+                .defaultIfEmpty(null)
+                .last();
         }
 
         return other.map(successful => successful && this.loadGraph(tour, rootDirectory));
@@ -81,7 +84,7 @@ class algorithms {
         var successful = true;
         rootDirectory = rootDirectory || this.filesys;
 
-        var edges = [];
+        var edges = tour.edges || [];
         var vertices = tour.vertices || [];
         var spatialGroups = tour.spatialGroups || [];
         var temporalGroups = tour.temporalGroups || [];
@@ -172,7 +175,7 @@ class algorithms {
 
         if (this.modules.panorama.getVertex() && this.modules.model.hasVertex(this.modules.panorama.getVertex().id)) {
             this.modules.settings.panorama.scene(this.modules.panorama.getVertex() ? this.modules.panorama.getVertex().id : undefined);
-            this.modules.settings.panorama.yaw(this.modules.panorama.getYaw());
+            this.modules.settings.panorama.yaw(this.modules.panorama.getAzimuth());
             this.modules.settings.panorama.pitch(this.modules.panorama.getPitch());
             this.modules.settings.panorama.hfov(this.modules.panorama.getHfov());
         }
@@ -180,7 +183,7 @@ class algorithms {
 
     /**
      * Given: yaw from manually set landmark hotspots
-     * Search space: Coordinates and northOffset of scene
+     * Search space: Coordinates, northOffset, horizontal angle of scene
      * Uses northOffset and coordinates to compute azimuth for each landmark hotspot
      * Objective function: Minimize difference between yaw and azimuth.
      * Performs gradient decent (with estimated gradients) to find the optimal solution
@@ -189,11 +192,14 @@ class algorithms {
      * 
       * @param {scene} scene
       * @param {[hotspot]} hotspots
+     * @param {boolean} objectives.coordinates - Include coordinates in search space
+     * @param {boolean} objectives.northOffset - Include north offset in search space
+     * @param {boolean} objectives.haov - Include horizontal angle of panorama in search space
       * @returns {Rx.Observable<JSON>} - {solution: {northOffset, coordinates}, f} where f is the standard deviation taken over all hotspots
       */
-    optimize(scene, hotspots) {
+    optimize(scene, hotspots, objectives = {coordinates: true, northOffset: true}) {
         return Rx.Observable.create(observer => {
-
+            let haovScaling = 1e-4;
             let sqr = function (x) { return x * x; };
             let mean = function (angles) {
                 var sin = 0, cos = 0;
@@ -207,37 +213,85 @@ class algorithms {
             let normalize = function (angle) {
                 return angle > 180 ? angle - 360 : (angle < -180 ? angle + 360 : angle);
             };
-
-            let objective = function (coordinates) {
-                var [lat, lon] = coordinates;
-                if (lat > 90.0 || lat < -90.0 || lon > 180.0 || lon < -180.0) {
-                    //                       console.log([lat, lon]);
-                    return Number.POSITIVE_INFINITY;
-
-                }
-
-                let angles = hotspots.map(hs => normalize(hs.yaw - algorithms.getAzimuth(coordinates, hs.edge.to)));
-                var northOffset = mean(angles);
-                var sum = angles.map(a => sqr(normalize(a - northOffset))).reduce((a, b) => a + b);
-                //           console.log([coordinates, angles, sum]);
-                if (!Number.isFinite(sum)) {
-                    return Number.POSITIVE_INFINITY;
-                }
-                return Math.sqrt(sum / angles.length);
-            };
-
-            let start = scene.vertex.coordinates || config.coordinates;
-            let result = numeric.uncmin(objective, start, 1e-7);
-            // console.log(result);
-            if (!result.solution)
-                observer.error(result.message);
-            else {
-                result.solution = {
-                    northOffset: mean(hotspots.map(hs => hs.yaw - algorithms.getAzimuth(result.solution, hs.edge.to))),
-                    coordinates: result.solution
-                };
+            let getAngles = function (coordinates, haov) {
+                var haovFactor = objectives.haov ? haov / (scene.haov || 360) : 1;
+                return hotspots.map(hs => normalize(hs.yaw * haovFactor - algorithms.getAzimuth(coordinates, hs.edge.to)));
             }
+            var result = {};
 
+            if (!objectives.coordinates && !objectives.haov) {
+                let angles = getAngles(scene.vertex.coordinates || config.coordinates, scene.haov);
+
+                result.solution = {
+                    northOffset: mean(angles)
+                };
+            
+                var sum = angles.map(a => sqr(normalize(a - result.solution.northOffset))).reduce((a, b) => a + b);
+                result.f = Math.sqrt(sum / angles.length);
+            } else {
+
+
+                let objective = function (x) {
+                    var [lat, lon] = scene.vertex.coordinates || config.coordinates;
+                    var haov = scene.haov || 360;
+
+                    if (objectives.coordinates) {
+                        lat = x[0];
+                        lon = x[1];
+                        x = x.slice(2);
+
+                        if (lat > 90.0 || lat < -90.0 || lon > 180.0 || lon < -180.0) {
+                            return Number.POSITIVE_INFINITY;
+                        }
+                    }
+
+                    var errorMultiplier = 1;
+                    if (objectives.haov) {
+                        haov = x[0] / haovScaling;
+
+                        
+                        errorMultiplier = Math.max(90.0 - haov + 1, Math.max(haov - 360 + 1, 1));
+                        haov = Math.max(90, Math.min(360, haov));
+                    }
+
+                    let angles = getAngles([lat, lon], haov);
+                    var northOffset = mean(angles);
+                    var sum = angles.map(a => sqr(normalize(a - northOffset))).reduce((a, b) => a + b);
+                    //           console.log([coordinates, angles, sum]);
+                    if (!Number.isFinite(sum)) {
+                        return Number.POSITIVE_INFINITY;
+                    }
+                    return Math.sqrt(sum / angles.length) * errorMultiplier;
+                };
+
+                var start = [];
+
+                if (objectives.coordinates)
+                    start = (scene.vertex.coordinates || config.coordinates).slice();
+
+                // normalize the search space,
+                // otherwise the objective function seems to be flat w.r.t. the haov dimension
+                if (objectives.haov)
+                    start.push((scene.haov || 360) * haovScaling);
+
+                result = numeric.uncmin(objective, start, 1e-7);
+                // console.log(result);
+                if (!result.solution)
+                    observer.error(result.message);
+                else {
+                    var vec = result.solution;
+                    if (objectives.coordinates) {
+                        result.solution.coordinates = [vec[0], vec[1]];
+                        vec = vec.slice(2);
+                    }
+                    if (objectives.haov)
+                        result.solution.haov = vec[0] / haovScaling;
+                    if (objectives.northOffset)
+                        result.solution.northOffset = mean(getAngles(result.solution.coordinates || scene.vertex.coordinates || config.coordinates,
+                            result.solution.haov || scene.haov || 360));
+
+                }
+            }
 
             observer.next(result);
             observer.complete();
@@ -342,7 +396,7 @@ class algorithms {
         established.set(v.spatialGroup.id, v.spatialGroup);
         v.forEach(e => {
             if (e.type === edge.prototype.TEMPORAL) {
-                let g = e.to.spatialGroup.superGroup;
+                let g = e.to.spatialGroup;
                 established.set(g.id, g);
                 edges.push(e);
             }
@@ -525,9 +579,29 @@ class algorithms {
         var content = calledFunctions.map(f => {
             var fstr = f.toString();
             if (fstr.startsWith('('))
-                return f.name + fstr;
-            else
-                return fstr;
+                fstr = f.name + fstr;
+
+            if (f.prototype) {
+                for (var attr in f.prototype) {
+                    if (f.prototype[attr] == null)
+                        continue;
+
+                    var t = typeof f.prototype[attr];
+                    if (t == "undefined")
+                        continue;
+
+                    var prefix = f.name + '.prototype.' + attr + ' = ';
+
+                    if (t == "boolean" || t == "number" || t == "function")
+                        fstr += prefix + f.prototype[attr].toString() + ';';
+                    if (t == "string")
+                        fstr += prefix + '"' + f.prototype[attr].toString() + '";';
+                    if (t == "object")
+                        fstr += prefix + JSON.stringify(f.prototype[attr]) + ';';
+                }
+            }
+
+            return fstr;
         });
         content.push(
             'self.main = ', main.toString(), ';',
@@ -723,7 +797,7 @@ class imageConverter extends observable {
         else if (img instanceof Image)
             return Rx.Observable.create(obs => {
                 this.drawOnInternalCanvas(img);
-                obs.next(this.loaderContext.getImageData(0, 0, width, height));
+                obs.next(this.loaderContext.getImageData(0, 0, this.loaderCanvas.width, this.loaderCanvas.height));
                 obs.complete();
             });
         else if (typeof img === "string" || img instanceof Blob || img instanceof ArrayBuffer)
@@ -835,3 +909,61 @@ class imageConverter extends observable {
 }
 
 imageConverter.prototype.ERROR.CONVERSION_ERROR = "unable to convert image";
+
+class WasmEXRLoader {
+    constructor(exrWrapper) {
+        this.OpenEXR = exrWrapper;
+    }
+
+    // function adapted from: https://github.com/disneyresearch/jeri/blob/master/src/utils/exr-parser.worker.js
+    parse(data) {
+        let exrImage = null; // tslint:disable-line:no-any
+        try {
+            exrImage = this.OpenEXR.loadEXRStr(data);
+            const channels = exrImage.channels();
+            const {
+                width,
+                height
+            } = exrImage;
+            let nChannels = channels.length;
+            let exrData;
+            if (nChannels === 1) {
+                const z = exrImage.plane(exrImage.channels()[0]);
+                exrData = new Float32Array(width * height);
+                for (let i = 0; i < width * height; i++) {
+                    exrData[i] = z[i];
+                }
+            } else if (exrImage.channels().includes('R') &&
+                exrImage.channels().includes('G') &&
+                exrImage.channels().includes('B')) {
+                const r = exrImage.plane('R');
+                const g = exrImage.plane('G');
+                const b = exrImage.plane('B');
+                var a;
+                if (exrImage.channels().includes('A'))
+                    a = exrImage.plane('A');
+                exrData = new Float32Array(width * height * 4);
+                for (let i = 0; i < width * height; i++) {
+                    exrData[i * 4] = r[i];
+                    exrData[i * 4 + 1] = g[i];
+                    exrData[i * 4 + 2] = b[i];
+                    exrData[i * 4 + 3] = a ? a[i] : 1;
+                }
+                nChannels = 4;
+            } else {
+                throw new Error('EXR image not supported');
+            }
+            return {
+                height: height,
+                width: width,
+                channels: nChannels,
+                data: exrData,
+                type: THREE.FloatType,
+            };
+        } finally {
+            if (exrImage) {
+                exrImage.delete();
+            }
+        }
+    }
+}

@@ -27,7 +27,7 @@
     <link rel="stylesheet" href="assets/css/MarkerCluster.css" />
     <link rel="stylesheet" href="assets/css/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="assets/css/timeline.css" />
+    <link rel="stylesheet" href="assets/css/vis-timeline-graph2d.css" />
     <link rel="stylesheet" href="assets/css/select2.min.css">
     <link rel="stylesheet" href="assets/css/bootstrap-slider.min.css">
     <link rel="stylesheet" href="assets/css/jstree-default/style.css" />
@@ -85,12 +85,18 @@
     <script type="text/javascript" src="assets/js/lib/exif.js"></script>
     <script type="text/javascript" src="assets/js/lib/clipboard.min.js"></script>
 
+    <script type="text/javascript" src="assets/js/lib/fflate.min.js"></script>
+    <script type="text/javascript" src="assets/js/lib/threejs/three.js"></script>
+    <script type="text/javascript" src="assets/js/lib/threejs/DataUtils.js"></script>
+    <script type="text/javascript" src="assets/js/lib/threejs/RGBELoader.js"></script>
+    <script type="text/javascript" src="assets/js/lib/threejs/EXRLoader.js"></script>
+
     <script type="text/javascript" src="assets/js/lib/geodesy/dms.js"></script>
     <script type="text/javascript" src="assets/js/lib/geodesy/vector3d.js"></script>
     <script type="text/javascript" src="assets/js/lib/geodesy/latlon-ellipsoidal.js"></script>
     <script type="text/javascript" src="assets/js/lib/geodesy/latlon-vincenty.js"></script>
 
-    <script type="text/javascript" src="assets/js/lib/timeline.js"></script>
+    <script type="text/javascript" src="assets/js/lib/vis-timeline-graph2d.min.js"></script>
     <script type="text/javascript" src="assets/js/lib/jstree.js"></script>
 
     <script type="text/javascript" src="assets/js/config.js"></script>
@@ -161,7 +167,7 @@
                             Delete Tour
                         </span>
                     </li>
-                    <li>
+                    <li data-bind="visible: !$root.modules.settings.multiresPanoramaImport()">
                         <button class="btn btn-default" data-bind="click: () => {addFiles($root.current.temporalGroup());}, enable: $root.current.temporalGroup">
                             <span class="glyphicon glyphicon-import"></span>
                         </button>
@@ -245,52 +251,73 @@
             <div id="panorama-editor" class="tab-pane fade">
                 <ul class="sidebar-nav">
                     <li>
-                        <div>
-                            <label for="coord-text" style="margin-right: 20px;" title="The longitude and latitude of the vertex (as displayed on the map)">Coordinates:</label><br />
+                        <div class="checkbox description">
+                            <label for="panorama-edit-coordinates-checkbox" title="The longitude and latitude of the vertex (as displayed on the map)">
+                                <input type="checkbox" id="panorama-edit-coordinates-checkbox" data-bind="checked: optimizeCoordinates" title="Include in optimization">
+                                Coordinates:
+                            </label><br />
                             <span id="coord-text" style="width: 16em" type="text">
                                 0.0, 0.0
                             </span>
                         </div>
-                        <div>
-                            <label for="file-text" style="margin-right: 20px;" title="The image file name">File:</label><br />
+                        <div class="description">
+                            <label for="file-text" title="The image file name">File:</label><br />
                             <span id="file-text" style="width: 16em" type="text">
                                 *.jpg
                             </span>
                         </div>
-                        <div>
-                            <label for="image-display-resolution-text" style="margin-right: 20px;">Displayed Resolution:</label><br />
+                        <div class="description">
+                            <label for="image-display-resolution-text">Displayed Resolution:</label><br />
                             <span id="image-display-resolution-text" style="width: 16em" type="text">
                                 0 x 0 Pixel
                             </span>
                         </div>
-                        <div>
-                            <label for="northOffset-text" style="margin-right: 20px;" title="The offset between geographical north and the horizontal center of the image (change it by dragging the blue hotspot)">North Offset:</label>
+                        <div class="checkbox description">
+                            <label for="panorama-edit-northOffset-checkbox" title="The offset between geographical north and the horizontal center of the image (change it by dragging the blue hotspot)">
+                                <input type="checkbox" id="panorama-edit-northOffset-checkbox" data-bind="checked: optimizeNorthOffset" title="Include in optimization">
+                                North Offset:
+                            </label>
                             <span id="northOffset-text" style="width: 8em" type="text">
                                 0°
                             </span>
                         </div>
-                        <div>
-                            <label for="vOffset-text" style="margin-right: 20px;" title="The offset between the horizon and the vertical center of the image (change it by checking &quot;Edit Vertical Offset&quot; and dragging the blue hotspot)">Vertical Offset:</label>
+                        <div class="description">
+                            <label for="vOffset-text" title="The offset between the horizon and the vertical center of the image (change it by checking &quot;Edit Vertical Offset&quot; and dragging the blue hotspot)">Vertical Offset:</label>
                             <span id="vOffset-text" style="width: 8em" type="text">
                                 0°
                             </span>
                         </div>
+
+                        <div class="checkbox description">
+                            <label title="Horizontal angle the panorama spans." for="panorama-edit-haov-checkbox">
+                                <input type="checkbox" id="panorama-edit-haov-checkbox" data-bind="checked: optimizeHaov" title="Include in optimization">
+                                Horizontal angle:
+                            </label><span style="width: 8em" type="text" data-bind="text: haov() + '°'">360°</span>
+                        </div>
                         <div>
-                            <label for="optimize-error-text" style="margin-right: 20px;" title="Average offset (in degrees) between landmark positions marked on the image and the position where they are (given coordinates and north offset of the panorama).">Error:</label>
+                            <input id="panorama-edit-haov-slider" type="text" class="slider form-control" data-bind="sliderValue: {value: haov, min:90, max: 360, step: 0.1}" />
+
+                        </div>
+                        <div class="description">
+                            <label for="optimize-error-text" title="Average offset (in degrees) between landmark positions marked on the image and the position where they are (given coordinates and north offset of the panorama).">Error:</label>
                             <span id="optimize-error-text" style="width: 8em" type="text">
                                 -
                             </span>
                         </div>
                     </li>
                     <li>
+
+                    </li>
+                    <li>
                         <button class="btn btn-primary" id="optimize-button" type="button"
                                 title="
 1. click on the map to create landmark points
 2. drag the green hotspots onto the landmarks on the image
-3. click &quot;Optimize&quot; to change coordinates and north offset of the panorama such that the landmarks fit">
+3. click &quot;Optimize&quot; to change coordinates, north offset and/or horizontal angle of the panorama such that the landmarks fit">
                             Optimize
                         </button>
                     </li>
+                    <hr />
                     <li>
                         <div class="checkbox">
                             <label for="panorama-edit-voffset-checkbox">
@@ -298,7 +325,12 @@
                             </label>
                         </div>
                     </li>
-
+                    <li>
+                        <button class="btn btn-primary" id="align-top-button" type="button" data-bind="click: () => {alignTop();}"
+                                title="Sets the vertical offset such that the top of the image is the zenith.">
+                            Align top
+                        </button>
+                    </li>
                     <li>
                         <div class="form" id="landmark-group-selector-map-editor">
                             <label for="landmarkGroupSelectorMapEditor" title="Enable the option &quot;Create point when clicking on the map&quot;&#13;Click on the map to create a landmark point. The point will be added to the following group.">Landmark Group</label><br />
@@ -783,6 +815,10 @@
                                         </div>
                                     </div>
 
+                                    <div class="control-group" style="margin-top: 2rem;">
+                                        <span>Current workspace: </span><span class="workspace-path">not set</span>
+                                    </div>
+
                                 </div>
 
                             </div>
@@ -829,6 +865,66 @@
                                             <input type="checkbox" data-bind="checked: enableGPS" id="enable-gps-checkbox">
                                             Use GPS sensor
                                         </label>
+                                    </div>
+                                </div>
+
+                                <hr>
+                                <h4>Automatically rotate panorama</h4>
+                                <form class="inline-list-stretched" style="margin-bottom: 1rem !important;">
+                                    <button id="start-auto-rotate-button" class="btn btn-primary" data-dismiss="modal">Start</button>
+                                    <button id="stop-auto-rotate-button" class="btn btn-primary" data-dismiss="modal">Stop</button>
+
+                                    <div class="input-group">
+                                        <div class="input-group-addon">
+                                            <input data-bind="checked: autoRotateInactivityEnabled" type="checkbox" id="autoRotateInactivityEnabled">
+                                        </div>
+                                        <div class="input-group-addon">
+                                            <label for="autoRotateInactivityEnabled" title="If there is no user interaction with the panorama, the view begins to turn automatically after the specified time.">Always start after</label>
+                                        </div>
+                                    </div>
+
+                                </form>
+
+                                <div class="input-group inline-list-stretched" style="margin-bottom: 1rem !important;">
+                                    <input type="range" class="form-range form-control" value="1" min="1" max="30" data-bind="value: autoRotateInactivityDelay, enable: autoRotateInactivityEnabled" style="margin-right: 2rem;">
+                                    <input type="number" class="form-control" min="1" step="1" data-bind="value: autoRotateInactivityDelay, enable: autoRotateInactivityEnabled">
+                                    <div class="input-group-addon" style="min-width: 11rem;">
+                                        <label>s of inactivity</label>
+                                    </div>
+                                </div>
+
+
+                                <div class="inline-list-stretched" style="margin-bottom: 2rem !important;">
+                                    <label class="control-label">Speed</label>
+                                    <input type="range" class="form-range" min="-20" max="20" step="0.25" data-bind="value: autoRotateSpeed" style="max-width:70%">
+                                </div>
+
+                                <h4>Cycle through panoramas</h4>
+                                <form class="inline-list-stretched" style="margin-bottom: 1rem !important;">
+                                    <button id="start-cycle-timepoints-button" class="btn btn-primary" data-dismiss="modal">Start</button>
+                                    <button id="stop-cycle-timepoints-button" class="btn btn-primary" data-dismiss="modal">Stop</button>
+                                    <div class="checkbox">
+                                        <label title="Whenever the panorama starts or stops to automatically rotate, the loading of panorams is started or stopped " class="control-label" for="cycle-timepoints-bind-to-auto-rotate">
+                                            <input type="checkbox" data-bind="checked: cycleTimepointsBindToAutoRotate" id="cycle-timepoints-bind-to-auto-rotate">
+                                            Start and stop with auto rotate
+                                        </label>
+                                    </div>
+
+                                </form>
+
+                                <div class="input-group inline-list-stretched" style="margin-bottom: 1rem !important;">
+                                    <input type="range" class="form-range form-control" value="1" min="1" max="10" data-bind="value: cycleTimepointsFadeDuration" style="margin-right: 2rem;">
+                                    <input type="number" class="form-control" min="1" step="1" data-bind="value: cycleTimepointsFadeDuration">
+                                    <div class="input-group-addon" style="min-width: 9rem;">
+                                        <label>s blending</label>
+                                    </div>
+                                </div>
+
+                                <div class="input-group inline-list-stretched" style="margin-bottom: 2rem !important;">
+                                    <input type="range" class="form-range form-control" value="1" min="1" max="10" data-bind="value: cycleTimepointsDelay" style="margin-right: 2rem;">
+                                    <input type="number" class="form-control" min="1" step="1" data-bind="value: cycleTimepointsDelay">
+                                    <div class="input-group-addon" style="min-width: 9rem;">
+                                        <label>s waiting</label>
                                     </div>
                                 </div>
 
@@ -978,6 +1074,12 @@
                                     </label>
                                 </div>
                                 <div class="checkbox">
+                                    <label title="When clicking the add panorama button a dialog opens to configure multires scene options." class="control-label" for="multires-panorama-import-checkbox">
+                                        <input type="checkbox" data-bind="checked: multiresPanoramaImport" id="multires-panorama-import-checkbox">
+                                        Import panoramas consisting of multiple images
+                                    </label>
+                                </div>
+                                <div class="checkbox">
                                     <label title="Applies the copy vertex options with currently shown panorama as source and new panorama as destination. Triggered by &quot;Add Panoramas&quot;" class="control-label" for="copy-scene-attributes-checkbox">
                                         <input type="checkbox" data-bind="checked: copySceneAttributes" id="copy-scene-attributes-checkbox">
                                         Copy attributes of current panorama when importing files
@@ -1048,10 +1150,19 @@
                             </label>
                         </div>
 
+                        <!--
                         <div class="checkbox">
                             <label class="control-label" for="overwriteExisting-checkbox">
                                 <input type="checkbox" data-bind="checked: overwriteExisting" id="overwriteExisting-checkbox">
                                 Recreate existing panoramas at destination.
+                            </label>
+                        </div>
+                            -->
+
+                        <div class="checkbox">
+                            <label class="control-label" for="truncatePaths-checkbox">
+                                <input type="checkbox" data-bind="checked: truncatePaths" id="truncatePaths-checkbox">
+                                Truncate paths (use vertex ids instead of path and file name).
                             </label>
                         </div>
 
@@ -1174,6 +1285,118 @@
     </div>
 
     <!-- /#export--progress-dialog -->
+    <!-- #import-multires-panorama-editor -->
+    <div id="import-multires-panorama-editor" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <button type="button" class="help" data-toggle="modal" data-target="#help-dialog">?</button>
+                    <h4>Export</h4>
+                </div>
+                <div class="modal-body">
+                    <form class="form-horizontal" style="width: 100%" , data-bind="with: editable.multiresPanorama">
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="multires-sceneType" title="Type of base image">Scene type</label>
+                            <select class="form-control" id="multires-sceneType" data-live-search="true" data-show-subtext="true" name="sceneType"
+                                    data-bind="options: $root.multiresSceneTypes, optionsText: g => {return g.name;}, value: sceneType"></select>
+                        </div>
+
+
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="multires-basePath">Panorama location</label>
+                            <div class="controls">
+                                <div class='input-group' id='multires-basePath'>
+                                    <input class="form-control" data-bind="value: basePath" type="text" id="multires-basePath" disabled="disabled">
+                                    <div class="input-group-addon" data-bind="click: () => $root.selectMultiresPath()" id="multires-basePath-selector" style="cursor:pointer">
+                                        <span class="glyphicon glyphicon-folder-open"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="invalid-input" data-bind="visible: $root.errors.path() && $root.errors.path() != '', text: $root.errors.path">
+
+                            </div>
+                        </div>
+
+                        <div class="checkbox">
+                            <label class="control-label" for="multires-hdr-checkbox">
+                                <input type="checkbox" data-bind="checked: hdr" id="multires-hdr-checkbox">
+                                High dynamic range image.
+                            </label>
+                        </div>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label" for="enableTiling-checkbox">Tile path</label>
+                            <div class="input-group">
+                                <input class="form-control" type="text" data-bind="value: path">
+                                <div class="input-group-addon">
+                                    <label for="tilePanoramas-checkbox">.</label>
+                                </div>
+                                <select type="select" class="form-control" id="multires-extension"
+                                        data-bind="options: extensionOptions, value: extension"></select>
+                            </div>
+                        </div>
+
+                        <h5>Placeholders</h5>
+                        <ul>
+                            <li data-bind="visible: sceneType().type === 'multires' || sceneType().type === 'cubemap'">%s - side of the cube (<b>f</b>ront, <b>b</b>ack, <b>u</b>p, <b>d</b>own, <b>l</b>eft, <b>r</b>ight)</li>
+                            <li data-bind="visible: sceneType().type.startsWith('multires')">%l0 - level index (starting at 0)</li>
+                            <li data-bind="visible: sceneType().type.startsWith('multires')">%l - level index (starting at 1)</li>
+                            <li data-bind="visible: sceneType().type.startsWith('multires')">%x - tile index along the x-axis (left to right)</li>
+                            <li data-bind="visible: sceneType().type.startsWith('multires')">%y - tile index along the y-axis (top to bottom)</li>
+                        </ul>
+
+                        <div class="control-group" style="width: 100%">
+                            <label class="control-label">Tiling properties</label>
+                            <div class="input-group">
+                                <input class="form-control" type="number" min="0" data-bind="value: maxLevel">
+                                <div class="input-group-addon">
+                                    <label>levels in total and tile length is</label>
+                                </div>
+                                <input class="form-control" type="number" min="4" data-bind="value: tileResolution">
+                                <div class="input-group-addon">
+                                    <label>pixels</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group" style="width: 100%" data-bind="visible: sceneType().attributes.has('originalWidth')">
+                            <label class="control-label">Base image dimensions</label>
+                            <div class="input-group">
+                                <input class="form-control" type="number" min="4" data-bind="value: originalWidth">
+                                <div class="input-group-addon">
+                                    <label>width in pixel</label>
+                                </div>
+                                <input class="form-control" type="number" min="4" data-bind="value: originalHeight">
+                                <div class="input-group-addon">
+                                    <label>height in pixel</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group" style="width: 100%" data-bind="visible: sceneType().attributes.has('cubeResolution')">
+                            <label class="control-label">Dimension of a cube side</label>
+                            <div class="input-group">
+                                <input class="form-control" type="number" min="4" data-bind="value: cubeResolution">
+                                <div class="input-group-addon">
+                                    <label>pixel</label>
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button data-bind="click: $root.addMultiresPanorama, enable: $root.canAddMultiresPanorama" class="btn btn-primary" data-dismiss="modal">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- /#import-multires-panorama-editor -->
     <!-- #logs-dialog -->
     <div id="logs-dialog" class="modal fade" role="dialog" tabindex="-1" aria-hidden="true" style="display: none;">
         <div class="modal-dialog">
@@ -1232,8 +1455,10 @@
                             <label>Vertex.data: </label>
                             <label title="The offset between geographical north and the horizontal center of the image" class="form-check-inline no_indent"><input id="vtemp-d-northOffset" data-bind="checked: northOffset" type="checkbox"> northOffset</label>
                             <label title="The offset between the horizon and the vertical center of the image" class="form-check-inline no_indent"><input id="vtemp-d-vOffset" data-bind="checked: vOffset" type="checkbox"> vOffset</label>
+                            <label title="Horizontal angle of view" class="form-check-inline no_indent"><input id="vtemp-d-haov" data-bind="checked: haov" type="checkbox"> haov</label>
                             <label title="Vertical angle of view" class="form-check-inline no_indent"><input id="vtemp-d-vaov" data-bind="checked: vaov" type="checkbox"> vaov</label>
                             <label title="Type of the panorama" class="form-check-inline no_indent"><input id="vtemp-d-type" data-bind="checked: type" type="checkbox"> type</label>
+                            <label title="High dynamic range image" class="form-check-inline no_indent"><input id="vtemp-d-hdr" data-bind="checked: hdr" type="checkbox"> hdr</label>
                         </div>
                     </div>
                 </div>
@@ -1256,7 +1481,7 @@
 
                     <div>
                         <section id="workspace-droparea">
-                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:application/json" class="centerall">
+                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:image/webp file:image/avif file:image/vnd.radiance file:application/json" class="centerall">
                                 Drop directory here
                             </div>
                         </section>
@@ -1287,7 +1512,7 @@
 
                     <div data-bind="visible: allowsDrop">
                         <section id="webkit-workspace-droparea">
-                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:application/json" class="centerall">
+                            <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:image/webp file:image/avif file:image/vnd.radiance file:application/json" class="centerall">
                                 Drop directory here
                             </div>
                         </section>
@@ -1370,7 +1595,7 @@
 
                             <div data-bind="visible: allowsDrop && !name()">
                                 <section id="webkit-droparea">
-                                    <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:application/json" class="centerall">
+                                    <div dropzone="" webkitdropzone="copy file:image/png file:image/gif file:image/jpeg file:image/webp file:image/avif file:image/vnd.radiance file:application/json" class="centerall">
                                         Drop here
                                     </div>
                                 </section>
@@ -1575,32 +1800,35 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
                                     <p>
                                         Location: Panorama view.
                                     </p><p>
-                                        Effect: Shows the next panoram in the pointed direction.
+                                        Effect: Shows the next panorama in the pointed direction.
                                     </p>
                                 </td>
                             </tr>
                             <tr class="row">
                                 <td>
-                                    <div class="timeline-item timeline-point timeline-readonly" style="background-color:black"><div class="timeline-item-content" style="margin-left: 32px;">2018</div><div class="timeline-item timeline-dot timeline-readonly" style="top: 7px; left: 8px;"></div></div>
+                                    <div class="vis-item vis-point vis-readonly" style="background-color: black;position: relative;"><div class="vis-item-content" style="margin-left: 32px;">2019</div><div class="vis-item vis-dot vis-readonly" style="top: 7px; transform: translateX(8px);"></div></div>
+                                    <div class="vis-item vis-point vis-readonly vis-inactive" style="background-color: black;position: relative;margin-top: 4px;"><div class="vis-item-content vis-inactive" style="margin-left: 32px;">2018</div><div style="top: 7px; transform: translateX(8px);" class="vis-item vis-dot vis-readonly vis-inactive"></div></div>
                                 </td>
                                 <td>
                                     <p>
                                         Location: Timeline.
                                     </p><p>
-                                        Effect: Switches to that moment in time (affects currently shown panorama and points on the map).
+                                        Effect: Switches to that moment in time and loads the panorama.
+
+                                        If there is no panorama available for that point in time, then the item is grayed out. When clicking it, the map is updated and one has to manually choose the panorama (by clicking one of the red points).
                                     </p>
                                 </td>
 
                             </tr>
                             <tr class="row">
                                 <td>
-                                    <div class="timeline-item timeline-range timeline-readonly" style=" width: 90px; top: 5px;position: relative;"><div class="timeline-item-overflow"><div class="timeline-item-content" style="transform: translateX(0px);">2016 - 2019</div></div><div class="timeline-item-visible-frame"></div></div>
+                                    <div class="vis-item vis-range vis-readonly" style=" width: 90px; top: 5px;position: relative;"><div class="vis-item-overflow"><div class="vis-item-content" style="transform: translateX(0px);">2016 - 2019</div></div><div class="vis-item-visible-frame"></div></div>
                                 </td>
                                 <td>
                                     <p>
-                                        Stelle: Timeline.
+                                        Location: Timeline.
                                     </p><p>
-                                        Aggregated stack of timeline items. Zoom closer to see individual items.
+                                        Aggregated stack of timeline items. Zoom closer or click to see individual items.
                                     </p>
                                 </td>
 
@@ -1721,14 +1949,14 @@ line-height: 18px" d="M10,15a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"></path>
 
                     <!-- Settings Dialog -->
                     <h4 id="help-dialog-settings">Settings Dialog</h4>
-                    <p>The settings are subdivided into three tabs.</p> 
+                    <p>The settings are subdivided into three tabs.</p>
                     <ul>
                         <li>Files: The "Import additional tour files" button allows to load tour.json files from outside the source folder. All the groups, vertices and edges specified in the file will be merged into the current tour. Elements that already exist remain untouched (they do not get updated). This is useful when you want to merge tours from several working directories into one. Keep in mind that you manually have to copy the image files to the correct location. Another use case is reusing landmarks. When saving selected items is selected, the currently selected tiempoint tour will be saved. This affects which points are shown on the map at startup.</li>
 
                         <li>View: In the lower section, one can limit to which extend the map and timeline can be paned and zoomed. Moreover one can specify which part of the map, timeline and panorama is shown on startup. All the settings are stored in the tour file of the workspace. They are read and applied when you load a tour file. The current pan and zoom values of the map / panorama view / timeline determine the values when clicking "Set". "Unset" is clickable when there is a value specified. To overwrite the value click "Set" again. Enabling &quot;Update all initial view parameters when saving &quot; will set the initial view to the current view when saving the workspace.</li>
                         <li>Advanced: Here, one can unlock more powerful tools like copying the vertices of timepoint tours (see <a href="#help-dialog-templates">Copy Vertices</a>) or rescanning the workspace for new files which will then be added as panoramas.</li>
                     </ul>
-            
+
                     <!-- Copy Vertices -->
                     <h4 id="help-dialog-templates">Copy Vertices</h4>
                     <p>To unlock this option, go to setting, advanced and check &quot;Enable batch copying of vertices&quot;</p>

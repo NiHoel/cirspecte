@@ -37,8 +37,10 @@ class configurator {
                 data: {
                     northOffset: false,
                     vOffset: false,
+                    haov: false,
                     vaov: false,
                     type: false,
+                    hdr: false,
                 }
             }
         });
@@ -77,11 +79,18 @@ class configurator {
             loadRecentWorkspace: false,
             trackChanges: false,
             enableBatchCopying: false,
+            multiresPanoramaImport: false,
             enableOrientation: true,
             enableGPS: false,
             requiredGPSAccuracy: 10,
             currentGPSAccuracy: 0,
-            recentWorkspace: null
+            recentWorkspace: null,
+            autoRotateSpeed: -5,
+            autoRotateInactivityEnabled: true,
+            autoRotateInactivityDelay: 10,
+            cycleTimepointsBindToAutoRotate: true,
+            cycleTimepointsFadeDuration: 8,
+            cycleTimepointsDelay: 10
         }
 
         ko.mapping.fromJS(this.localOptions, {}, this);
@@ -145,7 +154,9 @@ class configurator {
     }
 
     getTemplateMask() {
-        return ko.mapping.toJS(this.vtempConfigurator.settings);
+        var mask = ko.mapping.toJS(this.vtempConfigurator.settings);
+        mask.multiRes = mask.type;
+        return mask;
     }
 
     getTemplateOptions() {

@@ -144,10 +144,6 @@ function animateLayout(settings, modules, responsiveElements = []) {
 * @returns {[Rx.Observable]}
  */
 function createCommonRoutines(modules, settings) {
-    if (platform.mobile == null)
-        platform.mobile = platform.product != null || /Mobile/.test(platform.browser);
-
-
 
     /********************/
     /* common functions */
@@ -175,8 +171,57 @@ function createCommonRoutines(modules, settings) {
         return obs
             .mergeMap(t => {
                 var obs = modules.alg.readTour(t, dir)
-                    .filter(success => success && t.settings)
-                    .do(() => settings.setOptions(t.settings));
+                    .do(success => {
+                        if (success && t.settings)
+                            settings.setOptions(t.settings);
+
+                            // create temporal edges
+                            try {
+                                var applicationDir = window.location.href;
+                                var lastSlash = applicationDir.lastIndexOf('/');
+                                var lastPoint = applicationDir.lastIndexOf('.');
+                                if (lastSlash >= 0 && lastPoint > lastSlash)
+                                    applicationDir = applicationDir.substring(0, lastSlash);
+
+                                var scripts = ["dms.js", "vector3d.js", "latlon-ellipsoidal.js", "latlon-vincenty.js"]
+                                    .map(s => "geodesy/" + s)
+                                    .concat(["priority-queue.min.js"])
+                                    .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
+                                    .join(",");
+
+                                var worker = algorithms.createInlineWorker(json => {
+                                    var model = new graph();
+                                    var alg = new algorithms({
+                                        model: model,
+                                        logger: { log: console.log },
+                                        map: { getBackground: () => { return null; } }
+                                    });
+
+                                    alg.loadGraph(json, new directory(""));
+                                    var edges = alg.connectAllColocated();
+                                    self.postMessage(edges.map(e => e.toJSON()));
+                                }, ["self.window = self;",
+                                    "importScripts(" + scripts + ");",
+                                    algorithms,
+                                    "class observable{constructor(){}emit(){}}",
+                                    graph, edge, vertex, spatialGroup, temporalGroup, directory]);
+
+                                worker.onmessage = msg => {
+                                    for (var edge of msg.data)
+                                        try {
+                                            modules.model.createEdge(edge);
+                                        } catch (e) { }
+
+                                    worker.terminate();
+                                };
+
+                                worker.postMessage(modules.model.toJSON());
+                            } catch (e) {
+                                console.log(e);
+                            }
+                        
+                    })
+                    .filter(success => success && t.settings);
 
                 if (t.settings && t.settings.panorama)
                     return obs
@@ -192,51 +237,6 @@ function createCommonRoutines(modules, settings) {
                 } catch (err) {
                     return modules.model.observe(vertex, modules.model.CREATE)
                         .filter(v => v.id == initialScene);
-                }
-            })
-            .do(() => {
-                try {
-                    var applicationDir = window.location.href;
-                    var lastSlash = applicationDir.lastIndexOf('/');
-                    var lastPoint = applicationDir.lastIndexOf('.');
-                    if (lastSlash >= 0 && lastPoint > lastSlash)
-                        applicationDir = applicationDir.substring(0, lastSlash);
-
-                    var scripts = ["dms.js", "vector3d.js", "latlon-ellipsoidal.js", "latlon-vincenty.js"]
-                        .map(s => "geodesy/" + s)
-                        .concat(["priority-queue.min.js"])
-                        .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
-                        .join(",");
-
-                    var worker = algorithms.createInlineWorker(json => {
-                        var model = new graph();
-                        var alg = new algorithms({
-                            model: model,
-                            logger: { log: console.log },
-                            map: { getBackground: () => { return null; } }
-                        });
-
-                        alg.loadGraph(json, new directory(""));
-                        var edges = alg.connectAllColocated();
-                        self.postMessage(edges.map(e => e.toJSON()));
-                    }, ["self.window = self;",
-                        "importScripts(" + scripts + ");",
-                        algorithms,
-                        "class observable{constructor(){}emit(){}}",
-                        graph, edge, vertex, spatialGroup, temporalGroup, directory]);
-
-                    worker.onmessage = msg => {
-                        for (var edge of msg.data)
-                            try {
-                                modules.model.createEdge(edge);
-                            } catch (e) { }
-
-                        worker.terminate();
-                    };
-
-                    worker.postMessage(modules.model.toJSON());
-                } catch (e) {
-                    console.log(e);
                 }
             })
             .delay(1000)  // give filesystem enough time to register all files
@@ -255,7 +255,7 @@ function createCommonRoutines(modules, settings) {
             .do(v => v.image.file ? modules.filesys.link(v, v.image.file) : null),
 
         // edge -> line
-        modules.model.observe(edge, modules.model.CREATE)
+        modules.model.observe(edge, modules.model.CREATE, Rx.Scheduler.queue)
             .filter(e => e.type !== edge.prototype.LANDMARK) // only landmark connections to current panorama shown
             .do(e => modules.map.createLine(e))
         ,
@@ -298,7 +298,7 @@ function createCommonRoutines(modules, settings) {
 
 
         // edge -> hotspot
-        modules.model.observe(edge, modules.model.CREATE)
+        modules.model.observe(edge, modules.model.CREATE, Rx.Scheduler.queue)
             .filter(e => modules.panorama.getVertex() === e.from)
             .filter(e => e.type !== edge.prototype.TEMPORAL && e.type !== edge.prototype.TEMP)
             .do(e => modules.panorama.createHotspot(e)),
@@ -336,16 +336,19 @@ function createCommonRoutines(modules, settings) {
             .observeOn(Rx.Scheduler.queue)
             .do(sg => modules.timeline.toggleSelection(sg.item, false)),
 
-        modules.panorama.observe(scene, modules.panorama.CREATE)
+        modules.panorama.observe(scene, modules.panorama.CREATE, Rx.Scheduler.async)
             .do(s => modules.map.setView(s.vertex.coordinates))
             .mergeMap(s => s.vertex.toObservable())
             .filter(e => e.type !== edge.prototype.TEMPORAL && e.type !== edge.prototype.PLACEHOLDER)
             .map(e => modules.panorama.createHotspot(e, e.type === edge.prototype.LANDMARK ? hotspot.prototype.LANDMARK : hotspot.prototype.ROUTE)) // error propagation fails when using do
         ,
 
-        modules.panorama.observe(scene, modules.panorama.CREATE)
+        modules.panorama.observe(scene, modules.panorama.CREATE, Rx.Scheduler.async)
             .do(s => modules.nav.setVertex(s.vertex))
             .do(s => modules.timeline.toggleSelection(s.vertex.spatialGroup.item, true)),
+
+        modules.panorama.observe(scene, modules.panorama.LOADED)
+            .do(s => modules.nav.notifySceneLoaded(s)),
 
         modules.map.observe(layerGroup, modules.map.SHOW)
             .map(l => l.spatialGroup)
@@ -387,6 +390,9 @@ function createCommonRoutines(modules, settings) {
             }),
 
         modules.filesys.observe(modules.filesys.DIRECTORY, modules.filesys.WORKSPACE)
+            .do(d => {
+                $('.workspace-path').text(d instanceof directory ? d.getPath() : "not set");
+            })
             .filter(() => modules.settings.loadRecentWorkspace())
             .do(d => modules.settings.recentWorkspace(d.getPath())),
 
@@ -402,12 +408,17 @@ function createCommonRoutines(modules, settings) {
             })
             .catch(() => {
                 var tourParam = new URLSearchParams(window.location.search).get("tour");
-                if (tourParam) // check query parameter
-                    return modules.filesys.getApplicationDirectory()
-                        .mergeMap(dir => {
-                            return dir.searchFile(tourParam)
-                                .map(f => [f, f.getParent()]);
-                        });
+                if (tourParam) {// check query parameter
+
+                    var obs;
+                    if (directory.isAbsolutePath(tourParam))
+                        obs = remotefile.fromPath(tourParam)
+                    else
+                        obs = modules.filesys.getApplicationDirectory()
+                            .mergeMap(dir => dir.searchFile(tourParam));
+                                
+                    return obs.map(f => [f, f.getParent()]);
+                }
                 else
                     return Rx.Observable.throw();
             })
@@ -434,11 +445,21 @@ function createCommonRoutines(modules, settings) {
                     .mergeMap(dir => {
                         modules.filesys.setWorkspace(dir);
                         return dir.searchFile("tour.json")
-                            .map(f => [f, dir]);
+                            .map(f => [f, dir])
+                            .catch(err => {
+                                if (modules.editors && modules.editors.groupEdit)
+                                    modules.editors.groupEdit.beginCreate(temporalGroup);
+
+                                throw err;
+                            });
                     });
             })
             .mergeMap(arr => {
                 return loadTour(arr[0], arr[1]);
+            })
+            .do(() => {
+                if(modules.hist)
+                    modules.hist.clear();
             })
             .catch((err, caught) => {
                 console.log(err);
@@ -494,7 +515,19 @@ function createCommonRoutines(modules, settings) {
                     folders: true
                 }
             }))
+            .mergeMap(dir => {
+                if (!modules.hist || !modules.hist.dirty || !modules.settings.autoSave() || !modules.persist)
+                    return Rx.Observable.of(dir);
+
+                return modules.persist.getSaveObservable().defaultIfEmpty(dir).last().mapTo(dir);
+            })
             .mergeMap(dir => dir.searchFile("tour.json")
+                .catch(err => {
+                    if (modules.editors && modules.editors.groupEdit)
+                        modules.editors.groupEdit.beginCreate(temporalGroup);
+
+                    throw err;
+                })
                 .filter(f => f instanceof file && f.isType(file.prototype.JSON))
                 .do(() => {
                     if (modules.hist)
@@ -508,6 +541,8 @@ function createCommonRoutines(modules, settings) {
                     for (var b of Array.from(modules.map.backgrounds.values())) {
                         modules.map.deleteBackground(b);
                     }
+
+                    modules.model.updateHierarchical(false);
 
                     modules.filesys.setWorkspace(dir);
 

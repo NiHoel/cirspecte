@@ -6,7 +6,7 @@ Rx.Observable.fromEvent(document, 'drop')
 function readyFunction() {
 
     Rx.Observable.create(obs => {
-        obs.next({ settings: new configurator(config.settings) });
+        obs.next({ settings: new configurator($.extend({}, config.settings, { autoRotateInactivityEnabled: false })) });
         obs.complete();
     }).observeOn(Rx.Scheduler.asap)
         .do(modules => {
@@ -62,7 +62,7 @@ function readyFunction() {
 
             var routines = createCommonRoutines(modules, settings).concat([
 
-                modules.model.observe(edge, modules.model.CREATE)
+                modules.model.observe(edge, modules.model.CREATE, Rx.Scheduler.queue)
                     .filter(e => e.type === edge.prototype.LANDMARK && e.from === modules.panorama.getVertex())
                     .do(e => modules.map.createLine(e)),
 
@@ -171,7 +171,7 @@ function readyFunction() {
                     .do(() => settings.panorama.scene(modules.panorama.getVertex() ? modules.panorama.getVertex().id : undefined)),
 
                 Rx.Observable.fromEvent(document.querySelector('#set-yaw-panorama-settings-button'), 'click')
-                    .do(() => settings.panorama.yaw(modules.panorama.getYaw())),
+                    .do(() => settings.panorama.yaw(modules.panorama.getAzimuth())),
 
                 Rx.Observable.fromEvent(document.querySelector('#set-pitch-panorama-settings-button'), 'click')
                     .do(() => settings.panorama.pitch(modules.panorama.getPitch())),

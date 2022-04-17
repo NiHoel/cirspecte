@@ -32,21 +32,49 @@ class groupEditor extends observable {
         this.current = {
             temporalGroup: ko.observable(),
             spatialGroup: ko.observable(),
-			vertex: null // used for dragging
+            vertex: null // used for dragging
         };
+
+        this.spatialGroupTypes = [spatialGroup.prototype.ROUTE, spatialGroup.prototype.LANDMARK, spatialGroup.prototype.SINGLESHOT];
+        this.temporalGroupTypes = [temporalGroup.prototype.TOUR, temporalGroup.prototype.LANDMARK];
+        this.multiresSceneTypes = [{
+            type: "multiresrec",
+            name: "Tiled equirectangular image",
+            // only non common attributes
+            attributes: new Set(["originalWidth", "originalHeight"]),
+            path: "%l0/%x_%y"
+        },
+        //{
+        //    type: "cubemap",
+        //    name: "Six faces of a cube map",
+        //    attributes: new Set(["baseHeight", "baseWidth", "maxLevel",])
+        //},
+        {
+            type: "multires",
+            name: "Tiled six faces of a cube map",
+            attributes: new Set(["cubeResolution"]),
+            path: "%s/%l0/%x_%y"
+        }];
+        this.extensionOptionsSDR = ["jpg", "webp", "png", "avif"];
+        this.extensionOptionsHDR = ["exr", "hdr"];
+        this.cubeSides = ['f', 'b', 'u', 'd', 'l', 'r']
 
         this.default = {
             temporalGroup: {
                 id: '', name: '', description: '', type: temporalGroup.prototype.TOUR, superGroup: '', autoConnectColocated: true, colocatedRadius: 3, multiselect: false, exclusiveTemporalSubgroups: false
             },
             spatialGroup: {
-                id: '', name: '', description: '', type: spatialGroup.prototype.ROUTE, background: null, superGroup: '', path: ko.observable(''), timeslot: ko.observable(moment())
+                id: '', name: '', description: '', type: spatialGroup.prototype.SINGLESHOT, background: null, superGroup: '', path: ko.observable(''), timeslot: ko.observable(moment())
+            },
+            multiresPanorama: {
+                sceneType: ko.observable(this.multiresSceneTypes[0]), hdr: false, extension: 'jpg', extensionOptions: this.extensionOptionsSDR, path: '%l0/%x_%y', basePath: '', directory: null, tileResolution: 1024, maxLevel: 5, originalWidth: 16384, originalHeight: 8192, cubeResolution: 4096
             }
         };
 
         this.editable = {
             temporalGroup: ko.observable(Object.assign({}, this.default.temporalGroup)),
-            spatialGroup: ko.observable(Object.assign({}, this.default.spatialGroup))
+            spatialGroup: ko.observable(Object.assign({}, this.default.spatialGroup)),
+            multiresPanorama: ko.observable(ko.mapping.fromJS(this.default.multiresPanorama))
         };
 
         this.errors = {
@@ -60,8 +88,8 @@ class groupEditor extends observable {
         this.backgrounds = ko.observableArray();
         this.shown = true;
         this.gpsCoordinates = ko.observable();
-        this.spatialGroupTypes = [spatialGroup.prototype.ROUTE, spatialGroup.prototype.LANDMARK, spatialGroup.prototype.SINGLESHOT];
-        this.temporalGroupTypes = [temporalGroup.prototype.TOUR, temporalGroup.prototype.LANDMARK];
+
+
 
         this.scannable = ko.pureComputed(function () {
             return this.current.spatialGroup() && this.current.spatialGroup().images.directory && this.current.spatialGroup().images.directory.canScan();
@@ -72,8 +100,26 @@ class groupEditor extends observable {
         }));
 
         this.editingMode = ko.observable(this.EDIT.SCENE);
-		
-		this.dragCurrentVertex = ko.observable(false);
+
+        this.dragCurrentVertex = ko.observable(false);
+
+        // constraints for multires panorama import editor
+        this.hdrSubscription = ko.computed(() => {
+            if (this.editable.multiresPanorama().hdr())
+                this.editable.multiresPanorama().extensionOptions(this.extensionOptionsHDR);
+            else
+                this.editable.multiresPanorama().extensionOptions(this.extensionOptionsSDR);
+        });
+
+        this.pathSubscription = ko.computed(() => {
+            this.editable.multiresPanorama().path(this.editable.multiresPanorama().sceneType().path)
+        })
+
+        this.canAddMultiresPanorama = ko.pureComputed(() => {
+            var p = this.editable.multiresPanorama();
+            return this.current.spatialGroup() && p.path() && p.basePath() && p.extensionOptions().indexOf(p.extension()) != -1 &&
+                parseInt(p.tileResolution()) > 0 && parseInt(p.originalWidth()) > 0 && parseInt(p.originalHeight()) > 0 && parseInt(p.cubeResolution()) > 0 && parseInt(p.maxLevel()) >= 0;
+        });
 
         $('.js-example-responsive').select2();
         $('#timeslot').datetimepicker();
@@ -81,8 +127,10 @@ class groupEditor extends observable {
         ko.applyBindings(this, $('#group-editor')[0]);
         ko.applyBindings(this, $('#spatial-group-editor')[0]);
         ko.applyBindings(this, $('#temporal-group-editor')[0]);
-		if($('#template-application-dialog')[0])
-			ko.applyBindings(this, $('#template-application-dialog')[0]);
+        if ($('#template-application-dialog')[0])
+            ko.applyBindings(this, $('#template-application-dialog')[0]);
+        if ($('#import-multires-panorama-editor')[0])
+            ko.applyBindings(this, $('#import-multires-panorama-editor')[0]);
 
         this.current.spatialGroup.subscribe(g => this.emit(g, this.SELECT, this.SPATIALGROUP));
         this.current.temporalGroup.subscribe(g => this.emit(g, this.SELECT, this.TEMPORALGROUP));
@@ -98,13 +146,13 @@ class groupEditor extends observable {
         var vertexSelector = new Rx.Subject();
 
         let modules = this.modules;
-		
-		this.dragCurrentVertex.subscribe((enabled) => {
-			if(enabled)
-				modules.map.setEditable(this.modules.panorama.getVertex());
-			else
-				modules.map.unsetEditable(this.modules.panorama.getVertex());
-		});
+
+        this.dragCurrentVertex.subscribe((enabled) => {
+            if (enabled)
+                modules.map.setEditable(this.modules.panorama.getVertex());
+            else
+                modules.map.unsetEditable(this.modules.panorama.getVertex());
+        });
 
         let routines = [
             Rx.Observable.fromEvent($('.nav-tabs a'), 'show.bs.tab')
@@ -159,6 +207,14 @@ class groupEditor extends observable {
 
             // create panorama vertex from placeholder by requesting a file
             vertexSelector.filter(v => this.editingMode() === this.EDIT.SCENE && v.type === vertex.prototype.PLACEHOLDER)
+                .filter(v => {
+                    if (this.current.spatialGroup() && this.modules.settings.multiresPanoramaImport()) {
+                        this.beginMultiresPanoramaImport(v);
+                        return false;
+                    }
+
+                    return true;
+                })
                 .mergeMap(v =>
                     modules.filesys.request({
                         parent: v.spatialGroup.images.directory,
@@ -166,11 +222,11 @@ class groupEditor extends observable {
                         filter: { files: true, folders: false }
                     })
                         .do(f => {
-                            if (!f.isType([file.prototype.JPG, file.prototype.PNG]))
+                            if (!f.isType(file.prototype.IMAGE))
                                 throw new error(this.ERROR.UNSUPPORTED_IMAGE_TYPE, "", f.name);
                             var parentDir = v.spatialGroup.images.directory || v.spatialGroup.directory || (this.current.spatialGroup() ? this.current.spatialGroup().images.directory : modules.filesys.getWorkspace());
                             if (!f.getParent().isAncestor(parentDir))
-                                throw new error(this.ERROR.INVALID_PATH, f.getPath() + " is not contained in " + parentDir.getPath(), f.getPath()); 
+                                throw new error(this.ERROR.INVALID_PATH, f.getPath() + " is not contained in " + parentDir.getPath(), f.getPath());
                         })
                         .map(f => {
                             var vert = modules.model.createVertex(Object.assign({}, v.toJSON(), {
@@ -182,6 +238,10 @@ class groupEditor extends observable {
                                 id: null,
                                 spatialGroup: v.spatialGroup
                             }));
+
+                            vert.data = vert.data || {};
+                            vert.data.type = "equirectangular";
+
                             v.forEach(e => {
                                 let eConfig = Object.assign({}, e.toJSON(), { from: vert, id: null, type: null });
                                 modules.model.createEdge(eConfig);
@@ -193,6 +253,10 @@ class groupEditor extends observable {
                 .filter(() => this.modules.settings.autoDisplayPanorama())
                 .do(v => vertexSelector.next(v))
             ,
+
+            vertexSelector
+                .filter(() => this.editingMode() === this.EDIT.COPY)
+                .do(v => this.copyVertex(v)),
 
             vertexSelector
                 .filter(() => this.editingMode() === this.EDIT.DELETE)
@@ -223,17 +287,19 @@ class groupEditor extends observable {
             modules.timeline.observe(item, modules.timeline.CREATE)
                 .filter(i => i.spatialGroup === this.current.spatialGroup())
                 .do(i => modules.timeline.toggleSelection(i, true)),
-				
-			modules.panorama.observe(scene, modules.panorama.CREATE)
-				.do(s => {
-					modules.map.unsetEditable(this.current.vertex);
-					if(this.dragCurrentVertex())
-						modules.map.setEditable(s.vertex);
-					
-					this.current.vertex = s.vertex;
+
+            modules.panorama.observe(scene, modules.panorama.CREATE)
+                .do(s => {
+                    modules.map.unsetEditable(this.current.vertex);
+                    if (this.dragCurrentVertex())
+                        modules.map.setEditable(s.vertex);
+
+                    this.current.vertex = s.vertex;
                 }),
         ];
-		
+
+        this.vertexSelector = vertexSelector;
+
         this.current.spatialGroup.subscribe(sg => {
             if (this.prev.spatialGroup)
                 this.unsetEditable(this.prev.spatialGroup).subscribe();
@@ -442,12 +508,12 @@ class groupEditor extends observable {
      */
     createVertex(g, f) {
         var parentDir = this.current.spatialGroup() ? this.current.spatialGroup().images.directory : modules.filesys.getWorkspace();
-        if (f && !f.isType([file.prototype.JPG, file.prototype.PNG]))
+        if (f && !f.isType(file.prototype.IMAGE))
             throw new error(this.ERROR.UNSUPPORTED_IMAGE_TYPE, "", f.name);
         if (f && !f.getParent().isAncestor(parentDir))
             throw new error(this.ERROR.INVALID_PATH, f.getPath() + " is not contained in " + parentDir.getPath(), f.getPath());
 
-        if (f instanceof file && f.isType([file.prototype.JPG, file.prototype.PNG])) {
+        if (f instanceof file && f.isType(file.prototype.IMAGE)) {
             var jsonVertex = {
                 coordinates: this.modules.alg.extractCoordinates(f.name) || this.modules.map.getCenter(),
                 type: vertex.prototype.PANORAMA,
@@ -458,6 +524,10 @@ class groupEditor extends observable {
                     type: "equirectangular"
                 }
             };
+
+            try {
+                jsonVertex.image.directory = f.getParent();
+            } catch (e) { }
 
             var obs = Rx.Observable.of(jsonVertex);
             if (g instanceof temporalGroup) {
@@ -473,7 +543,7 @@ class groupEditor extends observable {
                     g = this.modules.model.createSpatialGroup({
                         timeslot: timeslot.toDate(),
                         name: timeslot.format('MMMM YYYY'),
-                        type: spatialGroup.prototype.ROUTE,
+                        type: spatialGroup.prototype.SINGLESHOT,
                         superGroup: g,
                         path: f.getParent().getPath(g.directory),
                         images: {
@@ -525,7 +595,8 @@ class groupEditor extends observable {
     createVertexFromTemplate(template, defaultConfig = {}) {
         var mask = this.modules.settings.getTemplateMask();
         mask.type = true;
-        if (defaultConfig.file) delete mask.path;
+        if (defaultConfig.image.file || defaultConfig.path)
+            delete mask.path;
 
         defaultConfig = this.assign(defaultConfig, template, mask);
         var v = this.modules.model.createVertex(defaultConfig);
@@ -588,6 +659,11 @@ class groupEditor extends observable {
      * @param {spatialGroup | temporalGroup} g
      */
     addFiles(g) {
+        if (g instanceof spatialGroup && this.modules.settings.multiresPanoramaImport()) {
+            this.beginMultiresPanoramaImport();
+            return;
+        }
+
         this.modules.hist.commit();
 
         this.modules.filesys.request({
@@ -600,7 +676,9 @@ class groupEditor extends observable {
             //.first() // filesys might not complete
             .filter(v => v instanceof vertex && this.modules.settings.autoDisplayPanorama())
             .mergeMap(v => this.modules.panorama.loadScene(v))
-            .subscribe();
+            .subscribe({
+                error: err => this.modules.logger.log(err)
+            });
     }
 
     /**
@@ -610,6 +688,7 @@ class groupEditor extends observable {
      */
     beginCreate(clazz) {
         this.backgrounds(this.modules.map.getBackgrounds());
+        this.errors.path("");
         if (clazz === spatialGroup) {
             this.editable.spatialGroup(Object.assign({}, this.default.spatialGroup));
             $('#spatial-group-editor').modal();
@@ -634,11 +713,97 @@ class groupEditor extends observable {
                     this.errors.path(dir.getPath() + " is not contained in " + modules.filesys.getWorkspace().getPath());
                 } else {
                     this.errors.path("");
+
                     this.editable.spatialGroup().path(dir.getPath(modules.filesys.getWorkspace()));
                     this.editable.spatialGroup().directory = modules.filesys.getWorkspace();
                 }
                 return null;
             });
+    }
+
+    selectMultiresPath() {
+        modules.filesys.request({
+            parent: modules.filesys.getWorkspace(),
+            multi: false,
+            filter: { folders: true, files: false }
+        })
+            .subscribe(dir => {
+                var parentDir = this.current.spatialGroup() ? this.current.spatialGroup().images.directory : modules.filesys.getWorkspace();
+                if (!dir.isAncestor(parentDir)) {
+                    this.errors.path(dir.getPath() + " is not contained in " + parentDir.getPath());
+                } else {
+                    this.errors.path("");
+
+                    this.editable.multiresPanorama().basePath(dir.getPath(parentDir));
+                    this.editable.multiresPanorama().directory = dir;
+                }
+                return null;
+            });
+    }
+
+    /**
+     * @param {vertex} v to be copied to this.current.spatialGroup(), applies options for copying templates
+     */
+    copyVertex(v) {
+        if (!this.current.spatialGroup() || !v || v.spatialGroup == this.current.spatialGroup())
+            return;
+
+        this.modules.hist.commit();
+        var options = this.modules.settings.getTemplateOptions();
+        var mask = this.modules.settings.getTemplateMask();
+        var path;
+
+        if (mask.path && v.type === vertex.prototype.PANORAMA) {
+            var imgConfig = v.getImageConfig();
+            var root = imgConfig.directory || this.modules.filesys.getWorkspace();
+            path = filesystem.concatPaths(v.path, imgConfig.path, imgConfig.prefix);
+            path = filesystem.concatPaths(root.getPath(), path);
+
+            var sgDir = this.current.spatialGroup().images
+                ? this.current.spatialGroup().images.directory
+                : this.current.spatialGroup().directory;
+            var sgPath = sgDir.getPath()
+            if (!path.startsWith(sgPath))
+                throw new error(this.ERROR.INVALID_PATH, path + " is not contained in " + sgPath, path);
+
+            path = path.substr(sgPath.length)
+        }
+
+        var distanceThreshold = options.colocated ? this.current.spatialGroup().superGroup.colocatedRadius : 0;
+
+
+        if (mask.types.indexOf(v.type) !== -1) {
+            var targ = this.modules.alg.getColocated(this.current.spatialGroup(), v.coordinates, distanceThreshold);
+            var copied = false;
+            if (!targ && options.create) {
+                var config = { spatialGroup: this.current.spatialGroup() };
+                if (path) {
+                    config.path = path;
+                    mask.path = false;
+                }
+
+                mask.type = true;
+
+                config = this.assign(config, v, mask);
+                var newV = this.modules.model.createVertex(config);
+                this.createEdgesFromTemplate(v, newV);
+
+                copied = true;
+            } else if (targ && options.update) {
+                if (mask.coordinates)
+                    this.modules.model.updateCoordinates(targ, v.coordinates);
+                if (mask.data)
+                    this.modules.model.updateData(targ, this.assign(targ.data, v.data, mask.data));
+                if (mask.path)
+                    this.modules.model.updatePath(targ, v.path);
+                this.createEdgesFromTemplate(v, targ);
+                copied = true;
+            }
+
+            if (copied && this.modules.settings.getTemplateOptions().deleteOriginal)
+                this.modules.model.deleteVertex(v);
+        }
+
     }
 
     /**
@@ -698,6 +863,82 @@ class groupEditor extends observable {
             this.modules.model.deleteSpatialGroup(sg);
         }
     }
+
+    /**
+     * 
+     * @param {vertex} v - old vertex to be replaced
+     */
+    beginMultiresPanoramaImport(v) {
+        this.editable.multiresPanorama(ko.mapping.fromJS(this.default.multiresPanorama));
+        this.editable.multiresPanorama().oldV = v;
+
+        this.errors.path('');
+        $('#import-multires-panorama-editor').modal();
+    }
+
+
+
+    addMultiresPanorama() {
+        if (!this.canAddMultiresPanorama())
+            return;
+
+        this.modules.hist.commit();
+
+        var cfg = this.editable.multiresPanorama();
+        var g = this.current.spatialGroup();
+
+        var data = {};
+        data.type = cfg.sceneType().type;
+        data.hdr = cfg.hdr();
+        if (cfg.sceneType().type === "multiresrec")
+            data.vaov = 360 * cfg.originalHeight() / cfg.originalWidth();
+
+        data.multiRes = {
+            tileResolution: parseInt(cfg.tileResolution()),
+            maxLevel: parseInt(cfg.maxLevel()),
+            path: cfg.path(),
+            extension: cfg.extension()
+        };
+
+        for (var attr of cfg.sceneType().attributes.keys())
+            data.multiRes[attr] = parseInt(cfg[attr]());
+
+        var jsonVertex = {
+            coordinates: cfg.oldV ? cfg.oldV.coordinates : this.modules.map.getCenter(),
+            type: vertex.prototype.PANORAMA,
+            spatialGroup: g,
+            path: cfg.directory.getPath(g.images.directory),
+            image: {
+                directory: cfg.directory
+            },
+            data: data
+        };
+
+
+        if (!cfg.oldV && this.modules.settings.copySceneAttributes() && this.modules.panorama.getScene()) {
+            var v = this.createVertexFromTemplate(this.modules.panorama.getVertex(), jsonVertex);
+
+            if (this.modules.settings.getTemplateOptions().deleteOriginal)
+                this.modules.model.deleteVertex(this.modules.panorama.getVertex());
+
+        } else {
+            var v = this.modules.model.createVertex(jsonVertex);
+
+            if (cfg.oldV) {
+                cfg.oldV.forEach(e => {
+                    let eConfig = Object.assign({}, e.toJSON(), { from: v, id: null, type: null });
+                    modules.model.createEdge(eConfig);
+                })
+                modules.model.deleteVertex(cfg.oldV);
+            }
+        }
+
+        if (this.modules.settings.autoDisplayPanorama())
+            this.vertexSelector.next(v);
+
+        return v;
+
+    }
 }
 
 groupEditor.prototype.SELECT = "select";
@@ -707,5 +948,6 @@ groupEditor.prototype.EDIT = {};
 groupEditor.prototype.EDIT.SCENE = "Load Panorama";
 groupEditor.prototype.EDIT.LINE = "Draw Line";
 groupEditor.prototype.EDIT.POLYLINE = "Draw Polyline";
+groupEditor.prototype.EDIT.COPY = "Copy Point";
 groupEditor.prototype.EDIT.DELETE = "Delete Point";
 groupEditor.prototype.EDIT.LOG = "Log to Console";

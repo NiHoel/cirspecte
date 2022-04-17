@@ -890,8 +890,12 @@ class graph extends observable {
         this.edges = new Map();
         this.temporalGroups = new Map();
         this.spatialGroups = new Map();
+        this.hierarchical = false;
     }
 
+    isHierarchical() {
+        return this.hierarchical;
+    }
 
     /**
  * 
@@ -1153,6 +1157,13 @@ class graph extends observable {
         return e;
     }
 
+    updateHierarchical(hierarchical) {
+        if (this.hierarchical != !!hierarchical) {
+            this.hierarchical = !!hierarchical
+            this.emit(this.hierarchical, this.CHANGE, this.HIERARCHICAL);
+        }
+    }
+
     /**
      * 
      * @param {vertex} v
@@ -1345,7 +1356,7 @@ class graph extends observable {
     * @param  {boolean} [config.ignoreFrom] - exclude source of edge
     * @returns {JSON}
     */
-    toJSON(config) {
+    toJSON(config = {}) {
 
         var spatialGroups = [];
         var jsonTemporalGroups = [];
@@ -1372,9 +1383,11 @@ class graph extends observable {
 }
 graph.prototype.CREATE = 'create';
 graph.prototype.DELETE = 'delete';
+graph.prototype.CHANGE = 'change';
+graph.prototype.HIERARCHICAL = 'hierarchical';
 graph.prototype.ERROR.VERTEX_NOT_FOUND = "no such vertex";
 graph.prototype.ERROR.EDGE_NOT_FOUND = "no such edge";
-graph.prototype.ERROR.GROUP_NOT_FOUND = "no such spatialGroup";
+graph.prototype.ERROR.GROUP_NOT_FOUND = "no such group";
 graph.prototype.ERROR.INVALID_PARAMETERS = "invalid parameters";
 
 

@@ -100,16 +100,8 @@ class group {
         this.title = g.title || g.description;
         this.content = g.content || g.name;
         this.nestedGroups = g.nestedGroups;
+        this.showNested = false;
         this.treeLevel = g.treeLevel || g.getDepth() + 1;
-
-        if (g.superGroup) {
-            let supergr = g.superGroup.group;
-            this.nestedInGroup = supergr.id;
-            if (!supergr.nestedGroups)
-                supergr.nestedGroups = [this.id];
-            else
-                supergr.nestedGroups.push(this.id);
-        }
 
         g.group = this;
         this.temporalGroup = g;
@@ -162,9 +154,10 @@ class timelineViewer extends observable {
 
         this.modules = modules;
         var settings = modules.settings;
+        this.collapsed = this.isCollapsed();
 
         this.items = new Map();
-        this.groups = new Map();
+        this.groups = new vis.DataSet();
         this.start = new Date();
         this.end = new Date();
         this.width = 0; 
@@ -188,8 +181,22 @@ class timelineViewer extends observable {
 
         this.config = config;
 
+        $("#bottombar-wrapper").on('transitionstart', () => {
+            if (!this.collapsed && !this.isCollapsed())
+                return;
+
+            this.collapsed = this.isCollapsed();
+
+            this.refreshItems(true);
+
+            if (this.centeredTime != null) {
+                this.timeline.moveTo(this.centeredTime);
+                this.centeredTime = null;
+            }
+        });
+
         // Create a Timeline
-        this.timeline = new timeline.Timeline(this.domElement, [], Array.from(this.groups.values()), this.config);
+        this.timeline = new vis.Timeline(this.domElement, [], this.groups, this.config);
 
 
 
@@ -222,6 +229,9 @@ class timelineViewer extends observable {
         this.height = $(this.domElement).height();
 
         var heightChangeCheck = () => {
+            if (this.isCollapsed())
+                return;
+
             var height = $(this.domElement).height();
             if (this.height != height) {
                 this.height = height;
@@ -268,6 +278,13 @@ class timelineViewer extends observable {
             });
             selections.forEach(i => this.toggleSelection(this.getItem(i), true));
         });
+    }
+
+    /**
+     * @return Timeline is collapsed
+     * */
+    isCollapsed() {
+        return $("#bottombar-wrapper").hasClass("collapsed");
     }
 
     /**
@@ -340,7 +357,7 @@ class timelineViewer extends observable {
         if (selections.has(it.id))
             this.toggleSelection(it, true);
 
-        if (!this.refreshScheduled) {
+        if (!this.isCollapsed() && !this.refreshScheduled) {
             this.refreshScheduled = true;
             setTimeout(() => {
                 this.refreshItems(true);
@@ -355,13 +372,24 @@ class timelineViewer extends observable {
      * @returns {group}
      */
     createGroup(g) {
-        if (this.groups.has(g.id))
+        if (this.groups.get(g.id))
             return this.groups.get(g.id);
 
         var gr = new group(g);
-        this.groups.set(gr.id, gr);
 
-        this.refreshGroups();
+        if (g.superGroup) {
+            let supergr = g.superGroup.group;
+            var sgr = this.groups.get(supergr.id);
+
+            if (!sgr.nestedGroups)
+                this.groups.update({ id: sgr.id, nestedGroups: [gr.id] });
+            else
+                this.groups.update({id : sgr.id, nestedGroups: sgr.nestedGroups.concat([gr.id])});
+        }
+
+        this.groups.add(gr);
+        
+        //this.refreshGroups();
         this.emit(gr, this.CREATE);
     }
 
@@ -392,6 +420,7 @@ class timelineViewer extends observable {
             select = !this.isSelected(i);
 
         var update = false;
+        var updateItems = false;
         if (select) {
             if (!this.isSelected(i)) {
                 // deselect others
@@ -402,16 +431,18 @@ class timelineViewer extends observable {
 
                 if (i.className) {// overwrites inactive style, but keep active value
                     delete i.className;
-                    this.refreshItems(true);
+                    updateItems = true;
                 }
                 this.selections.set(i.id, i);
                 update = true;
                 this.emit(i, this.SELECT);
+
+                this.expand(i.spatialGroup.superGroup);
             }
         } else {
             if (!i.active) {
                 i.className = 'timeline-inactive';
-                this.refreshItems(true);
+                updateItems = true
             }
 
             update = this.selections.delete(i.id);
@@ -419,10 +450,11 @@ class timelineViewer extends observable {
                 this.emit(i, this.DESELECT);
         }
 
-        if (update) {
+        if (updateItems)
+            this.refreshItems(true);
+        else if (update)
             this.refreshSelections();
-        }
-
+        
         return i;
     }
 
@@ -437,10 +469,11 @@ class timelineViewer extends observable {
     }
 
     /**
-     * @param {item | spatialGroup | string}
+     * @param {item | spatialGroup | string} elem
      * @param {boolean} active
+     * @param {boolean} redraw
      */
-    setActive(elem, active) {
+    setActive(elem, active, redraw = true) {
         if (elem instanceof item)
             var it = elem;
         else if (elem instanceof spatialGroup)
@@ -461,14 +494,15 @@ class timelineViewer extends observable {
         else
             it.className = "timeline-inactive";
 
-        this.refreshItems(true);
+        if(redraw)
+            this.refreshItems(true);
     }
 
     /**
-     * @param {item | spatialGroup | string}
      * @param {boolean} active
+     * @param {boolean} redraw
      */
-    setAllActive(active) {
+    setAllActive(active, redraw = true) {
         for (var it of this.items.values()) {
             it.active = active;
 
@@ -481,7 +515,8 @@ class timelineViewer extends observable {
                 it.className = "timeline-inactive";
         }
 
-        this.refreshItems(true);
+        if(redraw)
+            this.refreshItems(true);
     }
 
     /**
@@ -526,9 +561,54 @@ class timelineViewer extends observable {
         if (!it)
             return;
 
-        try {
-            this.timeline.moveTo(it.start);
-        } catch (e) { }
+        if (this.isCollapsed()) {
+            this.centeredTime = it.start;
+        } else {
+            try {
+                this.timeline.moveTo(it.start);
+            } catch (e) { }
+        }
+    }
+
+    /**
+     * Shows the subgroups nested in a group
+     * @param {string | group | temporalGroup} id
+     */
+    expand(id) {
+        if (!id)
+            return;
+
+        var tg;
+        if (id instanceof temporalGroup)
+            tg = id;
+        else if (id instanceof group)
+            tg = group.temporalGroup;
+        else
+            tg = this.groups.get(id).temporalGroup;
+
+        if (!tg)
+            return;
+
+        if (tg.superGroup)
+            this.expand(tg.superGroup);
+
+        this.timeline.toggleGroupShowNested(tg.group.id, true);
+    }
+
+    /**
+    * Collapses the subgroups displayed beneath a group
+    * @param {string | group | temporalGroup} id
+    */
+    collapse(id) {
+        if (!id)
+            return;
+
+        if (id instanceof temporalGroup)
+            id = id.group.id;
+        else if (id instanceof group)
+            id = group.id;
+
+        this.timeline.toggleGroupShowNested(id, true);
     }
 
     /**
@@ -536,24 +616,33 @@ class timelineViewer extends observable {
      * @param {temporalGroup} g
      */
     deleteGroup(g) {
-        if (this.groups.delete(g.id)) {
+        if (this.groups.get(g.id)) {
             if (g.group.nestedGroups) {
                 g.group.nestedGroups.forEach(this.deleteGroup.bind(this));
             }
+
             for (let it of this.items.values()) {
                 if (it.group === g.id)
                     this.deleteItem(it.spatialGroup);
             }
+
             if (g.superGroup && g.superGroup.group) {
                 var nestedGroups = g.superGroup.group.nestedGroups || [];
                 let index = nestedGroups.findIndex(elem => elem === g.id);
                 if (index !== -1) {
-                    nestedGroups.splice(index, 1);
+                    nestedGroups = nestedGroups.slice(index, 1);
                 }
+
+                if (!nestedGroups.length)
+                    nestedGroups = null;
+
+                this.groups.update({ id: g.superGroup.group.id, nestedGroups: nestedGroups });
             }
+
             var gr = g.group;
             delete g.group;
-            this.refreshGroups();
+            this.groups.remove(gr.id);
+            //this.refreshGroups();
             this.emit(gr, this.DELETE);
         }
     }
@@ -577,7 +666,9 @@ class timelineViewer extends observable {
     }
 
     refreshItems(force = false) {
-        
+        if (this.isCollapsed())
+            return;
+
         let width = $(this.timeline.body.dom.backgroundVertical).width();
         let window = this.timeline.getWindow();
         let millisecondsPerPixel = /*this.timeline.range.millisecondsPerPixelCache
@@ -621,7 +712,7 @@ class timelineViewer extends observable {
                 }
             }
 
-            for (var group of this.groups.values()) {
+            this.groups.forEach(group => {
                 var groupItems = [];
                 group.temporalGroup.forEach(g => {
                     var i = this.getItem(g.id);
@@ -649,17 +740,24 @@ class timelineViewer extends observable {
                 }
 
                 processArray(itemArray);
-            }
+            });
 
-            this.timeline.setItems(new timeline.DataSet(items));
+            this.timeline.setItems(new vis.DataSet(items));
         } else {
-            this.timeline.setItems(new timeline.DataSet(Array.from(this.items.values())));
+            this.timeline.setItems(new vis.DataSet(Array.from(this.items.values())));
         }
         this.refreshSelections();
     }
 
     refreshGroups() {
-        this.timeline.setGroups(new timeline.DataSet(Array.from(this.groups.values())));
+        //if (this.groupsRefreshScheduled)
+        //    return;
+
+        //this.groupsRefreshScheduled = true;
+        //setTimeout(() => {
+        //    this.groupsRefreshScheduled = false;
+        //    this.timeline.setGroups(new vis.DataSet(Array.from(this.groups.values())));
+        //});
     }
 
     /**

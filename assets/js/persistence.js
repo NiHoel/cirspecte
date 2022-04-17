@@ -34,17 +34,21 @@ class persistence {
 
         if (document.querySelector('#save-workspace') && (document.querySelector('#save-workspace-as')))
             obs.push(modules.filesys.observe(modules.filesys.DIRECTORY, modules.filesys.WORKSPACE)
-                .do(workspace => {
-                    if (workspace.canWrite()) {
+                .merge(modules.model.observe(modules.model.HIERARCHICAL, modules.model.CHANGE))
+                .do(() => {
+                    if (modules.filesys.getWorkspace() && modules.filesys.getWorkspace().canWrite() && !modules.model.isHierarchical()) {
                         $('#save-workspace-as').hide();
                         $('#save-workspace').show();
+                    } else {
+                        $('#save-workspace-as').show();
+                        $('#save-workspace').hide();
                     }
                 })
             );
 
 
         // unloading
-        var saveRequired = () => modules.filesys.getWorkspace() && (!modules.hist || modules.hist.dirty);
+        var saveRequired = () => modules.filesys.getWorkspace() && !this.modules.model.isHierarchical() && (!modules.hist || modules.hist.dirty);
         var autoSave = () => modules.settings.autoSave();
         if (platform.isBrowser) {
             $(window).bind('beforeunload', e => {
@@ -153,7 +157,7 @@ class persistence {
             this.autoSaveSubscription.unsubscribe();
 
         this.autoSaveSubscription = Rx.Observable.interval(this.modules.settings.autoSaveInterval() * 60000)
-            .filter(() => this.modules.filesys.getWorkspace() && this.modules.filesys.getWorkspace().canWrite() && (!modules.hist || modules.hist.dirty))
+            .filter(() => this.modules.filesys.getWorkspace() && this.modules.filesys.getWorkspace().canWrite() && !this.modules.model.isHierarchical() && (!modules.hist || modules.hist.dirty))
             .mergeMap(() => this.getSaveObservable())
             .catch((err, caught) => {
                 console.log(err);

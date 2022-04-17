@@ -17,6 +17,35 @@ class panoramaEditor extends observable {
 
         this.currentVertex = ko.observable();
         this.vOffsetEditable = ko.observable(false);
+        this.optimizeCoordinates = ko.observable(true);
+        this.optimizeNorthOffset = ko.observable(true);
+        this.optimizeHaov = ko.observable(false);
+        this.haov = ko.observable(360);
+        this.haov.subscribe(val => {
+            var num = parseFloat(val);
+
+            if (typeof num == "number" && isFinite(num) && val !== num)
+                this.haov(num);
+            else if (typeof num != "number" || !isFinite(num)) {
+                var defaultVal = 360;
+                if (this.currentVertex() && this.currentVertex().data.haov)
+                    defaultVal = this.currentVertex().data.haov;
+                this.haov(defaultVal);
+            }
+        });
+
+        this.pendingHaovUpdate = false;
+
+        this.haov.subscribe(haov => {
+            if (Math.abs(haov - this.currentVertex().data.haov) < 1e-6 ||
+                !this.currentVertex().data.haov && haov == 360)
+                return;
+
+            if (this.modules.panorama.loading)
+                this.pendingHaovUpdate = true;
+            else
+                this.updateHaov();
+        });
 
         this.landmarkGroups = ko.observableArray();
         this.landmarkGroup = ko.observable();
@@ -39,6 +68,7 @@ class panoramaEditor extends observable {
      * */
     initialize() {
         let modules = this.modules;
+        let haovSlider = $("div + #panorama-edit-haov-slider").prev()[0];
 
         let routines = [
             Rx.Observable.fromEvent($('.nav-tabs a'), 'show.bs.tab')
@@ -142,14 +172,37 @@ class panoramaEditor extends observable {
                 .filter(v => v === modules.panorama.getVertex())
                 .do(v => this.updateView()),
 
+            modules.panorama.observe(scene, modules.panorama.LOADED)
+                .do(() => {
+                    if (this.pendingHaovUpdate) {
+                        this.pendingHaovUpdate = false;
+                        this.updateHaov();
+                    }
+            }),
+
+            Rx.Observable.from(['mousedown', 'pointerdown', 'touchstart'])
+                .mergeMap(ev => Rx.Observable.fromEvent(haovSlider, ev))
+                .do(() => modules.hist.commit()),
+
+
             Rx.Observable.fromEvent(document.querySelector('#optimize-button'), 'click')
                 .do(() => modules.hist.commit())
                 .filter(() => modules.panorama.getScene() != null)
-                .mergeMap(() => modules.alg.optimize(modules.panorama.getScene(), modules.panorama.getHotspots().filter(h => h.type === h.LANDMARK || h.type === h.PREVIEW)))
+                .mergeMap(() => modules.alg.optimize(modules.panorama.getScene(),
+                    modules.panorama.getHotspots().filter(h => h.type === h.LANDMARK || h.type === h.PREVIEW),
+                    {
+                        coordinates: this.optimizeCoordinates(),
+                        northOffset: this.optimizeNorthOffset(),
+                        haov: this.optimizeHaov()
+                    }))
                 .do(res => {
                     var v = modules.panorama.getVertex();
-                    modules.model.updateCoordinates(v, res.solution.coordinates);
-                    modules.model.updateData(v, { northOffset: res.solution.northOffset });
+                    if (res.solution.coordinates)
+                        modules.model.updateCoordinates(v, res.solution.coordinates);
+                    if (res.solution.northOffset != null)
+                        modules.model.updateData(v, { northOffset: res.solution.northOffset });
+                    if (res.solution.haov != null)
+                        this.haov(Math.round(10 * res.solution.haov)/10);
                     $('#optimize-error-text').text(res.f.toFixed(3) + '°');
                 })
                 .map(res => modules.panorama.getVertex())
@@ -211,5 +264,79 @@ class panoramaEditor extends observable {
             $('#image-display-resolution-text').text(imgConf.width + " × " + imgConf.height + " Pixel");
         $('#northOffset-text').text((v.data.northOffset || 0).toFixed(3) + '°');
         $('#vOffset-text').text((v.data.vOffset || 0).toFixed(3) + '°');
+        this.haov(v.data.haov || 360);
+    }
+
+    updateHaov() {
+        var haov = this.haov();
+        let v = this.currentVertex();
+        let conf = v.getImageConfig();
+        let width = conf.width;
+        let height = conf.height;
+        if (!width) {
+            if (v.data.multiRes) {
+                width = v.data.multiRes.originalWidth || 4 * v.data.multiRes.cubeResolution;
+            } else {
+                width = 4096;
+            }
+        }
+        if (!height) {
+            if (v.data.multiRes) {
+                height = v.data.multiRes.originalHeight || 2 * v.data.multiRes.cubeResolution;
+            } else {
+                height = 2048;
+            }
+        }
+
+        let oldVOffset = v.data.vOffset || 0;
+        let oldVaov = v.data.vaov || 180;
+        let oldHaov = v.data.haov || 360;
+
+        var vaov = haov * height / width;
+        var vOffset = oldVOffset * vaov / oldVaov;
+
+        var haovFactor = haov / (v.data.haov || 360);
+
+        var northOffset = v.data.northOffset || 0;
+
+        v.forEach(e => {
+            var update = {};
+
+            if (e.data.yaw != null)
+                update.yaw = (e.data.yaw + northOffset) * haovFactor - northOffset;
+
+            if (e.data.pitch != null)
+                update.pitch = e.data.pitch/oldVaov * vaov ;
+
+            if (update.yaw != null || update.pitch != null)
+                this.modules.model.updateData(e, update);
+        });
+
+        this.modules.model.updateData(v,
+            {
+                haov: haov,
+                vaov: vaov,
+                vOffset: vOffset
+            });
+    }
+
+    alignTop() {
+        var v = this.modules.panorama.getVertex();
+
+        if (!v || v.type !== vertex.prototype.PANORAMA)
+            return;
+
+        var imgConf = v.getImageConfig();
+        var tileConf = v.data.multiRes || {};
+
+        var w = imgConf.width || tileConf.originalWidth;
+        var h = imgConf.height || tileConf.originalHeight;
+        var haov = v.data.haov || 360;
+
+        if (!w || !h)
+            return;
+
+        this.modules.hist.commit();
+        this.modules.model.updateData(v, { vOffset: haov / 2 * (0.5 - h / w) });
     }
 }

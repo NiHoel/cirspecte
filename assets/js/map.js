@@ -857,8 +857,8 @@ class mapViewer extends observable {
 
         var type = config.type || v.type;
         var cfg = this.config.point[type];
-        if (cfg && platform.mobile && this.config.mobileRadius)
-            cfg.radius = this.config.mobileRadius;
+        if (cfg && platform.isMobile && this.config.mobile)
+            cfg = $.extend({}, cfg, this.config.mobile);
         let p = new point(v, type, cfg);
 
         let self = this;
@@ -1316,7 +1316,15 @@ class mapViewer extends observable {
      * Refresh layer tree
      * */
     updateLayerTree() {
-        this.layerControl.setOverlayTree(this.overlayTree).collapseTree(true).expandSelected(true);
+        if (this.layerTreeUpdateScheduled)
+            return;
+
+        this.layerTreeUpdateScheduled = true;
+        setTimeout(() => {
+            this.layerTreeUpdateScheduled = false;
+            this.layerControl.setOverlayTree(this.overlayTree).collapseTree(true).expandSelected(true);
+            },
+            100);
     }
 
     toJSON() {

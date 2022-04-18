@@ -15,7 +15,7 @@ Cirspecte is a browser based, free, and open source tool for creating and viewin
 
 ## Features
 * Browser-based, offline application
-* Display 360° spherical panoramas
+* Display 360° spherical or cubemap panoramas (cropped panoramas are supported too)
 * Small storage footprint for panoramas (just a single image file required)
 * Viewing tours from the local filesystem
 * Application runs on mobile devices (with some limitations)
@@ -24,15 +24,8 @@ Cirspecte is a browser based, free, and open source tool for creating and viewin
 * Support for precise panorama placement and orientation
 
 ## Not supported
-* Viewing tours on the web
 * Displaying single panoramas (not the focus of this software)
-* Panoramas with less than 360° and non-spherical projection
 * Fancy features added to a panorama
-
-## Example
-1. Download and unzip bundle-v0.1.zip under the releases tab
-2. Open index.html with Firefox or Chrome
-3. Drop the "demo" folder on the droparea OR select it via "Select root directory"
 
 ## How to use
 * Use external programs to stitch panorams, see (https://havecamerawilltravel.com/photographer/panorama-stitching-best-apps/) for an overview
@@ -48,10 +41,10 @@ Since Cirspecte is built with recent web standards, it requires a modern browser
 * Firefox 50+
 * Chrome 30+
 * Edge 14+
+* Opera 64+
 
 #### No support:
 * Internet Explorer
-* Opera
 * Safari
 
 ## License

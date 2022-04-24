@@ -1,6 +1,8 @@
 'use strict';
 
 var config = {
+    // add path to a tour file that is automatically loaded when visiting the page as follows:
+    // tour: 'https://nihoel.github.io/cirspecte-hdr-demo/tour.json',
     "map": {
         "strings": {
             location: "GPS",
@@ -31,7 +33,7 @@ var config = {
             /*
             {
                 label: "Satellite (Mapbox)",
-                url: 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw',
+                url: 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png',
                 options: {
                     accessToken: "", // obtain access tocken from https://docs.mapbox.com/help/how-mapbox-works/access-tokens/
                     attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
@@ -259,8 +261,10 @@ var config = {
                 data: {
                     northOffset: true,
                     vOffset: true,
+                    haov: true,
                     vaov: true,
                     type: true,
+                    hdr: true,
                 }
             }
         },
@@ -273,11 +277,5 @@ var config = {
         autoSaveSelectedItems : true,
         showGroupOnEditorSelection : true
     },
-    tour: {
-        /*
-                temporalGroups: [
-                    { id: "landmark", name: "Landmark", type: "landmark", multiselect: true }
-                ]
-                */
-    }
+
 }

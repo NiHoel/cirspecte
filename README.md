@@ -8,18 +8,15 @@ Circumspectus in tempore - A panorama through time.
 
 https://github.com/NiHoel/cirspecte
 
-Pre-built binaries of the editor software can be found here: [https://github.com/NiHoel/cirspecte-cordova/releases/latest](https://github.com/NiHoel/cirspecte-cordova/releases/latest)
-
 ## About
-Cirspecte is a browser based, free, and open source tool for creating and viewing panorama tours. Built using HTML5, CSS3, JavaScript, and WebGL, it is plug-in free.
+Cirspecte is a browser based, free, and open source tool for creating and viewing panorama tours. Built with modern web standards it supports high resolution and high dynamic range panoramas.
 
 ## Features
-* Browser-based, offline application
-* Display 360° spherical or cubemap panoramas (cropped panoramas are supported too)
+* Available as a web version and Windows app
+* Display 360° spherical or cube map panoramas (cropped panoramas are supported too)
 * Small storage footprint for panoramas (just a single image file required)
 * Viewing tours from the local filesystem
-* Application runs on mobile devices (with some limitations)
-* Navigate tour in space and time
+* Create tours that allow users to travel through time
 * Editor for compositing custom tours
 * Support for precise panorama placement and orientation
 
@@ -28,11 +25,15 @@ Cirspecte is a browser based, free, and open source tool for creating and viewin
 * Fancy features added to a panorama
 
 ## How to use
-* Use external programs to stitch panorams, see (https://havecamerawilltravel.com/photographer/panorama-stitching-best-apps/) for an overview
-* Open edit.html with Firefox or Chrome 
-* Configure the browser to ask for the download location (https://www.lifewire.com/change-the-file-download-location-4046428)
+* Use external programs to stitch panoramas, see (https://havecamerawilltravel.com/photographer/panorama-stitching-best-apps/) for an overview
+* Or use panoramas from the web, e.g.: https://polyhaven.com/hdris
+* Download the editor software: [https://github.com/NiHoel/cirspecte-cordova/releases/latest](https://github.com/NiHoel/cirspecte-cordova/releases/latest) (*)
+* Select (or drop) a folder that contains the panorama images
+* When you select a folder for the first time, the software will ask you to create a tour and specify a name. 
 * Follow the instructions in the help dialog (accessible via the '?' button on the top left of the website)
 
+(*) The web version of the editor software: https://nihoel.github.io/cirspecte/edit.html
+   It has the same features as the desktop version, except that it cannot modify files of the local filesystem. This means: No tour export, manual saving by downloading and all files must be "uploaded" when starting the software (don't worry all processing happens in the local browser) 
 
 ## Browser Compatibility
 Since Cirspecte is built with recent web standards, it requires a modern browser to function.

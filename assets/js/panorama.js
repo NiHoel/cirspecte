@@ -1432,7 +1432,6 @@ class panoramaViewer extends observable {
             });
      }
 
-
     /**
 * 
 * @param {scene} s
@@ -1448,14 +1447,8 @@ class panoramaViewer extends observable {
         if (!this.workerMultires) {
             var threads = this.config.decodeThreads || 1;
 
-            var applicationDir = window.location.href;
-            var lastSlash = applicationDir.lastIndexOf('/');
-            var lastPoint = applicationDir.lastIndexOf('.');
-            if (lastSlash >= 0 && lastPoint > lastSlash)
-                applicationDir = applicationDir.substring(0, lastSlash);
-
             var scripts = ["fflate.min.js", "threejs/three.js", "threejs/DataUtils.js", "threejs/RGBELoader.js", "threejs/EXRLoader.js", "exr-wrap.js"]
-                .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
+                .map(s => "'" + this.modules.filesys.getApplicationPath() + "/assets/js/lib/" + s + "'")
                 .join(",");
 
             this.workerMultires = [];
@@ -1589,7 +1582,7 @@ class panoramaViewer extends observable {
 
                     }, ["importScripts(" + scripts + ");",
                         WasmEXRLoader,
-                        "try{if(typeof EXR === 'function')EXR(null,'" + applicationDir + "/assets/js/lib/').then(exrWrapper => {self.wasmEXRLoader = new WasmEXRLoader(exrWrapper)});}catch(e){console.error(e);}"])
+                        "try{if(typeof EXR === 'function')EXR(null,'" + this.modules.filesys.getApplicationPath() + "/assets/js/lib/').then(exrWrapper => {self.wasmEXRLoader = new WasmEXRLoader(exrWrapper)});}catch(e){console.error(e);}"])
                 });
         }
 

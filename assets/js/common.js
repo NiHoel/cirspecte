@@ -394,10 +394,16 @@ function createCommonRoutines(modules, settings) {
         // initial search for tours
         Rx.Observable.of(true)
             .mergeMap(() => {
-                if (config.tour && Object.entries(config.tour).length) // check config file
-                    return modules.filesys.getApplicationDirectory()
-                        .map(dir => [config.tour, dir]);
-                else
+                if (!!config.tour) {// check config file
+                    var obs;
+                    if (directory.isAbsolutePath(config.tour))
+                        obs = remotefile.fromPath(config.tour)
+                    else
+                        obs = modules.filesys.getApplicationDirectory()
+                            .mergeMap(dir => dir.searchFile(config.tour));
+
+                    return obs.map(f => [f, f.getParent()]);
+                } else
                     return Rx.Observable.throw();
             })
             .catch(() => {

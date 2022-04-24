@@ -64,7 +64,7 @@ class groupEditor extends observable {
                 id: '', name: '', description: '', type: temporalGroup.prototype.TOUR, superGroup: '', autoConnectColocated: true, colocatedRadius: 3, multiselect: false, exclusiveTemporalSubgroups: false
             },
             spatialGroup: {
-                id: '', name: '', description: '', type: spatialGroup.prototype.SINGLESHOT, background: null, superGroup: '', path: ko.observable(''), timeslot: ko.observable(moment())
+                id: '', name: '', description: '', type: spatialGroup.prototype.SINGLESHOT, background: null, superGroup: '', path: '', timeslot: ko.observable(moment())
             },
             multiresPanorama: {
                 sceneType: ko.observable(this.multiresSceneTypes[0]), hdr: false, extension: 'jpg', extensionOptions: this.extensionOptionsSDR, path: '%l0/%x_%y', basePath: '', directory: null, tileResolution: 1024, maxLevel: 5, originalWidth: 16384, originalHeight: 8192, cubeResolution: 4096
@@ -72,8 +72,8 @@ class groupEditor extends observable {
         };
 
         this.editable = {
-            temporalGroup: ko.observable(Object.assign({}, this.default.temporalGroup)),
-            spatialGroup: ko.observable(Object.assign({}, this.default.spatialGroup)),
+            temporalGroup: ko.observable(ko.mapping.fromJS(this.default.temporalGroup)),
+            spatialGroup: ko.observable(ko.mapping.fromJS(this.default.spatialGroup)),
             multiresPanorama: ko.observable(ko.mapping.fromJS(this.default.multiresPanorama))
         };
 
@@ -89,7 +89,21 @@ class groupEditor extends observable {
         this.shown = true;
         this.gpsCoordinates = ko.observable();
 
-
+        this.canCreateSpatialGroup = ko.pureComputed(() => {
+            var sg = this.editable.spatialGroup();
+            if(typeof sg !== 'object')
+                return false;
+            
+            return !!sg.name() && typeof sg.superGroup() === 'object';
+        });
+        
+        this.canCreateTemporalGroup = ko.pureComputed(() => {
+            var tg = this.editable.temporalGroup();
+            if(typeof tg !== 'object')
+                return false;
+            
+            return !!tg.name();
+        });
 
         this.scannable = ko.pureComputed(function () {
             return this.current.spatialGroup() && this.current.spatialGroup().images.directory && this.current.spatialGroup().images.directory.canScan();
@@ -422,14 +436,18 @@ class groupEditor extends observable {
             .do(elem => modules.map.unsetEditable(elem));
 
     }
-
+    
     /**
      * Creates the spatial group after the user filled the form.
      * */
     createSpatialGroup() {
         this.modules.hist.commit();
         try {
-            var sg = this.modules.model.createSpatialGroup(Object.assign({}, this.editable.spatialGroup(), { timeslot: this.editable.spatialGroup().timeslot(), path: this.editable.spatialGroup().path() }));
+            var sg = this.editable.spatialGroup();
+            var tg = sg.superGroup();
+            sg = ko.mapping.toJS(sg, {ignore: ['superGroup']});
+            sg.superGroup = tg;
+            sg = this.modules.model.createSpatialGroup(sg);
             setTimeout(() => {
                 this.current.spatialGroup(sg);
                 this.modules.timeline.toggleSelection(sg.item, true);
@@ -446,7 +464,11 @@ class groupEditor extends observable {
     createTemporalGroup() {
         this.modules.hist.commit();
         try {
-            var tg = this.modules.model.createTemporalGroup(this.editable.temporalGroup());
+            var tg = this.editable.temporalGroup();
+            var g = tg.superGroup();
+            tg = ko.mapping.toJS(tg, {ignore: ['superGroup']});
+            tg.superGroup = g;
+            tg = this.modules.model.createTemporalGroup(tg);
             setTimeout(() => { this.current.temporalGroup(tg); }, 100);
 
         } catch (err) {
@@ -690,10 +712,10 @@ class groupEditor extends observable {
         this.backgrounds(this.modules.map.getBackgrounds());
         this.errors.path("");
         if (clazz === spatialGroup) {
-            this.editable.spatialGroup(Object.assign({}, this.default.spatialGroup));
+            this.editable.spatialGroup(ko.mapping.fromJS(this.default.spatialGroup));
             $('#spatial-group-editor').modal();
         } else {
-            this.editable.temporalGroup(Object.assign({}, this.default.temporalGroup));
+            this.editable.temporalGroup(ko.mapping.fromJS(this.default.temporalGroup));
             $('#temporal-group-editor').modal();
         }
 

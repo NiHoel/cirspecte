@@ -387,7 +387,7 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button data-bind="click: createSpatialGroup" class="btn btn-primary" data-dismiss="modal">Create</button>
+                    <button data-bind="click: createSpatialGroup, enable: canCreateSpatialGroup" class="btn btn-primary" data-dismiss="modal">Create</button>
                 </div>
             </div>
         </div>
@@ -473,7 +473,7 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button data-bind="click: createTemporalGroup" class="btn btn-primary" data-dismiss="modal">Create</button>
+                    <button data-bind="click: createTemporalGroup, enable: canCreateTemporalGroup" class="btn btn-primary" data-dismiss="modal">Create</button>
                 </div>
             </div>
         </div>

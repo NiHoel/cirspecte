@@ -177,16 +177,10 @@ function createCommonRoutines(modules, settings) {
 
                             // create temporal edges
                             try {
-                                var applicationDir = window.location.href;
-                                var lastSlash = applicationDir.lastIndexOf('/');
-                                var lastPoint = applicationDir.lastIndexOf('.');
-                                if (lastSlash >= 0 && lastPoint > lastSlash)
-                                    applicationDir = applicationDir.substring(0, lastSlash);
-
                                 var scripts = ["dms.js", "vector3d.js", "latlon-ellipsoidal.js", "latlon-vincenty.js"]
                                     .map(s => "geodesy/" + s)
                                     .concat(["priority-queue.min.js"])
-                                    .map(s => "'" + applicationDir + "/assets/js/lib/" + s + "'")
+                                    .map(s => "'" + modules.filesys.getApplicationPath() + "/assets/js/lib/" + s + "'")
                                     .join(",");
 
                                 var worker = algorithms.createInlineWorker(json => {

@@ -3094,7 +3094,6 @@ class filesystem extends observable {
             return Rx.Observable.throw(new error(directory.prototype.ERROR.DIRECTORY_NOT_FOUND, "", path));
     }
 
-
     /*
  * @return {Rx.Observable<directory>} Directory the application resides
  */
@@ -3112,8 +3111,32 @@ class filesystem extends observable {
         }
 
         else
-            return this.resolvePath(window.location.href)
+            return this.resolvePath(window.location.href.split('?')[0])
                 .map(entry => entry instanceof file ? entry.getParent() : entry);
+    }
+
+    /*
+* @return {string} Path of the directory the application resides
+*/
+    getApplicationPath() {
+        
+        if (window.cordova && window.cordova.file && window.cordova.file.applicationDirectory) {
+            var path = window.cordova.file.applicationDirectory;
+            var folders = path.replace(/\\/g, '/').split('/');
+            if (folders.length > 1) {
+                var lastFolder = folders.pop() || folders.pop();
+                if (lastFolder !== 'www' && lastFolder !== 'app.asar')
+                    path = filesystem.concatPaths(path, platform.isElectron ? 'app.asar' : 'www');
+            }
+        } else {
+            var path = (window.location.href || "").split('?')[0];
+            var lastSlash = path.lastIndexOf('/');
+            var lastPoint = path.lastIndexOf('.');
+            if (lastSlash >= 0 && lastPoint > lastSlash)
+                path = path.substring(0, lastSlash);
+        }
+
+        return path;
     }
 }
 
